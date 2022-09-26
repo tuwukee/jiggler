@@ -1,0 +1,14 @@
+#!/usr/bin/env ruby
+
+require_relative "../lib/jiggler"
+require_relative "../lib/jiggler/launcher"
+
+begin
+  launcher = Jiggler::Launcher.new
+  launcher.run
+rescue => error
+  warn error.message
+  warn error.backtrace.join("\n")
+  exit 1
+end
+
