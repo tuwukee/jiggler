@@ -1,14 +1,39 @@
 #!/usr/bin/env ruby
 
+require "securerandom"
+require "async"
 require_relative "../lib/jiggler"
 require_relative "../lib/jiggler/launcher"
 
+SIGNALS = %w[INT TERM TTIN TSTP].freeze
+
+exit_code = 1
+
+SIGNALS.each do |sig|
+  begin
+    Signal.trap(sig) do
+      puts "Interrupted: #{sig}"
+      exit_code = 0
+      exit(exit_code)
+    end
+  rescue ArgumentError => e
+    puts "#{sig}: #{e.inspect}"
+  end
+end
+
 begin
-  launcher = Jiggler::Launcher.new
+  uuid = SecureRandom.uuid
+  launcher = Jiggler::Launcher.new(uuid: uuid)
+  Jiggler.logger.info("Starting Jiggler: #{uuid}")
+  Jiggler.logger.info("Configuration: #{Jiggler.config.inspect}")
+  Jiggler.logger.info("Redis client: #{Jiggler.redis_client.inspect}")
   launcher.run
-rescue => error
-  warn error.message
-  warn error.backtrace.join("\n")
-  exit 1
+rescue => e
+  Jiggler.logger.error(e.message)
+  Jiggler.logger.error(e.backtrace.join("\n"))
+ensure
+  launcher.cleanup
+  Jiggler.logger.info("Exiting with code: #{exit_code}")
+  exit(exit_code)
 end
 

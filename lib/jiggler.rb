@@ -20,6 +20,10 @@ module Jiggler
     @list_prefix ||= "jiggler:list:"
   end
 
+  def self.processes_list
+    @processes_list ||= "jiggler:processes"
+  end
+
   def self.processing_queue
     @processing_queue ||= "#{list_prefix}#{PROCESSING_QUEUE}"
   end
@@ -48,6 +52,7 @@ module Jiggler
     logger.level = level
   end
 
+  # TODO: read from args
   def self.config_path=(path)
     @config_path = File.expand_path(path)
   end

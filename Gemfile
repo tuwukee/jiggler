@@ -2,6 +2,6 @@
 
 source "https://rubygems.org"
 
-gem "redis"
+gem "rack"
 gem "async-pool"
 gem "async-redis"

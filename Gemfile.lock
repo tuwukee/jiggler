@@ -14,16 +14,12 @@ GEM
       async-io (~> 1.10)
       async-pool (~> 0.2)
       protocol-redis (~> 0.6.0)
-    connection_pool (2.3.0)
     console (1.15.3)
       fiber-local
     fiber-local (1.0.0)
     io-event (1.0.9)
     protocol-redis (0.6.1)
-    redis (5.0.4)
-      redis-client (>= 0.7.4)
-    redis-client (0.8.1)
-      connection_pool
+    rack (3.0.0)
     timers (4.3.4)
 
 PLATFORMS
@@ -32,7 +28,7 @@ PLATFORMS
 DEPENDENCIES
   async-pool
   async-redis
-  redis
+  rack
 
 BUNDLED WITH
    2.3.7

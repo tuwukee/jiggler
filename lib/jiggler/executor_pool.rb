@@ -7,8 +7,8 @@ require "async/pool/resource"
 
 module Jiggler
   class ExecutorPool
-    def initialize(size:)
-      @size = size
+    def initialize(concurrency:)
+      @concurrency = concurrency
     end
   
     def execute(&block)
@@ -22,7 +22,11 @@ module Jiggler
     private
 
     def pool
-      @pool ||= Async::Pool::Controller.new(Async::Pool::Resource, concurrency: @size, limit: @size)
+      @pool ||= Async::Pool::Controller.new(
+        Async::Pool::Resource,
+        concurrency: @concurrency, 
+        limit: @concurrency
+      )
     end
   end
 end
