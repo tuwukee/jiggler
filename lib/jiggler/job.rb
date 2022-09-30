@@ -8,6 +8,8 @@ module Jiggler
     attr_reader :name, :args
 
     module ClassMethods
+      attr_reader :retries
+      
       def perform_async(**args)
         new(**args).perform_async
       end
@@ -16,8 +18,9 @@ module Jiggler
         @queue || Jiggler.default_job_options[:default_queue]
       end
 
-      def job_options(queue:)
+      def job_options(queue: Jiggler.default_job_options[:default_queue], retries: 0)
         @queue = queue
+        @retries = retries
       end
     end
     
@@ -34,7 +37,6 @@ module Jiggler
 
     def perform_async
       Async do
-        puts list_name
         Jiggler.redis_client.lpush(list_name, job_args) 
       end
     end
@@ -46,7 +48,7 @@ module Jiggler
     end
 
     def job_args
-      @job_args ||= { name: name, args: args }.to_json
+      @job_args ||= { name: name, args: args, retries: self.class.retries }.to_json
     end
   end
 end

@@ -17,6 +17,7 @@ module Jiggler
 
     def run
       set_process_uuid
+      set_counters
 
       Async do
         loop do
@@ -33,11 +34,24 @@ module Jiggler
               Jiggler.logger.info("Starting job: #{parsed_args.inspect}")
               job_class = Object.const_get(parsed_args["name"])
               job_class.new(**parsed_args["args"]).perform
+              Jiggler.redis_client.call("incr", Jiggler.processed_counter)
               Jiggler.logger.info("Finished job: #{parsed_args.inspect}")
             rescue => e 
+              Jiggler.redis_client.call("incr", Jiggler.failed_counter)
               Jiggler.logger.error(e.message)
               Jiggler.logger.error(e.backtrace.join("\n"))
-              # TODO: mark the job as failed
+
+              if parsed_args["retries"] && parsed_args["retries"] > 0 
+                attempt = parsed_args["attempt"].nil? ? 0 : parsed_args["attempt"] 
+                if attempt >= parsed_args["retries"]
+                  Jiggler.logger.warn("Job failed after #{attempt} attempts: #{parsed_args.inspect}")
+                else
+                  attempt += 1
+                  new_args = parsed_args.merge("attempt" => attempt)
+                  Jiggler.logger.info("Retrying job: #{new_args.inspect}")
+                  Jiggler.redis_client.lpush(Jiggler.retry_queue, new_args.to_json)
+                end
+              end
             end
           end
         end
@@ -45,13 +59,22 @@ module Jiggler
     end
 
     def cleanup
-      Async { Jiggler.redis_client.call("srem", Jiggler.processes_list, @uuid) }
+      Async { Jiggler.redis_client.call("srem", Jiggler.processes_set, @uuid) }
     end
 
     private
 
     def set_process_uuid
-      Async { Jiggler.redis_client.call("sadd", Jiggler.processes_list, @uuid) }
+      Async { Jiggler.redis_client.call("sadd", Jiggler.processes_set, @uuid) }
+    end
+
+    def set_counters
+      Async do
+        processed_count = Jiggler.redis_client.call("get", Jiggler.processed_counter)
+        Jiggler.redis_client.call("set", Jiggler.processed_counter, 0) unless processed_count
+        failed_count = Jiggler.redis_client.call("get", Jiggler.failed_counter)
+        Jiggler.redis_client.call("set", Jiggler.failed_counter, 0) unless failed_count
+      end
     end
   end
 end 

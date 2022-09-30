@@ -6,6 +6,7 @@ require "yaml"
 
 module Jiggler
   DEFAULT_QUEUE = "default"
+  RETRY_QUEUE = "retry"
   PROCESSING_QUEUE = "processing"
 
   def self.default_job_options
@@ -20,12 +21,24 @@ module Jiggler
     @list_prefix ||= "jiggler:list:"
   end
 
-  def self.processes_list
-    @processes_list ||= "jiggler:processes"
+  def self.processes_set
+    @processes_set ||= "jiggler:set:processes"
+  end
+
+  def self.processed_counter
+    @processed_counter ||= "jiggler:counter:processed"
+  end
+
+  def self.failed_counter
+    @failed_counter ||= "jiggler:counter:failed"
   end
 
   def self.processing_queue
     @processing_queue ||= "#{list_prefix}#{PROCESSING_QUEUE}"
+  end
+
+  def self.retry_queue
+    @retry_queue ||= "#{list_prefix}#{RETRY_QUEUE}"
   end
 
   def self.redis_options=(options)
