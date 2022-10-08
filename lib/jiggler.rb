@@ -42,12 +42,16 @@ module Jiggler
   end
 
   def self.redis_options=(options)
-    @redis_client = Jiggler::RedisStore.new(options).client
+    @redis_options = options
+  end
+
+  def self.redis_options
+    @redis_options ||= { redis_url: ENV["REDIS_URL"] }
   end
 
   def self.redis_client
     unless instance_variable_defined?(:@redis_client)
-      @redis_client = Jiggler::RedisStore.new.client
+      @redis_client = Jiggler::RedisStore.new(redis_options).client
     end
 
     @redis_client
@@ -58,7 +62,7 @@ module Jiggler
   end
 
   def self.logger
-    @logger ||= Logger.new(STDOUT)
+    @logger ||= Logger.new(STDOUT) # /proc/1/fd/1
   end
 
   def self.logger_level=(level)

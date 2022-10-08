@@ -20,15 +20,21 @@ GEM
     io-event (1.0.9)
     protocol-redis (0.6.1)
     rack (3.0.0)
+    rackup (0.2.2)
+      rack (>= 3.0.0.beta1)
+      webrick
     timers (4.3.4)
+    webrick (1.7.0)
 
 PLATFORMS
   arm64-darwin-21
+  x86_64-linux
 
 DEPENDENCIES
   async-pool
   async-redis
   rack
+  rackup
 
 BUNDLED WITH
    2.3.7
