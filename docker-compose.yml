@@ -13,6 +13,7 @@ services:
       - jiggler_gems:/jiggler_gems
     command: bundle exec bin/jiggler
     platform: linux/amd64
+    tty: true
     depends_on:
       - redis
 
@@ -31,8 +32,10 @@ services:
     volumes:
       - .:/jiggler
       - jiggler_gems:/jiggler_gems
-    command: bundle exec rackup lib/jiggler/web/config.ru -p 9292
+    command: bundle exec rackup lib/jiggler/web/config.ru -o 0.0.0.0
     platform: linux/amd64
+    ports:
+      - "9292:9292"
     depends_on:
       - app
       - redis
