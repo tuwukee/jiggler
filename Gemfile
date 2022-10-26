@@ -3,5 +3,8 @@
 source "https://rubygems.org"
 
 gem "rack"
-gem "async-pool"
+gem "async"
+gem "async-io"
 gem "async-redis"
+
+gem "debug", "~> 1.6"

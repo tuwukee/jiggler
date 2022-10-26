@@ -16,10 +16,18 @@ GEM
       protocol-redis (~> 0.6.0)
     console (1.15.3)
       fiber-local
+    debug (1.6.2)
+      irb (>= 1.3.6)
+      reline (>= 0.3.1)
     fiber-local (1.0.0)
+    io-console (0.5.11)
     io-event (1.0.9)
+    irb (1.4.1)
+      reline (>= 0.3.0)
     protocol-redis (0.6.1)
     rack (3.0.0)
+    reline (0.3.1)
+      io-console (~> 0.5)
     timers (4.3.4)
 
 PLATFORMS
@@ -28,6 +36,7 @@ PLATFORMS
 DEPENDENCIES
   async-pool
   async-redis
+  debug (~> 1.6)
   rack
 
 BUNDLED WITH

@@ -1,21 +1,39 @@
 # frozen_string_literal: true
 
 require_relative "./jiggler/redis_store"
-require "logger"
+require_relative "./jiggler/config"
 require "yaml"
 
 module Jiggler
-  DEFAULT_QUEUE = "default"
-  RETRY_QUEUE = "retry"
-  PROCESSING_QUEUE = "processing"
+  VERSION = 0.0.1
+
+  def self.server?
+    defined?(Jiggler::CLI)
+  end
+
+  def self.default_configuration
+    @default_configuration ||= Jiggler::Config.new
+  end
 
   def self.default_job_options
-    @default_job_options ||= {
-      default_queue: DEFAULT_QUEUE,
-      concurrency: 10,
-      queues: [DEFAULT_QUEUE]
-    }  
-  end 
+    @default_job_options ||= { "retry" => true, "queue" => Jiggler::Config::DEFAULT_QUEUE }
+  end
+
+  def self.logger
+    default_configuration.logger
+  end
+
+  def self.configure_server
+    yield default_configuration if server?
+  end
+
+  def self.configure_client
+    yield default_configuration unless server?
+  end
+
+  def self.redis(async: true, &block)
+    default_configuration.with_redis(async:, &block)
+  end
   
   def self.list_prefix
     @list_prefix ||= "jiggler:list:"
@@ -39,30 +57,6 @@ module Jiggler
 
   def self.retry_queue
     @retry_queue ||= "#{list_prefix}#{RETRY_QUEUE}"
-  end
-
-  def self.redis_options=(options)
-    @redis_client = Jiggler::RedisStore.new(options).client
-  end
-
-  def self.redis_client
-    unless instance_variable_defined?(:@redis_client)
-      @redis_client = Jiggler::RedisStore.new.client
-    end
-
-    @redis_client
-  end
-
-  def self.logger=(logger)
-    @logger = logger
-  end
-
-  def self.logger
-    @logger ||= Logger.new(STDOUT)
-  end
-
-  def self.logger_level=(level)
-    logger.level = level
   end
 
   # TODO: read from args

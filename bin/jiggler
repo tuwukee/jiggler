@@ -2,6 +2,7 @@
 
 require "securerandom"
 require "async"
+require "debug"
 require_relative "../lib/jiggler"
 require_relative "../lib/jiggler/launcher"
 
