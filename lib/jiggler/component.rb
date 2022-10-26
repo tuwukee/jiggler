@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Jiggler
   module Component
     attr_reader :config

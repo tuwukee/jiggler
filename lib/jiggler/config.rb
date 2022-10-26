@@ -37,7 +37,7 @@ module Jiggler
       reloader: proc { |&block| block.call }
     }
 
-    ERROR_HANDLER = ->(ex, ctx, cfg = Jiggler.default_configuration) {
+    ERROR_HANDLER = ->(ex, ctx, cfg = Jiggler.default_config) {
       l = cfg.logger
       l.warn(JSON.generate(ctx)) unless ctx.empty?
       l.warn("#{ex.class.name}: #{ex.message}")

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Jiggler
   class Launcher
     def initialize(config)

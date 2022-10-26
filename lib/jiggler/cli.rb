@@ -1,17 +1,17 @@
+# frozen_string_literal: true
+
 require "singleton"
 require "optparse"
 require "async/io/trap"
 require "erb"
 
-require_relative "../jiggler"
-require_relative "./jiggler/config"
-require_relative "./jiggler/launcher"
+require_relative "./launcher"
 
 module Jiggler
   class CLI
     include Singleton
 
-    attr_reader :logger, :config
+    attr_reader :logger, :config, :environment
     
     SIGNAL_HANDLERS = {
       # Ctrl-C in terminal
@@ -27,9 +27,10 @@ module Jiggler
         # log running tasks here (+ backtrace)
         # check in sidekiq
       }
-    }.freeze
+    }
     UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info "No signal handler registered, ignoring" }
     SIGNAL_HANDLERS.default = UNHANDLED_SIGNAL_HANDLER
+    SIGNAL_HANDLERS.freeze
     
     def parse(args = ARGV.dup)
       @config ||= Jiggler.default_config

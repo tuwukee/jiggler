@@ -5,14 +5,14 @@ require_relative "./jiggler/config"
 require "yaml"
 
 module Jiggler
-  VERSION = 0.0.1
+  VERSION = "0.1.0"
 
   def self.server?
     defined?(Jiggler::CLI)
   end
 
-  def self.default_configuration
-    @default_configuration ||= Jiggler::Config.new
+  def self.default_config
+    @default_config ||= Jiggler::Config.new
   end
 
   def self.default_job_options
@@ -20,19 +20,19 @@ module Jiggler
   end
 
   def self.logger
-    default_configuration.logger
+    default_config.logger
   end
 
   def self.configure_server
-    yield default_configuration if server?
+    yield default_config if server?
   end
 
   def self.configure_client
-    yield default_configuration unless server?
+    yield default_config unless server?
   end
 
   def self.redis(async: true, &block)
-    default_configuration.with_redis(async:, &block)
+    default_config.with_redis(async:, &block)
   end
   
   def self.list_prefix
