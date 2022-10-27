@@ -1,13 +1,17 @@
 # frozen_string_literal: true
 
+require_relative "./manager"
+require_relative "./poller"
+require_relative "./worker"
+
 module Jiggler
   class Launcher
     def initialize(config)
       @done = false
       @redis = config[:redis]
       @uuid = config.delete(:uuid) || SecureRandom.uuid
-      @manager = Manager.new(**config)
-      @poller = Poller.new(**config)
+      @manager = Manager.new(config)
+      @poller = Scheduled::Poller.new(config)
     end
 
     def start

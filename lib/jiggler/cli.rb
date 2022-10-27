@@ -40,7 +40,7 @@ module Jiggler
       validate!
     end
 
-    def start(boot_app: true)
+    def start(boot_app: false)
       Async do
         load_app if boot_app
         @launcher = Launcher.new(config)

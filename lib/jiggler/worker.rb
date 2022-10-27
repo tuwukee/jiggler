@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Jiggler
   class Worker
     TIMEOUT = 5
@@ -65,7 +67,8 @@ module Jiggler
     rescue JSON::ParserError
       send_to_dead
     rescue => ex
-      
+      # todo
+    end
 
     def requeue(queue, args)
       # todo

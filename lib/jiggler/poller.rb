@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../jiggler"
 require_relative "./component"
 
 module Jiggler

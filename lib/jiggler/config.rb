@@ -88,7 +88,7 @@ module Jiggler
         l.error e.backtrace.join("\n") unless e.backtrace.nil?
       end
     end
-
-    def_delegators :@options, :[], :[]=, :fetch, :key?, :has_key?, :merge!
+    
+    def_delegators :@options, :[], :[]=, :fetch, :key?, :has_key?, :merge!, :delete, :slice
   end
 end

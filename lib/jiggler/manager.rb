@@ -5,16 +5,16 @@ require "securerandom"
 
 module Jiggler
   class Manager
-    def initialize(**options)
+    def initialize(config)
       @workers = Set.new
       @done = false
-      @worker_options = options.slice(:redis, :lists, :logger)
+      @worker_config = config.slice(:redis, :lists, :logger)
       @notification = Async::IO::Notification.new
-      @shutdown_timeout = options[:shutdown_timeout]
-      (options[:count] || Jiggler.config[:concurrency]).times do
+      @shutdown_timeout = config[:shutdown_timeout]
+      (config[:count] || Jiggler.config[:concurrency]).times do
         @workers << init_worker
       end
-      @uuid = options[:uuid] || SecureRandom.uuid
+      @uuid = config[:uuid] || SecureRandom.uuid
     end
 
     def start
@@ -55,7 +55,7 @@ module Jiggler
       Worker.new(
         **{
           callback: method(:process_worker_result),
-          config: @worker_options
+          config: @worker_config
         }
       )
     end
