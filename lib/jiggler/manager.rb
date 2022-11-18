@@ -2,19 +2,22 @@
 
 require "async"
 require "securerandom"
+require_relative "./component"
 
 module Jiggler
   class Manager
+    include Component
+
     def initialize(config)
       @workers = Set.new
       @done = false
-      @worker_config = config.slice(:redis, :lists, :logger)
+      @config = config
       @notification = Async::IO::Notification.new
-      @shutdown_timeout = config[:shutdown_timeout]
-      (config[:count] || Jiggler.config[:concurrency]).times do
+      @shutdown_timeout = @config[:shutdown_timeout]
+      (@config[:count] || Jiggler.config[:concurrency]).times do
         @workers << init_worker
       end
-      @uuid = config[:uuid] || SecureRandom.uuid
+      @uuid = SecureRandom.uuid
     end
 
     def start

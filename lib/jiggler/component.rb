@@ -16,8 +16,7 @@ module Jiggler
     end
 
     def safe_async(name, &block)
-      Async do
-        Thread.current.name = name
+      Async(annotation: name) do
         watchdog(name, &block)
       end
     end
@@ -26,8 +25,25 @@ module Jiggler
       config.logger
     end
 
-    def redis(&block)
-      config.with_redis(&block)
+    def redis(async: true, &block)
+      config.with_redis(async:, &block)
+    end
+
+    def tid
+      return unless Async::Task.current?
+      (Async::Task.current.object_id ^ ::Process.pid).to_s(36)
+    end
+
+    def hostname
+      ENV["DYNO"] || Socket.gethostname
+    end
+
+    def process_nonce
+      @@process_nonce ||= SecureRandom.hex(6)
+    end
+
+    def identity
+      @@identity ||= "#{hostname}:#{::Process.pid}:#{process_nonce}"
     end
   end
 end

@@ -1,15 +1,16 @@
 # frozen_string_literal: true
 
 require_relative "./manager"
-require_relative "./poller"
-require_relative "./worker"
+require_relative "./scheduled"
+require_relative "./component"
 
 module Jiggler
   class Launcher
+    include Component
+
     def initialize(config)
       @done = false
-      @redis = config[:redis]
-      @uuid = config.delete(:uuid) || SecureRandom.uuid
+      @uuid = SecureRandom.uuid
       @manager = Manager.new(config)
       @poller = Scheduled::Poller.new(config)
     end
@@ -34,7 +35,7 @@ module Jiggler
     end
 
     def cleanup
-      @redis.call("srem", Jiggler.processes_set, @uuid)
+      redis { |conn| conn.call("srem", Jiggler.processes_set, @uuid) }
     end
 
     def run_execution_loop
@@ -77,7 +78,7 @@ module Jiggler
     end
 
     def set_process_uuid
-      Async { redis.call("sadd", Jiggler.processes_set, @uuid) }
+      redis { |conn| conn.call("sadd", Jiggler.processes_set, @uuid) }
     end
   end
 end

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require_relative "../jiggler"
 require_relative "./component"
 
 module Jiggler
@@ -231,3 +232,39 @@ module Jiggler
     end
   end
 end
+
+
+const prj = (function() { 
+  let currentAry = null;
+
+  const initDict = (ary) => {
+    currentAry = [...ary]
+  }
+
+  const finder = (entry) =>{
+    const split = entry.split('')
+    return (aryEntry) => {
+      if (entry.length != aryEntry.length) {
+        return false
+      }
+      return split.every((ch, i) => ch == '*' || aryEntry.charAt(i) == ch)
+    }
+  }
+  
+  const inDict = (entry) => {
+    if (!currentAry) {
+      return false
+    }
+    const result = currentAry.find(finder(entry))
+    return !!result
+  }
+
+  return {
+    initDict,
+    inDict
+  }
+})()
+
+prj.initDict(['abc','cde','abd'])
+prj.inDict('abc')
+prj.inDict('c*e')

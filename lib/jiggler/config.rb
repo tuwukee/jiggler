@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "forwardable"
+require "logger"
 require_relative "./redis_store"
 
 module Jiggler
@@ -11,6 +12,8 @@ module Jiggler
     DEFAULT_QUEUE = "default"
     RETRY_QUEUE = "retry"
     PROCESSING_QUEUE = "processing"
+
+    QUEUES_PREFIX = "Jiggler:queues"
 
     DEFAULTS = {
       labels: Set.new,
@@ -48,7 +51,10 @@ module Jiggler
       @options = DEFAULTS.merge(options)
       @options[:error_handlers] << ERROR_HANDLER if @options[:error_handlers].empty?
       @directory = {}
-      @redis_config = {}
+    end
+
+    def queues
+      @options[:queues].map { |name| "#{QUEUES_PREFIX}:#{name}" }
     end
 
     def with_redis(async: true)
@@ -59,7 +65,7 @@ module Jiggler
     end
 
     def redis_options
-      @options.slice(:concurrency, :redis_url, :cert, :key)
+      @redis_options ||= @options.slice(:concurrency, :redis_url, :cert, :key)
     end
 
     def redis
@@ -71,7 +77,7 @@ module Jiggler
     end
 
     def logger
-      @logger = Logger.new(STDOUT)
+      @logger = ::Logger.new(STDOUT)
     end
 
     def handle_exception(ex, ctx = {})
