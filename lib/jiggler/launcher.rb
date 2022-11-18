@@ -12,13 +12,14 @@ module Jiggler
       @done = false
       @uuid = SecureRandom.uuid
       @manager = Manager.new(config)
-      @poller = Scheduled::Poller.new(config)
+      @config = config
+      # @scheduler = Scheduled::Poller.new(config)
     end
 
     def start
       set_process_uuid
       @manager.start
-      @scheduler.start
+      # @scheduler.start
     end
 
     def quiet
@@ -26,7 +27,7 @@ module Jiggler
 
       @done = true
       @manager.quite
-      @poller.terminate
+      # @scheduler.terminate
     end
 
     def stop

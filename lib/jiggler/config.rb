@@ -12,8 +12,7 @@ module Jiggler
     DEFAULT_QUEUE = "default"
     RETRY_QUEUE = "retry"
     PROCESSING_QUEUE = "processing"
-
-    QUEUES_PREFIX = "Jiggler:queues"
+    QUEUES_PREFIX = "queues"
 
     DEFAULTS = {
       labels: Set.new,
@@ -69,7 +68,7 @@ module Jiggler
     end
 
     def redis
-      @redis ||= Jiggler::RedisStore.new.client(redis_options)
+      @redis ||= Jiggler::RedisStore.new(options: redis_options).client
     end
 
     def logger=(new_logger)

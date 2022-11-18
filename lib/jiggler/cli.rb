@@ -16,7 +16,7 @@ module Jiggler
     SIGNAL_HANDLERS = {
       # Ctrl-C in terminal
       :INT => ->(cli) { cli.stop },
-      # TERM is the signal that Sidekiq must exit.
+      # TERM is the signal that Jiggler must exit.
       # Heroku sends TERM and then waits 30 seconds for process to exit.
       :TERM => ->(cli) { cli.stop },
       :TSTP => ->(cli) {

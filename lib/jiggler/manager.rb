@@ -3,6 +3,7 @@
 require "async"
 require "securerandom"
 require_relative "./component"
+require_relative "./worker"
 
 module Jiggler
   class Manager
@@ -12,7 +13,6 @@ module Jiggler
       @workers = Set.new
       @done = false
       @config = config
-      @notification = Async::IO::Notification.new
       @shutdown_timeout = @config[:shutdown_timeout]
       (@config[:count] || Jiggler.config[:concurrency]).times do
         @workers << init_worker
