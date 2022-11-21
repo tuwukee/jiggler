@@ -40,6 +40,10 @@ module Jiggler
       @done = true
     end
 
+    def wait
+      @runner.wait
+    end
+
     private
 
     def process_job
@@ -50,7 +54,8 @@ module Jiggler
     end
 
     def fetch_one
-      queue, args = redis { |conn| conn.brpop(*queues) }
+      queue, args = redis(async: false) { |conn| conn.brpop(*queues, timeout: TIMEOUT) }
+      config.logger.info('fetched some')
       if queue
         if @done
           requeue(queue, args)
@@ -61,6 +66,7 @@ module Jiggler
       end
     rescue Async::Stop
     rescue => ex
+      binding.break
       handle_fetch_error(ex)
     end
     
@@ -133,9 +139,7 @@ module Jiggler
     end
 
     def queues
-      @queues ||= [
-        *@config.queues, { timeout: TIMEOUT }
-      ]
+      @queues ||= @config.queues
     end
 
     def constantize(str)

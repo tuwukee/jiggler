@@ -52,12 +52,12 @@ module Jiggler
 
     def stop
       logger.info "Stopping the launcher"
-      launcher.stop
+      @launcher.stop
     end
 
     def quite
       logger.info "Quietly shutting down the launcher"
-      launcher.quiet
+      @launcher.quiet
     end
 
     private
@@ -190,7 +190,8 @@ module Jiggler
     end
 
     def initialize_logger
-      config.logger.level = ::Logger::DEBUG if config[:verbose]
+      @logger = config.logger
+      logger.level = ::Logger::DEBUG if config[:verbose]
     end
 
     def symbolize_keys_deep!(hash)
