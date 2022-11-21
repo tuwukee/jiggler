@@ -18,7 +18,7 @@ module Jiggler
     end
 
     def run
-      @runner = safe_async('worker') do
+      @runner = safe_async("worker") do
         loop do
           break @callback.call(self) if @done
           process_job
@@ -73,14 +73,14 @@ module Jiggler
       rescue Async::Stop
       rescue Jiggler::Retry::Handled => h
         # this is the common case: job raised error and Jiggler::Retry::Handled
-        # signals that we created a retry successfully.  We can acknowlege the job.
+        # signals that we created a retry successfully. We can acknowlege the job.
         ack = true
         e = h.cause || h
         handle_exception(e, { context: "Job raised exception", job: job_hash })
         raise e
       rescue Exception => ex
-        # Unexpected error!  This is very bad and indicates an exception that got past
-        # the retry subsystem (e.g. network partition).  We won't acknowledge the job
+        # Unexpected error! This is very bad and indicates an exception that got past
+        # the retry subsystem (e.g. network partition). We won't acknowledge the job
         # so it can be rescued when using Sidekiq Pro.
         handle_exception(
           ex,
@@ -99,9 +99,9 @@ module Jiggler
     end
 
     def execute(parsed_job, queue)
-      klass = Object.const_get(parsed_job['klass'])
+      klass = Object.const_get(parsed_job["klass"])
       instance = klass.new
-      args = parsed_job['args']
+      args = parsed_job["args"]
       with_retry(instance, parsed_job, queue) do
         instance.perform(*args)
       end
@@ -120,6 +120,7 @@ module Jiggler
     end
 
     def handle_fetch_error(ex)
+      raise ex
       # pass
     end
 

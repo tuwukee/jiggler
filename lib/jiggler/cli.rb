@@ -4,6 +4,7 @@ require "singleton"
 require "optparse"
 require "async/io/trap"
 require "erb"
+require "debug"
 
 require_relative "./launcher"
 
@@ -45,7 +46,6 @@ module Jiggler
         load_app if boot_app
         @launcher = Launcher.new(config)
         setup_signal_handlers
-        
         @launcher.start
       end
     end
@@ -63,14 +63,13 @@ module Jiggler
     private
 
     def setup_signal_handlers
-      SIGNAL_HANDLERS.each do |signal, handler|
+      SIGNAL_HANDLERS.map do |signal, handler|
         trap = Async::IO::Trap.new(signal)
         trap.install!
         Async(transient: true) do
-          trap.wait do
-            invoked_traps[singal] += 1
-            handler.call(self)
-          end
+          trap.wait
+          invoked_traps[signal] += 1
+          handler.call(self)
         end
       end
     end

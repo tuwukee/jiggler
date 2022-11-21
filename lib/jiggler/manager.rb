@@ -56,10 +56,7 @@ module Jiggler
 
     def init_worker
       Worker.new(
-        **{
-          callback: method(:process_worker_result),
-          config: @worker_config
-        }
+        config, &method(:process_worker_result)
       )
     end
 
@@ -68,7 +65,7 @@ module Jiggler
       unless @done
         new_worker = init_worker
         @workers << new_worker
-        new_worker.start
+        new_worker.run
       end
     end
 

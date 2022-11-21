@@ -1,29 +1,36 @@
 #!/usr/bin/env ruby
 
-require "securerandom"
-require "async"
-require "debug"
 require_relative "../lib/jiggler"
-require_relative "../lib/jiggler/launcher"
+require_relative "../lib/jiggler/cli"
 
-SIGNALS = %w[INT TERM TTIN TSTP].freeze
+def integrate_with_systemd
+  return unless ENV["NOTIFY_SOCKET"]
 
-exit_code = 1
-
-begin
-  uuid = SecureRandom.uuid
-  config = Jiggler.default_config
-  config[:uuid] = uuid
-  launcher = Jiggler::Launcher.new(config)
-  Jiggler.logger.info("Starting Jiggler: #{uuid}")
-  Jiggler.logger.info("Configuration: #{Jiggler.config.inspect}")
-  launcher.run
-rescue => e
-  Jiggler.logger.error(e.message)
-  Jiggler.logger.error(e.backtrace.join("\n"))
-ensure
-  launcher && launcher.cleanup
-  Jiggler.logger.info("Exiting with code: #{exit_code}")
-  exit(exit_code)
+  Jiggler.configure_server do |config|
+    config.logger.info "Enabling systemd notification integration"
+    # implement based on sidekiq
+    # require "sidekiq/sd_notify"
+    # config.on(:startup) do
+    #   Sidekiq::SdNotify.ready
+    # end
+    # config.on(:shutdown) do
+    #   Sidekiq::SdNotify.stopping
+    # end
+    # Sidekiq.start_watchdog if Sidekiq::SdNotify.watchdog?
+  end
 end
 
+begin
+  cli = Jiggler::CLI.instance
+  cli.parse
+  cli.config.logger.info("Starting Jiggler: #{cli.config.inspect}")
+
+  integrate_with_systemd
+
+  cli.start
+rescue => e
+  raise e if $DEBUG
+  warn e.message
+  warn e.backtrace.join("\n")
+  exit 1
+end
