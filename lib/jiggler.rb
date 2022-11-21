@@ -34,30 +34,6 @@ module Jiggler
   def self.redis(async: true, &block)
     default_config.with_redis(async:, &block)
   end
-  
-  def self.list_prefix
-    @list_prefix ||= "jiggler:list:"
-  end
-
-  def self.processes_set
-    @processes_set ||= "jiggler:set:processes"
-  end
-
-  def self.processed_counter
-    @processed_counter ||= "jiggler:counter:processed"
-  end
-
-  def self.failed_counter
-    @failed_counter ||= "jiggler:counter:failed"
-  end
-
-  def self.processing_queue
-    @processing_queue ||= "#{list_prefix}#{PROCESSING_QUEUE}"
-  end
-
-  def self.retry_queue
-    @retry_queue ||= "#{list_prefix}#{RETRY_QUEUE}"
-  end
 
   # TODO: read from args
   def self.config_path=(path)
@@ -87,14 +63,6 @@ module Jiggler
         end
       end
 
-      unless opts[:queues].include?(opts[:default_queue])
-        opts[:queues] << opts[:default_queue]
-      end
-
-      opts[:lists] = opts[:queues].map do |q| 
-        "#{list_prefix}#{q}" 
-      end
-      
       opts
     end
   end

@@ -36,15 +36,13 @@ module Jiggler
     end
 
     def perform_async
-      Async do
-        Jiggler.redis_client.lpush(list_name, job_args) 
-      end
+      Jiggler.redis { |conn| conn.lpush(list_name, job_args)  }
     end
 
     private
 
     def list_name
-      "#{Jiggler.list_prefix}#{self.class.queue}"
+      "#{Jiggler.default_config.queue_prefix}#{self.class.queue}"
     end
 
     def job_args

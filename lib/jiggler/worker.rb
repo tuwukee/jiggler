@@ -55,7 +55,6 @@ module Jiggler
 
     def fetch_one
       queue, args = redis(async: false) { |conn| conn.brpop(*queues, timeout: TIMEOUT) }
-      config.logger.info('fetched some')
       if queue
         if @done
           requeue(queue, args)
@@ -66,7 +65,6 @@ module Jiggler
       end
     rescue Async::Stop
     rescue => ex
-      binding.break
       handle_fetch_error(ex)
     end
     
@@ -105,7 +103,7 @@ module Jiggler
     end
 
     def execute(parsed_job, queue)
-      klass = Object.const_get(parsed_job["klass"])
+      klass = Object.const_get(parsed_job["name"])
       instance = klass.new
       args = parsed_job["args"]
       with_retry(instance, parsed_job, queue) do

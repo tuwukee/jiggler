@@ -10,9 +10,8 @@ module Jiggler
     extend Forwardable
 
     DEFAULT_QUEUE = "default"
-    RETRY_QUEUE = "retry"
-    PROCESSING_QUEUE = "processing"
-    QUEUES_PREFIX = "queues"
+    QUEUE_PREFIX = "jiggler:list:"
+    PROCESSES_SET = "jiggler:set:processes"
 
     DEFAULTS = {
       labels: Set.new,
@@ -52,8 +51,22 @@ module Jiggler
       @directory = {}
     end
 
+    def queue_prefix
+      QUEUE_PREFIX
+    end
+
+    def processes_set
+      PROCESSES_SET
+    end
+
     def queues
-      @options[:queues].map { |name| "#{QUEUES_PREFIX}:#{name}" }
+      @queues ||= begin
+        unless @options[:queues].include?(DEFAULT_QUEUE)
+          @options[:queues] << DEFAULT_QUEUE
+        end
+
+        @options[:queues].map { |name| "#{QUEUE_PREFIX}#{name}" }
+      end
     end
 
     def with_redis(async: true)
