@@ -14,7 +14,7 @@ module Jiggler
 
       def new(config)
         @config = config
-        @max_retries = Jiggler.default_config[:max_retries] || DEFAULT_MAX_RETRY_ATTEMPTS
+        @max_retries = Jiggler.config[:max_retries] || DEFAULT_MAX_RETRY_ATTEMPTS
       end
 
       def wrapped(instance, msg, queue)

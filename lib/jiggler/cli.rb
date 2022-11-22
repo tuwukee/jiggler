@@ -34,7 +34,7 @@ module Jiggler
     SIGNAL_HANDLERS.freeze
     
     def parse(args = ARGV.dup)
-      @config ||= Jiggler.default_config
+      @config ||= Jiggler.config
 
       setup_options(args)
       initialize_logger

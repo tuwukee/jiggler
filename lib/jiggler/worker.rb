@@ -6,9 +6,9 @@ module Jiggler
 
     TIMEOUT = 5
 
-    Job = Struct.new(:queue, :args, keyword_init: true)
+    CurrentJob = Struct.new(:queue, :args, keyword_init: true)
 
-    attr_reader :current_job
+    attr_reader :current_job, :config
 
     def initialize(config, &callback)
       @done = false
@@ -60,7 +60,7 @@ module Jiggler
           requeue(queue, args)
           nil
         else
-          Job.new(queue:, args:)
+          CurrentJob.new(queue: queue, args: args)
         end
       end
     rescue Async::Stop
@@ -124,20 +124,28 @@ module Jiggler
     end
 
     def handle_fetch_error(ex)
+      config.logger.warn("Fetch error")
       raise ex
       # pass
     end
 
     def send_to_dead
       # todo
+      config.logger.warn("Send to dead: #{current_job.inspect}")
     end
 
     def cleanup
+      config.logger.info("Cleanup")
       # log some stuff probably
     end
 
+    def handle_exception(ex, context)
+      # handle exception
+      config.logger.error(ex, context)
+    end
+
     def queues
-      @queues ||= @config.queues
+      @queues ||= config.queues
     end
 
     def constantize(str)

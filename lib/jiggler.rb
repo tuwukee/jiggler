@@ -10,60 +10,24 @@ module Jiggler
   def self.server?
     defined?(Jiggler::CLI)
   end
-
-  def self.default_config
-    @default_config ||= Jiggler::Config.new
-  end
-
-  def self.default_job_options
-    @default_job_options ||= { "retry" => true, "queue" => Jiggler::Config::DEFAULT_QUEUE }
+  
+  def self.config
+    @config ||= Jiggler::Config.new
   end
 
   def self.logger
-    default_config.logger
+    config.logger
   end
 
   def self.configure_server
-    yield default_config if server?
+    yield config if server?
   end
 
   def self.configure_client
-    yield default_config unless server?
+    yield config unless server?
   end
 
   def self.redis(async: true, &block)
-    default_config.with_redis(async:, &block)
-  end
-
-  # TODO: read from args
-  def self.config_path=(path)
-    @config_path = File.expand_path(path)
-  end
-
-  def self.config_path 
-    @config_path ||= File.expand_path("config/jiggler.yml")
-  end
-
-  def self.config
-    @config ||= begin
-      opts = Jiggler.default_job_options
-
-      file_contents = begin
-        File.read(config_path)
-      rescue => e
-        logger.warn("Could not read config file: #{e.message}")
-        nil
-      end
-
-      if file_contents
-        begin
-          opts.merge!(YAML.safe_load(file_contents, permitted_classes: [Symbol], aliases: true))
-        rescue => e
-          logger.warn("Could not parse config file: #{e.message}")
-        end
-      end
-
-      opts
-    end
+    config.with_redis(async:, &block)
   end
 end
