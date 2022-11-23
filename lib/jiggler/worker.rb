@@ -25,8 +25,10 @@ module Jiggler
         rescue Async::Stop
           cleanup
           @callback.call(self)
+          break
         rescue => ex
           @callback.call(self, ex)
+          break
         end
       end
     end
@@ -141,7 +143,7 @@ module Jiggler
 
     def handle_exception(ex, context)
       # handle exception
-      config.logger.error(ex, context)
+      config.logger.error("#{ex} in context #{context}")
     end
 
     def queues

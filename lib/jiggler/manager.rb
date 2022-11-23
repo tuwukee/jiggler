@@ -4,6 +4,7 @@ require "async"
 require "securerandom"
 require_relative "./component"
 require_relative "./worker"
+require_relative './retrier'
 
 module Jiggler
   class Manager
