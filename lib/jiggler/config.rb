@@ -81,7 +81,7 @@ module Jiggler
     end
 
     def redis
-      @redis ||= Jiggler::RedisStore.new(options: redis_options).client
+      @redis ||= Jiggler::RedisStore.new(redis_options).client
     end
 
     def logger=(new_logger)

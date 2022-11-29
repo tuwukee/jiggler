@@ -5,6 +5,7 @@ require "optparse"
 require "async/io/trap"
 require "erb"
 require "debug"
+require "yaml"
 
 require_relative "./launcher"
 
@@ -101,7 +102,7 @@ module Jiggler
     end
 
     def option_parser(opts)
-      parser = OptionParser.new { |o|
+      parser = OptionParser.new do |o|
         o.on "-c", "--concurrency INT", "processor threads to use" do |arg|
           opts[:concurrency] = Integer(arg)
         end
@@ -139,7 +140,8 @@ module Jiggler
           puts "Jiggler #{Jiggler::VERSION}"
           die(0)
         end
-      }
+      end
+      # TODO: add redis url (?)
 
       parser.banner = "jiggler [options]"
       parser.on_tail "-h", "--help", "Show help" do
@@ -176,6 +178,7 @@ module Jiggler
       # set defaults
       opts[:queues] = [Jiggler::Config::DEFAULT_QUEUE] if opts[:queues].nil?
       opts[:concurrency] = Integer(ENV["JIGGLER_MAX_WORKERS"]) if opts[:concurrency].nil? && ENV["JIGGLER_MAX_WORKERS"]
+      opts[:redis_url] = ENV["REDIS_URL"] if opts[:redis_url].nil? && ENV["REDIS_URL"]
 
       # merge with defaults
       config.merge!(opts)
