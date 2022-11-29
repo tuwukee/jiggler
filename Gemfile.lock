@@ -28,16 +28,22 @@ GEM
     rack (3.0.0)
     reline (0.3.1)
       io-console (~> 0.5)
+    rackup (0.2.2)
+      rack (>= 3.0.0.beta1)
+      webrick
     timers (4.3.4)
+    webrick (1.7.0)
 
 PLATFORMS
   arm64-darwin-21
+  x86_64-linux
 
 DEPENDENCIES
   async-pool
   async-redis
   debug (~> 1.6)
   rack
+  rackup
 
 BUNDLED WITH
    2.3.7

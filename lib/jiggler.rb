@@ -2,7 +2,6 @@
 
 require_relative "./jiggler/redis_store"
 require_relative "./jiggler/config"
-require "yaml"
 
 module Jiggler
   VERSION = "0.1.0"

@@ -1,0 +1,25 @@
+FROM ruby:latest
+
+ENV ROOT_DIR /jiggler
+RUN mkdir -p $ROOT_DIR
+WORKDIR $ROOT_DIR
+
+ENV BUNDLE_PATH /jiggler_gems
+ENV GEM_PATH /jiggler_gems
+ENV GEM_HOME /jiggler_gems
+
+COPY Gemfile ./
+COPY Gemfile.lock ./
+
+RUN gem install bundler
+RUN bundle check || bundle install
+
+RUN mkdir -p ./tmp/pids
+
+# Script to be executed every time the container starts.
+COPY entrypoint.sh /usr/bin/
+RUN chmod +x /usr/bin/entrypoint.sh
+ENTRYPOINT ["entrypoint.sh"]
+
+# Configure the main process to run when running the image
+CMD ["bundle", "exec", "bin/jiggler"]

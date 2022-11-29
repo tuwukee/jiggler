@@ -1,0 +1,44 @@
+version: "3.9"
+services:
+  app: &app
+    container_name: jiggler_app
+    build:
+      context: .
+      dockerfile: Dockerfile.development
+    environment:
+      BUNDLE_PATH: /jiggler_gems
+      REDIS_URL: redis://jiggler_redis:6379
+    volumes:
+      - .:/jiggler
+      - jiggler_gems:/jiggler_gems
+    command: bundle exec bin/jiggler
+    platform: linux/amd64
+    tty: true
+    depends_on:
+      - redis
+
+  redis: &redis
+    container_name: jiggler_redis
+    image: redis:6.0.5-alpine
+
+  web: &web
+    container_name: jiggler_web
+    build:
+      context: .
+      dockerfile: Dockerfile.development
+    environment:
+      BUNDLE_PATH: /jiggler_gems
+      REDIS_URL: redis://jiggler_redis:6379
+    volumes:
+      - .:/jiggler
+      - jiggler_gems:/jiggler_gems
+    command: bundle exec rackup lib/jiggler/web/config.ru -o 0.0.0.0
+    platform: linux/amd64
+    ports:
+      - "9292:9292"
+    depends_on:
+      - app
+      - redis
+
+volumes:
+  jiggler_gems:
