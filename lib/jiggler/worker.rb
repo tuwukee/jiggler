@@ -70,6 +70,7 @@ module Jiggler
       handle_fetch_error(ex)
     end
     
+    # TODO: review this
     def execute_job
       parsed_args = JSON.parse(current_job.args)
       acc = false
@@ -78,16 +79,11 @@ module Jiggler
         acc = true
       rescue Async::Stop
       rescue Jiggler::Retry::Handled => h
-        # this is the common case: job raised error and Jiggler::Retry::Handled
-        # signals that we created a retry successfully. We can acknowlege the job.
         ack = true
         e = h.cause || h
         handle_exception(e, { context: "Job raised exception", job: job_hash })
         raise e
       rescue Exception => ex
-        # Unexpected error! This is very bad and indicates an exception that got past
-        # the retry subsystem (e.g. network partition). We won't acknowledge the job
-        # so it can be rescued when using Sidekiq Pro.
         handle_exception(
           ex,
           {

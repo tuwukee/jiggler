@@ -36,8 +36,7 @@ module Jiggler
     end
 
     def perform_async
-      puts "perform async #{list_name}"
-      Jiggler.redis { |conn| conn.lpush(list_name, job_args)  }
+      Jiggler.redis { |conn| conn.lpush(list_name, job_args) }
     end
 
     private

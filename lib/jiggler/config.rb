@@ -48,6 +48,7 @@ module Jiggler
     def initialize(options = {})
       @options = DEFAULTS.merge(options)
       @options[:error_handlers] << ERROR_HANDLER if @options[:error_handlers].empty?
+      @options[:redis_url] = ENV["REDIS_URL"] if @options[:redis_url].nil? && ENV["REDIS_URL"]
       @directory = {}
     end
 
@@ -94,16 +95,15 @@ module Jiggler
 
     def handle_exception(ex, ctx = {})
       if @options[:error_handlers].size == 0
-        p ["!!!!!", ex]
+        logger.error("No error handlers configured")
+        logger.error(ex)
       end
       ctx[:_config] = self
       @options[:error_handlers].each do |handler|
         handler.call(ex, ctx)
-      rescue => e
-        l = logger
-        l.error "!!! ERROR HANDLER THREW AN ERROR !!!"
-        l.error e
-        l.error e.backtrace.join("\n") unless e.backtrace.nil?
+      rescue => err
+        logger.error(err)
+        logger.error(err.backtrace.join("\n")) unless e.backtrace.nil?
       end
     end
     

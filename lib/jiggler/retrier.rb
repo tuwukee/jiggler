@@ -76,7 +76,7 @@ module Jiggler
         strategy, delay = delay_for(jobinst, count, exception)
         case strategy
         when :discard
-          return # poof!
+          return 
         when :kill
           return retries_exhausted(jobinst, msg, exception)
         end
@@ -94,12 +94,16 @@ module Jiggler
       # returns (strategy, seconds)
       def delay_for(jobinst, count, exception)
         rv = begin
-          # sidekiq_retry_in can return two different things:
+          # jiggler_retry_in can return two different things:
           # 1. When to retry next, as an integer of seconds
           # 2. A symbol which re-routes the job elsewhere, e.g. :discard, :kill, :default
           jobinst&.jiggler_retry_in_block&.call(count, exception)
         rescue Exception => e
-          handle_exception(e, {context: "Failure scheduling retry using the defined `jiggler_retry_in` in #{jobinst.class.name}, falling back to default"})
+          handle_exception(
+            e, {
+              context: "Failure scheduling retry in #{jobinst.class.name}, falling back to default"
+              }
+            )
           nil
         end
   
@@ -107,7 +111,7 @@ module Jiggler
         if Integer === rv && rv > 0
           delay = rv
         elsif rv == :discard
-          return [:discard, nil] # do nothing, job goes poof
+          return [:discard, nil] 
         elsif rv == :kill
           return [:kill, nil]
         end
@@ -168,7 +172,7 @@ module Jiggler
         # that won't convert to JSON.
         exception.message.to_s[0, 10_000]
       rescue
-        +"!!! ERROR MESSAGE THREW AN ERROR !!!"
+        "Exception message unavailable"
       end
   
       def compress_backtrace(backtrace)

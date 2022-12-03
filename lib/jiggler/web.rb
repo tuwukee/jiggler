@@ -15,15 +15,15 @@ module Jiggler
     end
 
     def processes_set
-      Sync { Jiggler.redis_client.call("smembers", Jiggler.processes_set) } 
+      Jiggler.redis(async: false) { |conn| conn.call("smembers", Jiggler.config.processes_set) }
     end
 
     def processed_count
-      Sync { Jiggler.redis_client.call("get", Jiggler.processed_counter) }
+      0 # Jiggler.redis(async: false) { |conn| conn.call("get", Jiggler.processed_counter) }
     end
 
     def failed_count
-      Sync { Jiggler.redis_client.call("get", Jiggler.failed_counter) }
+      1 # Jiggler.redis(async: false) { |conn| conn.call("get", Jiggler.failed_counter) }
     end
 
     def styles

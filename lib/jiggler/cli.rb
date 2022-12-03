@@ -33,6 +33,8 @@ module Jiggler
     UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info "No signal handler registered, ignoring" }
     SIGNAL_HANDLERS.default = UNHANDLED_SIGNAL_HANDLER
     SIGNAL_HANDLERS.freeze
+
+    CONFIG_FILES = %w[jiggler.yml jiggler.yml.erb].freeze
     
     def parse(args = ARGV.dup)
       @config ||= Jiggler.config
@@ -166,7 +168,7 @@ module Jiggler
       else
         config_dir = File.join(config[:require], "config")
 
-        %w[jiggler.yml jiggler.yml.erb].each do |config_file|
+        CONFIG_FILES.each do |config_file|
           path = File.join(config_dir, config_file)
           opts[:config_file] ||= path if File.exist?(path)
         end
@@ -178,18 +180,13 @@ module Jiggler
       # set defaults
       opts[:queues] = [Jiggler::Config::DEFAULT_QUEUE] if opts[:queues].nil?
       opts[:concurrency] = Integer(ENV["JIGGLER_MAX_WORKERS"]) if opts[:concurrency].nil? && ENV["JIGGLER_MAX_WORKERS"]
-      opts[:redis_url] = ENV["REDIS_URL"] if opts[:redis_url].nil? && ENV["REDIS_URL"]
 
       # merge with defaults
       config.merge!(opts)
     end
 
     def set_environment(cli_env)
-      # See #984 for discussion.
-      # APP_ENV is now the preferred ENV term since it is not tech-specific.
-      # Both Sinatra 2.0+ and Sidekiq support this term.
-      # RAILS_ENV and RACK_ENV are there for legacy support.
-      @environment = cli_env || ENV["APP_ENV"] || ENV["RACK_ENV"] || "development"
+      @environment = cli_env || ENV["APP_ENV"] || "development"
     end
 
     def initialize_logger
