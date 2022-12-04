@@ -15,10 +15,10 @@ module Jiggler
       end
 
       def queue
-        @queue || Jiggler.default_job_options[:default_queue]
+        @queue || Jiggler::Config::DEFAULT_QUEUE
       end
 
-      def job_options(queue: Jiggler.default_job_options[:default_queue], retries: 0)
+      def job_options(queue: Jiggler::Config::DEFAULT_QUEUE, retries: 0)
         @queue = queue
         @retries = retries
       end
@@ -36,15 +36,13 @@ module Jiggler
     end
 
     def perform_async
-      Async do
-        Jiggler.redis_client.lpush(list_name, job_args) 
-      end
+      Jiggler.redis { |conn| conn.lpush(list_name, job_args) }
     end
 
     private
 
     def list_name
-      "#{Jiggler.list_prefix}#{self.class.queue}"
+      "#{Jiggler.config.queue_prefix}#{self.class.queue}"
     end
 
     def job_args

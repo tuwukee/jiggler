@@ -9,3 +9,6 @@ Manager - starts, monitors and restart processors, waits for processors to finis
 Processor - polls a single job from redis, inits and runs it, then repeats, once receives :done waits for the job to complete and invokes manager's callback, if an exception happens - invokes manager's callback and retries the job
 Scheduler - reads scheduled and retried jobs (sorted set in redis) and puts them back into appropriate queues
 Runner - traps system signals, inits launcher
+
+docker-compose up -d && docker attach jiggler_app
+docker-compose run --rm web -- bundle exec rspec

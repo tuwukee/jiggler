@@ -3,9 +3,15 @@
 source "https://rubygems.org"
 
 gem "rack"
-gem "async-pool"
+gem "async"
+gem "async-io"
 gem "async-redis"
 
 group :development, :test do
+  gem "debug", "~> 1.6"
   gem "rackup"
+end
+
+group :test do
+  gem "rspec"
 end

@@ -10,7 +10,7 @@ module Jiggler
       @options = options
       endpoint = options[:redis_url].is_a?(String) ? 
         make_redis_endpoint(URI(options[:redis_url])) : Async::Redis.local_endpoint 
-      @client = Async::Redis::Client.new(endpoint)
+      @client = Async::Redis::Client.new(endpoint, **options.slice(:concurrency))
     end
 
     private

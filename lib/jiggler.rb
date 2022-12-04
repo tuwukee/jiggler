@@ -1,111 +1,32 @@
 # frozen_string_literal: true
 
 require_relative "./jiggler/redis_store"
-require "logger"
-require "yaml"
+require_relative "./jiggler/config"
 
 module Jiggler
-  DEFAULT_QUEUE = "default"
-  RETRY_QUEUE = "retry"
-  PROCESSING_QUEUE = "processing"
+  VERSION = "0.1.0"
 
-  def self.default_job_options
-    @default_job_options ||= {
-      default_queue: DEFAULT_QUEUE,
-      concurrency: 10,
-      queues: [DEFAULT_QUEUE]
-    }  
-  end 
+  def self.server?
+    defined?(Jiggler::CLI)
+  end
   
-  def self.list_prefix
-    @list_prefix ||= "jiggler:list:"
-  end
-
-  def self.processes_set
-    @processes_set ||= "jiggler:set:processes"
-  end
-
-  def self.processed_counter
-    @processed_counter ||= "jiggler:counter:processed"
-  end
-
-  def self.failed_counter
-    @failed_counter ||= "jiggler:counter:failed"
-  end
-
-  def self.processing_queue
-    @processing_queue ||= "#{list_prefix}#{PROCESSING_QUEUE}"
-  end
-
-  def self.retry_queue
-    @retry_queue ||= "#{list_prefix}#{RETRY_QUEUE}"
-  end
-
-  def self.redis_options=(options)
-    @redis_options = options
-  end
-
-  def self.redis_options
-    @redis_options ||= { redis_url: ENV["REDIS_URL"] }
-  end
-
-  def self.redis_client
-    unless instance_variable_defined?(:@redis_client)
-      @redis_client = Jiggler::RedisStore.new(redis_options).client
-    end
-
-    @redis_client
-  end
-
-  def self.logger=(logger)
-    @logger = logger
+  def self.config
+    @config ||= Jiggler::Config.new
   end
 
   def self.logger
-    @logger ||= Logger.new(STDOUT) # /proc/1/fd/1
+    config.logger
   end
 
-  def self.logger_level=(level)
-    logger.level = level
+  def self.configure_server
+    yield config if server?
   end
 
-  # TODO: read from args
-  def self.config_path=(path)
-    @config_path = File.expand_path(path)
+  def self.configure_client
+    yield config unless server?
   end
 
-  def self.config_path 
-    @config_path ||= File.expand_path("config/jiggler.yml")
-  end
-
-  def self.config
-    @config ||= begin
-      opts = Jiggler.default_job_options
-
-      file_contents = begin
-        File.read(config_path)
-      rescue => e
-        logger.warn("Could not read config file: #{e.message}")
-        nil
-      end
-
-      if file_contents
-        begin
-          opts.merge!(YAML.safe_load(file_contents, permitted_classes: [Symbol], aliases: true))
-        rescue => e
-          logger.warn("Could not parse config file: #{e.message}")
-        end
-      end
-
-      unless opts[:queues].include?(opts[:default_queue])
-        opts[:queues] << opts[:default_queue]
-      end
-
-      opts[:lists] = opts[:queues].map do |q| 
-        "#{list_prefix}#{q}" 
-      end
-      
-      opts
-    end
+  def self.redis(async: true, &block)
+    config.with_redis(async:, &block)
   end
 end

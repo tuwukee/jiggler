@@ -1,4 +1,4 @@
-:concurrency: 10
+:concurrency: 1
 :queues:
   - users
   - blep
