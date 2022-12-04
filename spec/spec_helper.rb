@@ -28,6 +28,12 @@ RSpec.configure do |config|
     config.default_formatter = "doc"
   end
 
+  config.around(:each) do |example|
+    Timeout.timeout(10) do
+      example.run
+    end
+  end
+
   config.profile_examples = 10
   config.order = :random
 

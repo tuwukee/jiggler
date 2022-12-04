@@ -8,14 +8,16 @@ module Jiggler
     attr_reader :name, :args
 
     module ClassMethods
-      attr_reader :retries
-      
       def perform_async(**args)
         new(**args).perform_async
       end
 
       def queue
         @queue || Jiggler::Config::DEFAULT_QUEUE
+      end
+
+      def retries
+        @retries || 0
       end
 
       def job_options(queue: Jiggler::Config::DEFAULT_QUEUE, retries: 0)

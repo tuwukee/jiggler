@@ -3,7 +3,7 @@
 module Jiggler
   class Worker
     include Component
-
+    # timeout for brpop
     TIMEOUT = 5
 
     CurrentJob = Struct.new(:queue, :args, keyword_init: true)
@@ -65,7 +65,9 @@ module Jiggler
           CurrentJob.new(queue: queue, args: args)
         end
       end
-    rescue Async::Stop
+    rescue Async::Stop => e
+      logger.debug("Async::Stop in fetch_one")
+      raise Async::Stop.new(e)
     rescue => ex
       handle_fetch_error(ex)
     end
@@ -77,12 +79,14 @@ module Jiggler
       begin
         execute(parsed_args, current_job.queue)
         acc = true
-      rescue Async::Stop
+      rescue Async::Stop => e
+        logger.debug("Async::Stop in execute_job")
+        raise Async::Stop.new(e)
       rescue Jiggler::Retry::Handled => h
         ack = true
         e = h.cause || h
         handle_exception(e, { context: "Job raised exception", job: job_hash })
-        raise e
+        raise Jiggler::Retry::Handled.new(e)
       rescue Exception => ex
         handle_exception(
           ex,
@@ -123,7 +127,7 @@ module Jiggler
 
     def handle_fetch_error(ex)
       config.logger.warn("Fetch error")
-      raise ex
+      raise StandardError.new(ex)
       # pass
     end
 
@@ -133,7 +137,7 @@ module Jiggler
     end
 
     def cleanup
-      config.logger.info("Cleanup")
+      config.logger.debug("Cleanup")
       # log some stuff probably
     end
 

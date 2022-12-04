@@ -62,6 +62,7 @@ module Jiggler
 
     def queues
       @queues ||= begin
+        @options[:queues] ||= []
         unless @options[:queues].include?(DEFAULT_QUEUE)
           @options[:queues] << DEFAULT_QUEUE
         end
