@@ -5,14 +5,16 @@ require "logger"
 require_relative "./redis_store"
 
 module Jiggler
-  # global configuration
   class Config
     extend Forwardable
 
     DEFAULT_QUEUE = "default"
     QUEUE_PREFIX = "jiggler:list:"
     PROCESSES_SET = "jiggler:set:processes"
-
+    RETRIES_SET = "jiggler:set:retries"
+    DEAD_SET = "jiggler:set:dead"
+    
+    # TODO: review & remove unused
     DEFAULTS = {
       labels: Set.new,
       require: ".",
@@ -58,6 +60,14 @@ module Jiggler
 
     def processes_set
       PROCESSES_SET
+    end
+
+    def retries_set
+      RETRIES_SET
+    end
+
+    def dead_set
+      DEAD_SET
     end
 
     def queues

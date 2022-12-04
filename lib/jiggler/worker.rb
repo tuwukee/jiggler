@@ -8,7 +8,7 @@ module Jiggler
 
     CurrentJob = Struct.new(:queue, :args, keyword_init: true)
 
-    attr_reader :current_job, :config
+    attr_reader :current_job, :config, :done
 
     def initialize(config, &callback)
       @done = false
@@ -67,7 +67,7 @@ module Jiggler
       end
     rescue Async::Stop => e
       logger.debug("Async::Stop in fetch_one")
-      raise Async::Stop.new(e)
+      raise e
     rescue => ex
       handle_fetch_error(ex)
     end
@@ -81,17 +81,17 @@ module Jiggler
         acc = true
       rescue Async::Stop => e
         logger.debug("Async::Stop in execute_job")
-        raise Async::Stop.new(e)
+        raise e
       rescue Jiggler::Retry::Handled => h
         ack = true
         e = h.cause || h
         handle_exception(e, { context: "Job raised exception", job: job_hash })
-        raise Jiggler::Retry::Handled.new(e)
+        raise e
       rescue Exception => ex
         handle_exception(
           ex,
           {
-            context: "Internal exception!",
+            context: "Internal exception",
             job: parsed_args,
             jobstr: current_job.args
           }
@@ -114,9 +114,13 @@ module Jiggler
     end
 
     def with_retry(instance, args, queue)
-      Retrier.new(config).wrapped(instance, args, queue) do
+      retrier.wrapped(instance, args, queue) do
         yield
       end
+    end
+
+    def retrier
+      @retrier ||= Jiggler::Retry::Retrier.new(config)
     end
 
     def requeue(queue, args)
@@ -126,14 +130,13 @@ module Jiggler
     end
 
     def handle_fetch_error(ex)
-      config.logger.warn("Fetch error")
-      raise StandardError.new(ex)
+      config.logger.error("Fetch error: #{ex}")
       # pass
     end
 
     def send_to_dead
-      # todo
       config.logger.warn("Send to dead: #{current_job.inspect}")
+      # todo
     end
 
     def cleanup
@@ -142,8 +145,8 @@ module Jiggler
     end
 
     def handle_exception(ex, context)
-      # handle exception
       config.logger.error("#{ex} in context #{context}")
+      config.logger.error(ex.backtrace.join("\n"))
     end
 
     def queues

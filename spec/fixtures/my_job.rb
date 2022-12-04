@@ -4,6 +4,6 @@ class MyJob
   include Jiggler::Job
 
   def perform
-    puts "Hello World: #{rand(100)}"
+    puts "Hello World"
   end
 end

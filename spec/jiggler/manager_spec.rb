@@ -19,8 +19,7 @@ RSpec.describe Jiggler::Manager do
     it "quits the manager" do
       expect(manager.instance_variable_get(:@workers)).to all(receive(:quite).and_call_original)
       task = Async do
-        Async { manager.start }
-
+        manager.start
         manager.quite
         expect(manager.instance_variable_get(:@done)).to be true
       end
@@ -33,13 +32,9 @@ RSpec.describe Jiggler::Manager do
       expect(manager.instance_variable_get(:@workers)).to all(receive(:quite).and_call_original)
       expect(manager.instance_variable_get(:@workers)).to all(receive(:terminate).and_call_original)
       task = Async do
-        Async { manager.start }
-
-        Async {
-          sleep(1)
-          manager.terminate
-          expect(manager.instance_variable_get(:@done)).to be true
-        }
+        manager.start
+        manager.terminate
+        expect(manager.instance_variable_get(:@done)).to be true
       end
       task.wait
     end

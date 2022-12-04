@@ -16,13 +16,18 @@ module Jiggler
         @queue || Jiggler::Config::DEFAULT_QUEUE
       end
 
+      def retry_queue
+        @retry_queue || Jiggler::Config::DEFAULT_QUEUE
+      end
+
       def retries
         @retries || 0
       end
 
-      def job_options(queue: Jiggler::Config::DEFAULT_QUEUE, retries: 0)
+      def job_options(queue: Jiggler::Config::DEFAULT_QUEUE, retries: 0, retry_queue: nil)
         @queue = queue
         @retries = retries
+        @retry_queue = retry_queue || queue
       end
     end
     
