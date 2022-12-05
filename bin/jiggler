@@ -23,7 +23,9 @@ end
 begin
   cli = Jiggler::CLI.instance
   cli.parse
-  cli.config.logger.info("Starting Jiggler: #{cli.config.inspect}")
+  
+  cli.config.logger.info("*---* Jiggler is starting in #{Jiggler.config[:environment].upcase} *---*")
+  cli.config.logger.info("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config[:queues].join(',')}")
 
   integrate_with_systemd
 

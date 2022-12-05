@@ -50,14 +50,14 @@ RSpec.describe Jiggler::Job do
 
     before do
       MyJob.job_options(queue: "mine", retries: 0)
-      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:mine") }
     end
-    
+
     it "adds the job to the queue" do
       expect(job.perform_async.wait).to be 1
       expect { job.perform_async.wait }.to change { 
         Jiggler.config.with_redis(async: false) { |conn| conn.llen("jiggler:list:mine") }
       }.by(1)
+      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:mine") }
     end
   end
 end

@@ -18,7 +18,6 @@ module Jiggler
       @config[:concurrency].times do
         @workers << init_worker
       end
-      @uuid = SecureRandom.uuid
     end
 
     def start

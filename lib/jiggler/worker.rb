@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "./errors"
+
 module Jiggler
   class Worker
     include Component
@@ -82,7 +84,7 @@ module Jiggler
       rescue Async::Stop => e
         logger.debug("Async::Stop in execute_job")
         raise e
-      rescue Jiggler::Retry::Handled => h
+      rescue Jiggler::RetryHandled => h
         ack = true
         e = h.cause || h
         handle_exception(e, { context: "Job raised exception", job: job_hash })
@@ -120,7 +122,7 @@ module Jiggler
     end
 
     def retrier
-      @retrier ||= Jiggler::Retry::Retrier.new(config)
+      @retrier ||= Jiggler::Retrier.new(config)
     end
 
     def requeue(queue, args)
@@ -131,6 +133,7 @@ module Jiggler
 
     def handle_fetch_error(ex)
       config.logger.error("Fetch error: #{ex}")
+      raise ex
       # pass
     end
 
@@ -144,13 +147,8 @@ module Jiggler
       # log some stuff probably
     end
 
-    def handle_exception(ex, context)
-      config.logger.error("#{ex} in context #{context}")
-      config.logger.error(ex.backtrace.join("\n"))
-    end
-
     def queues
-      @queues ||= config.queues
+      @queues ||= config.prefixed_queues
     end
 
     def constantize(str)
@@ -160,8 +158,6 @@ module Jiggler
       names.shift if names.empty? || names.first.empty?
 
       names.inject(Object) do |constant, name|
-        # the false flag limits search for name to under the constant namespace
-        #   which mimics Rails' behaviour
         constant.const_get(name, false)
       end
     end

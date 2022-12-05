@@ -16,21 +16,17 @@ module Jiggler
     attr_reader :logger, :config, :environment
     
     SIGNAL_HANDLERS = {
-      # Ctrl-C in terminal
       :INT => ->(cli) { cli.stop },
-      # TERM is the signal that Jiggler must exit.
-      # Heroku sends TERM and then waits 30 seconds for process to exit.
       :TERM => ->(cli) { cli.stop },
       :TSTP => ->(cli) {
-        cli.logger.info "Received TSTP, no longer accepting new work"
-        cli.quiet
+        cli.logger.info("Received TSTP, no longer accepting new work")
+        cli.quite
       },
       :TTIN => ->(cli) {
         # log running tasks here (+ backtrace)
-        # check in sidekiq
       }
     }
-    UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info "No signal handler registered, ignoring" }
+    UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info("No signal handler registered, ignoring") }
     SIGNAL_HANDLERS.default = UNHANDLED_SIGNAL_HANDLER
     SIGNAL_HANDLERS.freeze
 
@@ -51,16 +47,17 @@ module Jiggler
         setup_signal_handlers
         @launcher.start
       end
+      @launcher.cleanup
     end
 
     def stop
-      logger.info "Stopping the launcher"
+      logger.info("Stopping Jiggler, bye!")
       @launcher.stop
     end
 
     def quite
-      logger.info "Quietly shutting down the launcher"
-      @launcher.quiet
+      logger.info("Quietly shutting down Jiggler")
+      @launcher.quite
     end
 
     private
@@ -139,14 +136,13 @@ module Jiggler
           puts("Jiggler #{Jiggler::VERSION}")
           exit(0)
         end
-      end
 
-      parser.banner = "jiggler [options]"
-      parser.on_tail "-h", "--help", "Show help" do
-        puts("Here goes help") # todo
-        exit(0)
+        o.on_tail "-h", "--help", "Show help" do
+          puts o 
+          exit(0)
+        end
       end
-
+      parser.banner = "Jiggler [options]"
       parser
     end
 
@@ -154,7 +150,7 @@ module Jiggler
       # parse CLI options
       opts = parse_options(args)
 
-      set_environment opts[:environment]
+      set_environment(opts)
 
       # check config file presence
       if opts[:config_file]
@@ -180,8 +176,9 @@ module Jiggler
       config.merge!(opts)
     end
 
-    def set_environment(cli_env)
-      @environment = cli_env || ENV["APP_ENV"] || "development"
+    def set_environment(opts)
+      opts[:environment] ||= ENV["APP_ENV"] || "development"
+      @environment = opts[:environment]
     end
 
     def initialize_logger

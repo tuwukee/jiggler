@@ -33,17 +33,5 @@ module Jiggler
       return unless Async::Task.current?
       (Async::Task.current.object_id ^ ::Process.pid).to_s(36)
     end
-
-    def hostname
-      ENV["DYNO"] || Socket.gethostname
-    end
-
-    def process_nonce
-      @@process_nonce ||= SecureRandom.hex(6)
-    end
-
-    def identity
-      @@identity ||= "#{hostname}:#{::Process.pid}:#{process_nonce}"
-    end
   end
 end

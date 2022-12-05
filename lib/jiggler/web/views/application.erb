@@ -9,9 +9,101 @@
   <body>
     <h1>Jiggler</h1>
     <div id="content">
-      <div>Hello World! <%= processes_set %></div></br>
-      <div>Processed: <%= processed_count %></div></br>
-      <div>Failed: <%= failed_count %></div></br>
+      <table class="main-table processes">
+        <thead>
+          <tr>
+            <th colspan="5" title="process">
+              <span>Process</span>
+            </th>
+            <th colspan="1" title="pid">
+              <span>PID</span>
+            </th>
+            <th colspan="2" title="concurrency">
+              <span>Concurrency</span>
+            </th>
+            <th colspan="2" title="rss">
+              <span>RSS</span>
+            </th>
+            <th colspan="2" title="started">
+              <span>Started</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <% processes_data.each do |data| %>
+            <tr>
+              <td colspan="5" title="process">
+                <span><%= "#{data[0]}:#{data[1]['hostname']}" %></span></br>
+                <span><i><%= data[1]["queues"] %></i></span>
+              </td>
+              <td colspan="1" title="pid" class="right">
+                <span><%= data[1]["pid"] %></span>
+              </td>
+              <td colspan="2" title="concurrency" class="right">
+                <span><%= data[1]["concurrency"] %></span>
+              </td>
+              <td colspan="2" title="rss" class="right">
+                <span>?</span>
+              </td>
+              <td colspan="2" title="started" class="right">
+                <span><%= data[1]["started_at"] %></span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+
+      <table class="main-table queues">
+        <thead>
+          <tr>
+            <th colspan="6" title="queue">
+              <span>Queues</span>
+            </th>
+            <th colspan="6" title="size">
+              <span>Size</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <% queues.each do |queue| %>
+            <tr>
+              <td colspan="6" title="queue">
+                <span><i><%= queue[0] %></i></span>
+              </td>
+              <td colspan="6" title="size" class="right">
+                <span><%= queue[1] %></span>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+
+      <table class="main-table jobs">
+        <thead>
+          <tr>
+            <th colspan="2" title="process">
+              <span>Process</span>
+            </th>
+            <th colspan="2" title="job">
+              <span>Job</span>
+            </th>
+            <th colspan="2" title="job">
+              <span>TID</span>
+            </th>
+            <th colspan="2" title="queue">
+              <span>Queue</span>
+            </th>
+            <th colspan="2" title="arguments">
+              <span>Arguments</span>
+            </th>
+            <th colspan="2" title="started">
+              <span>Started</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
     </div>
   </body>
 </html>

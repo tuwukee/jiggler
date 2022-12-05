@@ -10,34 +10,19 @@ module Jiggler
 
     DEFAULT_QUEUE = "default"
     QUEUE_PREFIX = "jiggler:list:"
-    PROCESSES_SET = "jiggler:set:processes"
+    PROCESSES_HASH = "jiggler:hash:processes"
     RETRIES_SET = "jiggler:set:retries"
     DEAD_SET = "jiggler:set:dead"
-    
-    # TODO: review & remove unused
+
     DEFAULTS = {
-      labels: Set.new,
       require: ".",
       environment: nil,
       concurrency: 5,
       timeout: 25,
-      poll_interval_average: nil,
-      average_scheduled_poll_interval: 5,
-      on_complex_arguments: :raise,
       error_handlers: [],
       death_handlers: [],
-      lifecycle_events: {
-        startup: [],
-        quiet: [],
-        shutdown: [],
-        # triggers when we fire the first heartbeat on startup OR repairing a network partition
-        heartbeat: [],
-        # triggers on EVERY heartbeat call, every 10 seconds
-        beat: []
-      },
-      dead_max_jobs: 10_000,
+      max_dead_jobs: 10_000,
       dead_timeout_in_seconds: 180 * 24 * 60 * 60, # 6 months
-      reloader: proc { |&block| block.call }
     }
 
     ERROR_HANDLER = ->(ex, ctx, cfg = Jiggler.config) {
@@ -51,6 +36,7 @@ module Jiggler
       @options = DEFAULTS.merge(options)
       @options[:error_handlers] << ERROR_HANDLER if @options[:error_handlers].empty?
       @options[:redis_url] = ENV["REDIS_URL"] if @options[:redis_url].nil? && ENV["REDIS_URL"]
+      @options[:queues] ||= [DEFAULT_QUEUE]
       @directory = {}
     end
 
@@ -58,8 +44,8 @@ module Jiggler
       QUEUE_PREFIX
     end
 
-    def processes_set
-      PROCESSES_SET
+    def processes_hash
+      PROCESSES_HASH
     end
 
     def retries_set
@@ -70,15 +56,8 @@ module Jiggler
       DEAD_SET
     end
 
-    def queues
-      @queues ||= begin
-        @options[:queues] ||= []
-        unless @options[:queues].include?(DEFAULT_QUEUE)
-          @options[:queues] << DEFAULT_QUEUE
-        end
-
-        @options[:queues].map { |name| "#{QUEUE_PREFIX}#{name}" }
-      end
+    def prefixed_queues
+      @prefixed_queues ||= @options[:queues].map { |name| "#{QUEUE_PREFIX}#{name}" }
     end
 
     def with_redis(async: true)
