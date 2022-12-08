@@ -7,19 +7,21 @@ module Jiggler
   class Launcher
     include Component
 
+    attr_reader :config
+
     def initialize(config)
       @done = false
-      @uuid = SecureRandom.uuid
       @manager = Manager.new(config)
       @config = config
+      @uuid = "jiggler-#{SecureRandom.hex(6)}"
     end
 
     def start
-      set_process_uuid
+      set_process_data
       @manager.start
     end
 
-    def quiet
+    def quite
       return if @done
 
       @done = true
@@ -27,18 +29,30 @@ module Jiggler
     end
 
     def stop
-      quiet
+      quite
       @manager.terminate
     end
 
+    def hostname
+      ENV["DYNO"] || Socket.gethostname
+    end
+
+    def process_data
+      {
+        pid: Process.pid,
+        hostname: hostname,
+        concurrency: config[:concurrency],
+        queues: config[:queues].join(", "),
+        started_at: Time.now.to_s,
+      }.to_json
+    end
+
     def cleanup
-      redis { |conn| conn.call("srem", config.processes_set, @uuid) }
+      redis { |conn| conn.call("hdel", config.processes_hash, @uuid) }
     end
 
-    def set_process_uuid
-      redis { |conn| conn.call("sadd", config.processes_set, @uuid) }
+    def set_process_data
+      redis { |conn| conn.call("hset", config.processes_hash, @uuid, process_data) }
     end
-
-    # add a method to cleanup all processes set?
   end
 end

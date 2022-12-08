@@ -14,8 +14,22 @@ module Jiggler
       [200, {}, [compiled_template]]
     end
 
-    def processes_set
-      Jiggler.redis(async: false) { |conn| conn.call("smembers", Jiggler.config.processes_set) }
+    def processes_data
+      Jiggler.redis(async: false) do |conn| 
+        conn.call("hgetall", Jiggler.config.processes_hash) 
+      end.each_slice(2).map { |k, v| [k, JSON.parse(v)] }
+    end
+
+    def queues
+      lists = Jiggler.redis(async: false) { |conn| conn.call("keys", "jiggler:list:*") }
+      lists.map do |list|
+        name = list.split(":").last
+        [name, Jiggler.redis(async: false) { |conn| conn.call("llen", list) }]
+      end
+    end
+
+    def indentity(data)
+      "#{data[1]["hostname"] - data[1]["pid"]}"
     end
 
     def processed_count
@@ -23,7 +37,7 @@ module Jiggler
     end
 
     def failed_count
-      1 # Jiggler.redis(async: false) { |conn| conn.call("get", Jiggler.failed_counter) }
+      0 # Jiggler.redis(async: false) { |conn| conn.call("get", Jiggler.failed_counter) }
     end
 
     def styles

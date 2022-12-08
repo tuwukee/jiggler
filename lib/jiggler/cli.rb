@@ -16,21 +16,17 @@ module Jiggler
     attr_reader :logger, :config, :environment
     
     SIGNAL_HANDLERS = {
-      # Ctrl-C in terminal
       :INT => ->(cli) { cli.stop },
-      # TERM is the signal that Jiggler must exit.
-      # Heroku sends TERM and then waits 30 seconds for process to exit.
       :TERM => ->(cli) { cli.stop },
       :TSTP => ->(cli) {
-        cli.logger.info "Received TSTP, no longer accepting new work"
-        cli.quiet
+        cli.logger.info("Received TSTP, no longer accepting new work")
+        cli.quite
       },
       :TTIN => ->(cli) {
         # log running tasks here (+ backtrace)
-        # check in sidekiq
       }
     }
-    UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info "No signal handler registered, ignoring" }
+    UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info("No signal handler registered, ignoring") }
     SIGNAL_HANDLERS.default = UNHANDLED_SIGNAL_HANDLER
     SIGNAL_HANDLERS.freeze
 
@@ -51,16 +47,17 @@ module Jiggler
         setup_signal_handlers
         @launcher.start
       end
+      @launcher.cleanup
     end
 
     def stop
-      logger.info "Stopping the launcher"
+      logger.info("Stopping Jiggler, bye!")
       @launcher.stop
     end
 
     def quite
-      logger.info "Quietly shutting down the launcher"
-      @launcher.quiet
+      logger.info("Quietly shutting down Jiggler")
+      @launcher.quite
     end
 
     private
@@ -87,7 +84,6 @@ module Jiggler
         logger.info "  Please point Jiggler to a Ruby file  "
         logger.info "  to load your job classes with -r [FILE]."
         logger.info "=================================================================="
-        logger.info @parser
         exit(1)
       end
 
@@ -105,7 +101,7 @@ module Jiggler
 
     def option_parser(opts)
       parser = OptionParser.new do |o|
-        o.on "-c", "--concurrency INT", "processor threads to use" do |arg|
+        o.on "-c", "--concurrency INT", "Number of fibers to use" do |arg|
           opts[:concurrency] = Integer(arg)
         end
 
@@ -113,16 +109,14 @@ module Jiggler
           opts[:environment] = arg
         end
 
-        o.on "-g", "--tag TAG", "Process tag for procline" do |arg|
-          opts[:tag] = arg
-        end
-
-        o.on "-q", "--queue QUEUE[,WEIGHT]", "Queues to process with optional weights" do |arg|
+        o.on "-q", "--queue QUEUE1,QUEUE2", "Queues to process" do |arg|
           opts[:queues] ||= []
-          opts[:queues] << arg
+          arg.split(",").each do |queue|
+            opts[:queues] << queue
+          end
         end
 
-        o.on "-r", "--require [PATH]", "file to require" do |arg|
+        o.on "-r", "--require PATH", "File to require" do |arg|
           opts[:require] = arg
         end
 
@@ -134,23 +128,21 @@ module Jiggler
           opts[:verbose] = arg
         end
 
-        o.on "-C", "--config PATH", "path to YAML config file" do |arg|
+        o.on "-C", "--config PATH", "Path to YAML config file" do |arg|
           opts[:config_file] = arg
         end
 
         o.on "-V", "--version", "Print version and exit" do
-          puts "Jiggler #{Jiggler::VERSION}"
-          die(0)
+          puts("Jiggler #{Jiggler::VERSION}")
+          exit(0)
+        end
+
+        o.on_tail "-h", "--help", "Show help" do
+          puts o 
+          exit(0)
         end
       end
-      # TODO: add redis url (?)
-
-      parser.banner = "jiggler [options]"
-      parser.on_tail "-h", "--help", "Show help" do
-        logger.info parser
-        die 1
-      end
-
+      parser.banner = "Jiggler [options]"
       parser
     end
 
@@ -158,7 +150,7 @@ module Jiggler
       # parse CLI options
       opts = parse_options(args)
 
-      set_environment opts[:environment]
+      set_environment(opts)
 
       # check config file presence
       if opts[:config_file]
@@ -179,14 +171,14 @@ module Jiggler
 
       # set defaults
       opts[:queues] = [Jiggler::Config::DEFAULT_QUEUE] if opts[:queues].nil?
-      opts[:concurrency] = Integer(ENV["JIGGLER_MAX_WORKERS"]) if opts[:concurrency].nil? && ENV["JIGGLER_MAX_WORKERS"]
 
       # merge with defaults
       config.merge!(opts)
     end
 
-    def set_environment(cli_env)
-      @environment = cli_env || ENV["APP_ENV"] || "development"
+    def set_environment(opts)
+      opts[:environment] ||= ENV["APP_ENV"] || "development"
+      @environment = opts[:environment]
     end
 
     def initialize_logger

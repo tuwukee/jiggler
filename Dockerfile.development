@@ -8,6 +8,8 @@ ENV BUNDLE_PATH /jiggler_gems
 ENV GEM_PATH /jiggler_gems
 ENV GEM_HOME /jiggler_gems
 
+ENV RUBYOPT --enable-frozen-string-literal
+
 COPY Gemfile ./
 COPY Gemfile.lock ./
 

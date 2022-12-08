@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
+require_relative "./errors"
+
 module Jiggler
   class Worker
     include Component
-
+    # timeout for brpop
     TIMEOUT = 5
 
     CurrentJob = Struct.new(:queue, :args, keyword_init: true)
 
-    attr_reader :current_job, :config
+    attr_reader :current_job, :config, :done
 
     def initialize(config, &callback)
       @done = false
@@ -65,7 +67,9 @@ module Jiggler
           CurrentJob.new(queue: queue, args: args)
         end
       end
-    rescue Async::Stop
+    rescue Async::Stop => e
+      logger.debug("Async::Stop in fetch_one")
+      raise e
     rescue => ex
       handle_fetch_error(ex)
     end
@@ -77,8 +81,10 @@ module Jiggler
       begin
         execute(parsed_args, current_job.queue)
         acc = true
-      rescue Async::Stop
-      rescue Jiggler::Retry::Handled => h
+      rescue Async::Stop => e
+        logger.debug("Async::Stop in execute_job")
+        raise e
+      rescue Jiggler::RetryHandled => h
         ack = true
         e = h.cause || h
         handle_exception(e, { context: "Job raised exception", job: job_hash })
@@ -87,7 +93,7 @@ module Jiggler
         handle_exception(
           ex,
           {
-            context: "Internal exception!",
+            context: "Internal exception",
             job: parsed_args,
             jobstr: current_job.args
           }
@@ -110,9 +116,13 @@ module Jiggler
     end
 
     def with_retry(instance, args, queue)
-      Retrier.new(config).wrapped(instance, args, queue) do
+      retrier.wrapped(instance, args, queue) do
         yield
       end
+    end
+
+    def retrier
+      @retrier ||= Jiggler::Retrier.new(config)
     end
 
     def requeue(queue, args)
@@ -122,28 +132,23 @@ module Jiggler
     end
 
     def handle_fetch_error(ex)
-      config.logger.warn("Fetch error")
+      config.logger.error("Fetch error: #{ex}")
       raise ex
       # pass
     end
 
     def send_to_dead
-      # todo
       config.logger.warn("Send to dead: #{current_job.inspect}")
+      # todo
     end
 
     def cleanup
-      config.logger.info("Cleanup")
+      config.logger.debug("Cleanup")
       # log some stuff probably
     end
 
-    def handle_exception(ex, context)
-      # handle exception
-      config.logger.error("#{ex} in context #{context}")
-    end
-
     def queues
-      @queues ||= config.queues
+      @queues ||= config.prefixed_queues
     end
 
     def constantize(str)
@@ -153,8 +158,6 @@ module Jiggler
       names.shift if names.empty? || names.first.empty?
 
       names.inject(Object) do |constant, name|
-        # the false flag limits search for name to under the constant namespace
-        #   which mimics Rails' behaviour
         constant.const_get(name, false)
       end
     end

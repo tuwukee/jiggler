@@ -14,11 +14,10 @@ module Jiggler
       @workers = Set.new
       @done = false
       @config = config
-      @shutdown_timeout = @config[:shutdown_timeout]
-      (@config[:count] || Jiggler.config[:concurrency]).times do
+      @timeout = @config[:timeout]
+      @config[:concurrency].times do
         @workers << init_worker
       end
-      @uuid = SecureRandom.uuid
     end
 
     def start
@@ -47,7 +46,7 @@ module Jiggler
 
     def schedule_shutdown
       @shutdown_task = Async do
-        sleep(@shutdown_timeout)
+        sleep(@timeout)
 
         next if @workers.empty?
 
