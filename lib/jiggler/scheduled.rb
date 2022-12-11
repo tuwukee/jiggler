@@ -2,8 +2,6 @@
 
 module Jiggler
   module Scheduled
-    SETS = %w[retry schedule].freeze
-
     class Enq
       LUA_ZPOPBYSCORE = <<~LUA
         local key, now = KEYS[1], ARGV[1]
@@ -16,26 +14,35 @@ module Jiggler
 
       def initialize(container)
         @config = container
-        @client = Jiggler::Client.new(config: container)
+        # @client = Jiggler::Client.new(config: container)
         @done = false
         @lua_zpopbyscore_sha = nil
       end
 
-      def enqueue_jobs(sorted_sets = SETS)
+      def enqueue_jobs(sorted_sets = sets)
+        logger.info 'enquing jobs'
         # A job's "score" in Redis is the time at which it should be processed.
         # Just check Redis for the set of jobs with a timestamp before now.
-        @config.redis do |conn|
+        @config.with_redis(async: false) do |conn|
           sorted_sets.each do |sorted_set|
             # Get next item in the queue with score (time to execute) <= now.
             # We need to go through the list one at a time to reduce the risk of something
             # going wrong between the time jobs are popped from the scheduled queue and when
             # they are pushed onto a work queue and losing the jobs.
             while !@done && (job = zpopbyscore(conn, keys: [sorted_set], argv: [Time.now.to_f.to_s]))
-              @client.push(JSON.parse(job))
+              push_job(JSON.parse(job))
               logger.debug { "enqueued #{sorted_set}: #{job}" }
             end
           end
         end
+      end
+
+      def push_job(job_args)
+        logger.info 'pushing job back to the queue: ' + job_args.to_json
+      end
+      
+      def sets
+        [@config.retries_set, @config.scheduled_set]
       end
 
       def terminate
@@ -46,10 +53,12 @@ module Jiggler
 
       def zpopbyscore(conn, keys: nil, argv: nil)
         if @lua_zpopbyscore_sha.nil?
-          @lua_zpopbyscore_sha = conn.script_load(LUA_ZPOPBYSCORE)
+          @lua_zpopbyscore_sha = conn.call('SCRIPT', 'LOAD', LUA_ZPOPBYSCORE)
         end
-
-        conn.evalsha(@lua_zpopbyscore_sha, keys.length, keys, argv)
+        logger.info 'zpopbyscore for: ' + keys.to_s + ', ' + argv.to_s
+        res = conn.call('EVALSHA', @lua_zpopbyscore_sha, keys.length, *keys, *argv)
+        logger.info res
+        res
       rescue Protocol::Redis::Error => e
         raise unless e.message.start_with?("NOSCRIPT")
 
@@ -78,6 +87,7 @@ module Jiggler
         @job = nil
         @count_calls = 0
         @sleep_interval = nil
+        @condition = Async::Condition.new
       end
 
       # Shut down this instance, will pause until the thread is dead.
@@ -85,16 +95,18 @@ module Jiggler
         @done = true
         @enq.terminate
 
-        @sleep_interval = 0
-        @job&.wait
+        Async do
+          @condition.signal
+          @job&.wait
+        end
       end
 
       def start
-        @job = safe_async do
+        @job = safe_async("Poller") do
           initial_wait
           until @done
             enqueue
-            wait
+            wait unless @done
           end
           logger.info("Scheduler exiting...")
         end
@@ -112,7 +124,11 @@ module Jiggler
       private
 
       def wait
-        sleep(@sleep_interval || random_poll_interval)
+        Async(transient: true) do
+          sleep(@sleep_interval || random_poll_interval)
+          @condition.signal
+        end
+        @condition.wait
       rescue => ex
         # if poll_interval_average hasn't been calculated yet, we can
         # raise an error trying to reach Redis.
@@ -179,7 +195,7 @@ module Jiggler
       end
 
       def process_count
-        pcount = redis { |conn| conn.scard("processes") }
+        pcount = redis(async: false) { |conn| conn.call("SCARD", "processes") }
         pcount = 1 if pcount == 0
         pcount
       end
@@ -188,16 +204,18 @@ module Jiggler
       # should never depend on sidekiq/api.
       def cleanup
         # dont run cleanup more than once per minute
-        return 0 unless redis { |conn| conn.set("process_cleanup", "1", nx: true, ex: 60) }
+        return 0 unless redis(async: false) { |conn| conn.set("process_cleanup", "1", update: false, seconds: 60) }
 
         count = 0
-        redis do |conn|
-          procs = conn.sscan("processes").to_a
-          heartbeats = conn.pipelined { |pipeline|
-            procs.each do |key|
-              pipeline.hget(key, "info")
+        redis(async: false) do |conn|
+          procs = conn.call("SMEMBERS", "processes")
+          heartbeats = conn.pipeline do |pipeline|
+            pipeline.collect do
+              procs.each do |key|
+                pipeline.hget(key, "info")
+              end
             end
-          }
+          end
 
           # the hash named key has an expiry of 60 seconds.
           # if it's not found, that means the process has not reported
@@ -205,7 +223,7 @@ module Jiggler
           to_prune = procs.select.with_index { |proc, i|
             heartbeats[i].nil?
           }
-          count = conn.srem("processes", to_prune) unless to_prune.empty?
+          count = conn.call("SREM", "processes", *to_prune) unless to_prune.empty?
         end
         count
       end
@@ -218,8 +236,11 @@ module Jiggler
         total += INITIAL_WAIT unless @config[:poll_interval_average]
         total += (5 * rand)
 
-        @sleeper.pop(total)
-      rescue Timeout::Error
+        Async(transient: true) do
+          sleep(total)
+          @condition.signal
+        end
+        @condition.wait
       ensure
         # periodically clean out the `processes` set in Redis which can collect
         # references to dead processes over time. The process count affects how

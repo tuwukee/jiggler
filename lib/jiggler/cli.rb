@@ -8,6 +8,7 @@ require "debug"
 require "yaml"
 
 require_relative "./launcher"
+require_relative "./job"
 
 module Jiggler
   class CLI
@@ -40,7 +41,7 @@ module Jiggler
       validate!
     end
 
-    def start(boot_app: false)
+    def start(boot_app: true)
       Async do
         load_app if boot_app
         @launcher = Launcher.new(config)
@@ -79,6 +80,7 @@ module Jiggler
     end
 
     def validate!
+      return
       if !File.exist?(config[:require])
         logger.info "=================================================================="
         logger.info "  Please point Jiggler to a Ruby file  "

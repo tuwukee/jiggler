@@ -12,6 +12,7 @@ module Jiggler
     QUEUE_PREFIX = "jiggler:list:"
     PROCESSES_HASH = "jiggler:hash:processes"
     RETRIES_SET = "jiggler:set:retries"
+    SCHEDULED_SET = "jiggler:set:scheduled"
     DEAD_SET = "jiggler:set:dead"
 
     DEFAULTS = {
@@ -22,6 +23,8 @@ module Jiggler
       error_handlers: [],
       death_handlers: [],
       max_dead_jobs: 10_000,
+      poll_interval_average: nil,
+      average_scheduled_poll_interval: 5,
       dead_timeout_in_seconds: 180 * 24 * 60 * 60, # 6 months
     }
 
@@ -50,6 +53,10 @@ module Jiggler
 
     def retries_set
       RETRIES_SET
+    end
+
+    def scheduled_set
+      SCHEDULED_SET
     end
 
     def dead_set

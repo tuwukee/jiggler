@@ -2,6 +2,7 @@
 
 require_relative "./manager"
 require_relative "./component"
+require_relative "./scheduled"
 
 module Jiggler
   class Launcher
@@ -12,6 +13,7 @@ module Jiggler
     def initialize(config)
       @done = false
       @manager = Manager.new(config)
+      @poller = Scheduled::Poller.new(config)
       @config = config
       @uuid = "jiggler-#{SecureRandom.hex(6)}"
     end
@@ -19,6 +21,7 @@ module Jiggler
     def start
       set_process_data
       @manager.start
+      @poller.start
     end
 
     def quite
@@ -26,6 +29,7 @@ module Jiggler
 
       @done = true
       @manager.quite
+      @poller.terminate
     end
 
     def stop
