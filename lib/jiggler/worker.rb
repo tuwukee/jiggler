@@ -24,7 +24,7 @@ module Jiggler
           break @callback.call(self) if @done
           process_job
         rescue Async::Stop
-          cleanup
+          # cleanup (?)
           @callback.call(self)
           break
         rescue => ex
@@ -67,39 +67,36 @@ module Jiggler
         end
       end
     rescue Async::Stop => e
-      logger.debug("Async::Stop in fetch_one")
       raise e
     rescue => ex
       handle_fetch_error(ex)
     end
     
-    # TODO: review this
     def execute_job
       parsed_args = JSON.parse(current_job.args)
-      acc = false
       begin
         execute(parsed_args, current_job.queue)
-        acc = true
-      rescue Async::Stop => e
-        logger.debug("Async::Stop in execute_job")
-        raise e
-      rescue Jiggler::RetryHandled => h
-        ack = true
-        e = h.cause || h
-        handle_exception(e, { context: "Job raised exception", job: job_hash })
-        raise e
+      rescue Async::Stop => err
+        raise err
+      rescue Jiggler::RetryHandled => handled
+        err = handled.cause || handled
+        handle_exception(
+          err, 
+          { 
+            context: "'Job raised exception'",
+            tid: tid
+          }.merge(parsed_args),
+          raise_ex: true
+        )
       rescue Exception => ex
         handle_exception(
-          ex,
+          ex, 
           {
-            context: "Internal exception",
-            job: parsed_args,
-            jobstr: current_job.args
-          }
+            context: "'Internal exception'",
+            tid: tid
+          }.merge(parsed_args),
+          raise_ex: true
         )
-        raise ex
-      ensure
-        acknowledge if acc
       end
     rescue JSON::ParserError
       send_to_dead
@@ -110,11 +107,11 @@ module Jiggler
       instance = klass.new
       args = parsed_job["args"]
 
-      logger.info("Executing #{klass} on #{instance.queue} tid=#{tid} jid=#{instance.jid}")
+      logger.info("Starting #{klass} queue=#{klass.queue} tid=#{tid} jid=#{instance._jid}")
       with_retry(instance, parsed_job, queue) do
         instance.perform(*args)
       end
-      logger.info("Done tid=#{tid} jid=#{instance.jid}")
+      logger.info("Finished #{klass} queue=#{klass.queue} tid=#{tid} jid=#{instance._jid}")
     end
 
     def with_retry(instance, args, queue)
@@ -134,19 +131,19 @@ module Jiggler
     end
 
     def handle_fetch_error(ex)
-      config.logger.error("Fetch error: #{ex}")
-      raise ex
-      # pass
+      handle_exception(
+        ex,
+        {
+          context: "Fetch error",
+          tid: tid
+        },
+        raise_ex: true
+      )
     end
 
     def send_to_dead
       config.logger.warn("Send to dead: #{current_job.inspect}")
       # todo
-    end
-
-    def cleanup
-      config.logger.debug("Cleanup")
-      # log some stuff probably
     end
 
     def queues

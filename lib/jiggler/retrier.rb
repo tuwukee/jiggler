@@ -15,11 +15,9 @@ module Jiggler
     def wrapped(instance, msg, queue)
       yield
     rescue Async::Stop => stop
-      logger.debug("Async::Stop in wrapped")
       raise stop
     rescue => err
-      logger.warn("Error in #{instance.name}: #{err} tid=#{tid} jid=#{instance.jid}")
-      logger.warn(err.backtrace.join("\n"))
+      handle_exception(err, { context: "'Error in #{instance.class.name}'", tid: tid, jid: instance._jid })
       raise Async::Stop if exception_caused_by_shutdown?(err)
 
       process_retry(instance, msg, queue, err)
@@ -45,7 +43,7 @@ module Jiggler
       msg["error_class"] = exception.class.name
       msg["queue"] = job_class.retry_queue
       msg["class"] = job_class.name
-      msg["jid"] = jobinst.jid
+      msg["jid"] = jobinst._jid
 
       if count.zero?
         msg["failed_at"] = Time.now.to_f
@@ -67,22 +65,22 @@ module Jiggler
     end
 
     def retries_exhausted(jobinst, msg, exception)
-      logger.warn("Retries exhausted for #{msg["class"]} job tid=#{tid} jid=#{jobinst.jid}")
+      logger.warn("Retries exhausted for #{msg["class"]} tid=#{tid} jid=#{jobinst._jid}")
       
       # review dead key
-      send_to_morgue(msg, jobinst.jid) unless msg["dead"] == false
+      send_to_morgue(msg, jobinst._jid) unless msg["dead"] == false
     end
 
     # todo: review this
     def send_to_morgue(msg, jid)
-      logger.warn("#{msg["class"]} job has been sent to dead tid=#{tid} jid=#{jid}")
+      logger.warn("#{msg["class"]} has been sent to dead tid=#{tid} jid=#{jid}")
       payload = JSON.generate(msg)
       now = Time.now.to_f
 
       redis do |conn|
         conn.multi do |xa|
           xa.zadd(config.dead_set, now.to_s, payload)
-          xa.zremrangebyscore(config.dead_set, "-inf", now - config[:dead_timeout_in_seconds])
+          xa.zremrangebyscore(config.dead_set, "-inf", now - config[:dead_timeout])
           xa.zremrangebyrank(config.dead_set, 0, - config[:max_dead_jobs])
         end
       end

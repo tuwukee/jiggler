@@ -38,15 +38,15 @@ module Jiggler
             enqueue
             wait unless @done
           end
-          logger.debug("Scheduler exiting...")
         end
       end
 
       def enqueue
         @enqueuer.enqueue_jobs
       rescue => ex
-        logger.error("Error while enqueuing scheduled job: #{ex.message}")
-        handle_exception(ex)
+        handle_exception(
+          ex, { context: "'Error while enqueueing jobs'", tid: tid }
+        )
       end
 
       private
@@ -58,28 +58,21 @@ module Jiggler
         end
         @condition.wait
       rescue => ex
-        logger.error("Error while waiting for scheduled jobs: #{ex.message}")
-        handle_exception(ex)
+        handle_exception(
+          ex, { context: "'Error while waiting for scheduled jobs'", tid: tid }
+        )
         sleep(5)
       end
 
       def random_poll_interval
         count = process_count
-        interval = poll_interval_average(count)
+        interval = @config[:poll_interval] 
 
         if count < 10
           interval * rand + interval.to_f / 2
         else
           interval * rand
         end
-      end
-
-      def poll_interval_average(count)
-        @config[:poll_interval_average] || scaled_poll_interval(count)
-      end
-
-      def scaled_poll_interval(process_count)
-        process_count * @config[:average_scheduled_poll_interval]
       end
 
       def process_count
@@ -110,9 +103,7 @@ module Jiggler
       end
 
       def initial_wait
-        total = 0
-        total += INITIAL_WAIT unless @config[:poll_interval_average]
-        total += (5 * rand)
+        total = INITIAL_WAIT + (5 * rand)
 
         Async(transient: true) do
           sleep(total)

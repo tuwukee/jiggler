@@ -12,8 +12,8 @@ RSpec.describe Jiggler::Job do
       it "has correct attrs" do
         expect(job.class.queue).to eq "default"
         expect(job.class.retries).to be 0
-        expect(job.args).to eq({})
-        expect(job.name).to eq "MyJob"
+        expect(job._args).to eq({})
+        expect(job.class.name).to eq "MyJob"
         expect(job.send(:list_name)).to eq "jiggler:list:default"
         expect(job.send(:job_args)).to eq({ 
           name: "MyJob", 
@@ -33,8 +33,8 @@ RSpec.describe Jiggler::Job do
       it "has correct attrs" do
         expect(job.class.queue).to eq "custom"
         expect(job.class.retries).to be 3
-        expect(job.args).to eq({ name: "Woo" })
-        expect(job.name).to eq "MyJob"
+        expect(job._args).to eq({ name: "Woo" })
+        expect(job.class.name).to eq "MyJob"
         expect(job.send(:list_name)).to eq "jiggler:list:custom"
         expect(job.send(:job_args)).to eq({ 
           name: "MyJob", 
@@ -53,7 +53,6 @@ RSpec.describe Jiggler::Job do
     end
 
     it "adds the job to the queue" do
-      expect(job.perform_async.wait).to be 1
       expect { job.perform_async.wait }.to change { 
         Jiggler.config.with_redis(async: false) { |conn| conn.llen("jiggler:list:mine") }
       }.by(1)

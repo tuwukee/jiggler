@@ -9,22 +9,32 @@
   <body>
     <h1>Jiggler</h1>
     <div id="content">
+
+      <div class="stats-block">
+        <div class="stats-entry">
+          <span><%= "To Retry: #{jobs_to_retry_count}" %></span>
+        </div>
+        <div class="stats-entry">
+          <span><%= "Dead: #{dead_jobs_count}" %></span>
+        </div>
+      </div>
+
       <table class="main-table processes">
         <thead>
           <tr>
-            <th colspan="5" title="process">
+            <th colspan="5" title="Process">
               <span>Process</span>
             </th>
-            <th colspan="1" title="pid">
+            <th colspan="1" title="PID">
               <span>PID</span>
             </th>
-            <th colspan="2" title="concurrency">
+            <th colspan="2" title="Concurrency">
               <span>Concurrency</span>
             </th>
-            <th colspan="2" title="rss">
+            <th colspan="2" title="RSS">
               <span>RSS</span>
             </th>
-            <th colspan="2" title="started">
+            <th colspan="2" title="Started">
               <span>Started</span>
             </th>
           </tr>
@@ -53,18 +63,13 @@
         </tbody>
       </table>
 
-      <div class="stats">
-        <span><%= "Jobs to retry: #{jobs_to_retry_count}" %></span>
-        <span><%= "Dead jobs: #{dead_jobs_count}" %></span>
-      </div>
-
       <table class="main-table queues">
         <thead>
           <tr>
-            <th colspan="6" title="queue">
+            <th colspan="6" title="Queue">
               <span>Queues</span>
             </th>
-            <th colspan="6" title="size">
+            <th colspan="6" title="Size">
               <span>Size</span>
             </th>
           </tr>
@@ -72,7 +77,7 @@
         <tbody>
           <% queues.each do |queue| %>
             <tr>
-              <td colspan="6" title="queue">
+              <td colspan="6" title="Queue">
                 <span><i><%= queue[0] %></i></span>
               </td>
               <td colspan="6" title="size" class="right">
@@ -86,25 +91,25 @@
       <table class="main-table jobs">
         <thead>
           <tr>
-            <th colspan="2" title="process">
+            <th colspan="2" title="Process">
               <span>Process</span>
             </th>
-            <th colspan="2" title="job">
+            <th colspan="2" title="Job">
               <span>Job</span>
             </th>
-            <th colspan="1" title="job">
+            <th colspan="1" title="JID">
               <span>JID</span>
             </th>
-            <th colspan="1" title="job">
+            <th colspan="1" title="TID">
               <span>TID</span>
             </th>
-            <th colspan="2" title="queue">
+            <th colspan="2" title="Queue">
               <span>Queue</span>
             </th>
-            <th colspan="2" title="arguments">
+            <th colspan="2" title="Arguments">
               <span>Arguments</span>
             </th>
-            <th colspan="2" title="started">
+            <th colspan="2" title="Started">
               <span>Started</span>
             </th>
           </tr>

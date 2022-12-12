@@ -22,14 +22,17 @@ RSpec.describe Jiggler::Worker do
     it "runs the worker and performs the job" do
       expect do
         task = Async do
-          expect(worker).to receive(:fetch_one).and_call_original
+          expect(worker).to receive(:fetch_one).at_least(:once).and_call_original
           expect(worker).to receive(:execute_job).and_call_original
           worker.run
-          MyJob.perform_async 
+          MyJob.perform_async
+          Async do
+            sleep 1
+            worker.terminate
+          end
         end
         task.wait 
       end.to output("Hello World\n").to_stdout
-      worker.terminate
       Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:default") }
     end
 
