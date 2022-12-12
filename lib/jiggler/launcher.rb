@@ -2,7 +2,7 @@
 
 require_relative "./manager"
 require_relative "./component"
-require_relative "./scheduled"
+require_relative "./scheduled/poller"
 
 module Jiggler
   class Launcher

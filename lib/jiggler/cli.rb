@@ -41,7 +41,7 @@ module Jiggler
       validate!
     end
 
-    def start(boot_app: true)
+    def start(boot_app: config[:boot_app])
       Async do
         load_app if boot_app
         @launcher = Launcher.new(config)
@@ -80,15 +80,7 @@ module Jiggler
     end
 
     def validate!
-      return
-      if !File.exist?(config[:require])
-        logger.info "=================================================================="
-        logger.info "  Please point Jiggler to a Ruby file  "
-        logger.info "  to load your job classes with -r [FILE]."
-        logger.info "=================================================================="
-        exit(1)
-      end
-
+      # TODO: extend validations
       [:concurrency, :timeout].each do |opt|
         raise ArgumentError, "#{opt}: #{config[opt]} is not a valid value" if config[opt].to_i <= 0
       end
@@ -211,6 +203,9 @@ module Jiggler
 
     def load_app
       require config[:require]
+    rescue LoadError => e
+      logger.error("Could not load jobs: #{e.message}")
+      exit(1)
     end
   end
 end

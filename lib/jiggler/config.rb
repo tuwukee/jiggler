@@ -16,6 +16,7 @@ module Jiggler
     DEAD_SET = "jiggler:set:dead"
 
     DEFAULTS = {
+      boot_app: true,
       require: ".",
       environment: nil,
       concurrency: 5,
