@@ -19,10 +19,9 @@ module Jiggler
       end
 
       def enqueue_jobs(sorted_sets = sets)
-        logger.debug("enquing jobs")
         @config.with_redis(async: false) do |conn|
           sorted_sets.each do |sorted_set|
-            # Get next item in the queue with score (time to execute) <= now.
+            # Get next item in the queue with score (time to execute) <= now
             while !@done && (job_args = zpopbyscore(conn, keys: [sorted_set], argv: [Time.now.to_f.to_s]))
               push_job(job_args)
             end
@@ -31,8 +30,14 @@ module Jiggler
       end
 
       def push_job(job_args)
-        logger.debug("pushing job back to the queue: #{job_args.to_json}")
-        # add redis push to the queue
+        name = JSON.parse(job_args)["queue"] || @config.default_queue
+        list_name = @config.queues_hash[name]
+        if list_name.nil?
+          logger.warn("Queue #{name} does not exist. Dropping job: #{job_args}")
+        else
+          logger.debug("Pushing job back to the queue: #{job_args}")
+          @config.with_redis { |conn| conn.lpush(list_name, job_args) }
+        end
       end
       
       def sets

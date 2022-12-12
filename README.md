@@ -11,4 +11,5 @@ Scheduler - reads scheduled and retried jobs (sorted set in redis) and puts them
 Runner - traps system signals, inits launcher
 
 docker-compose up -d && docker attach jiggler_app
+docker-compose exec app bundle exec irb
 docker-compose run --rm web -- bundle exec rspec

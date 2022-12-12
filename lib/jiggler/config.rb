@@ -64,8 +64,10 @@ module Jiggler
       DEAD_SET
     end
 
-    def prefixed_queues
-      @prefixed_queues ||= @options[:queues].map { |name| "#{QUEUE_PREFIX}#{name}" }
+    def queues_hash
+      @queues_hash ||= @options[:queues].each_with_object({}) do |name, hash| 
+        hash[name] = "#{QUEUE_PREFIX}#{name}" 
+      end
     end
 
     def with_redis(async: true)

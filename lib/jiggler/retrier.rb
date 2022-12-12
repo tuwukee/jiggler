@@ -18,12 +18,13 @@ module Jiggler
       logger.debug("Async::Stop in wrapped")
       raise stop
     rescue => err
-      logger.debug("Error in wrapped: #{err}")
+      logger.warn("Error in #{instance.name}: #{err} tid=#{tid} jid=#{instance.jid}")
+      logger.warn(err.backtrace.join("\n"))
       raise Async::Stop if exception_caused_by_shutdown?(err)
 
       process_retry(instance, msg, queue, err)
       
-      # todo: should it raise the error?
+      # exception is handled, so we can raise this to stop the worker
       raise Jiggler::RetryHandled
     end
 
@@ -34,16 +35,17 @@ module Jiggler
       max_retry_attempts = job_class.retries.to_i 
       count = msg["attempt"].to_i + 1
 
-      m = exception_message(exception)
-      if m.respond_to?(:scrub!)
-        m.force_encoding("utf-8")
-        m.scrub!
+      message = exception_message(exception)
+      if message.respond_to?(:scrub!)
+        message.force_encoding("utf-8")
+        message.scrub!
       end
 
-      msg["error_message"] = m
+      msg["error_message"] = message
       msg["error_class"] = exception.class.name
       msg["queue"] = job_class.retry_queue
       msg["class"] = job_class.name
+      msg["jid"] = jobinst.jid
 
       if count.zero?
         msg["failed_at"] = Time.now.to_f
@@ -54,7 +56,7 @@ module Jiggler
       return retries_exhausted(jobinst, msg, exception) if count >= max_retry_attempts
 
       jitter = rand(10) * (count + 1)
-      delay = (count**4) + 15
+      delay = count**4 + 15
       retry_at = Time.now.to_f + delay + jitter
       msg["attempt"] = count
       payload = JSON.generate(msg)
@@ -65,16 +67,15 @@ module Jiggler
     end
 
     def retries_exhausted(jobinst, msg, exception)
-      # todo: add option retries exhausted callback
-
-      send_to_morgue(msg) unless msg["dead"] == false
-
-      # todo: add on_death custom handling
+      logger.warn("Retries exhausted for #{msg["class"]} job tid=#{tid} jid=#{jobinst.jid}")
+      
+      # review dead key
+      send_to_morgue(msg, jobinst.jid) unless msg["dead"] == false
     end
 
     # todo: review this
-    def send_to_morgue(msg)
-      logger.warn("#{msg["class"]} job has been sent to dead #{msg["tid"]}")
+    def send_to_morgue(msg, jid)
+      logger.warn("#{msg["class"]} job has been sent to dead tid=#{tid} jid=#{jid}")
       payload = JSON.generate(msg)
       now = Time.now.to_f
 

@@ -28,16 +28,12 @@ module Jiggler
       end
     end
 
-    def indentity(data)
-      "#{data[1]["hostname"] - data[1]["pid"]}"
+    def jobs_to_retry_count
+      Jiggler.redis(async: false) { |conn| conn.call("zcard", Jiggler.config.retries_set) }
     end
 
-    def processed_count
-      0 # Jiggler.redis(async: false) { |conn| conn.call("get", Jiggler.processed_counter) }
-    end
-
-    def failed_count
-      0 # Jiggler.redis(async: false) { |conn| conn.call("get", Jiggler.failed_counter) }
+    def dead_jobs_count
+      Jiggler.redis(async: false) { |conn| conn.call("zcard", Jiggler.config.dead_set) }
     end
 
     def styles

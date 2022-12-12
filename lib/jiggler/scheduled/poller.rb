@@ -9,6 +9,7 @@ module Jiggler
     class Poller
       include Component
       INITIAL_WAIT = 10
+      CLEANUP_FLAG = "jiggler:flag:process_cleanup"
 
       def initialize(config)
         @config = config
@@ -63,11 +64,6 @@ module Jiggler
       end
 
       def random_poll_interval
-        # In N*M second timespan, we want each process to schedule once. The basic loop is:
-        #
-        # * sleep a random amount within that N*M timespan
-        # * wake up and schedule
-        #
         count = process_count
         interval = poll_interval_average(count)
 
@@ -87,32 +83,30 @@ module Jiggler
       end
 
       def process_count
-        # TODO: calculate processes count
-        # pcount = redis(async: false) { |conn| conn.call("SCARD", Jiggler.processes_hash) }
-        pcount = 1
+        pcount = redis(async: false) { |conn| conn.call("HLEN", Jiggler.config.processes_hash) }
         pcount = 1 if pcount == 0
         pcount
       end
 
-      # TODO: this does not use correct redis keys
+      # TODO: Should be out of this class (?)
       def cleanup
-        return 0 unless redis(async: false) { |conn| conn.set("process_cleanup", "1", update: false, seconds: 60) }
-
-        count = 0
+        return 0 unless redis(async: false) { |conn| conn.set(CLEANUP_FLAG, "1", update: false, seconds: 60) }
+        
+        to_prune = []
         redis(async: false) do |conn|
-          procs = conn.call("SMEMBERS", "processes")
-          heartbeats = conn.pipeline do |pipeline|
-            pipeline.collect do
-              procs.each do |key|
-                pipeline.hget(key, "info")
-              end
+          processes = conn.call("HGETALL", Jiggler.config.processes_hash)
+
+          processes.each_slice(2) do |k, v| 
+            heartbeat = JSON.parse(v)["heartbeat"].to_f
+            if heartbeat < Time.now.to_i - 60.0 || heartbeat <= 0
+              to_prune << k
             end
           end
 
-          to_prune = procs.select.with_index { |proc, i| heartbeats[i].nil? }
-          count = conn.call("SREM", "processes", *to_prune) unless to_prune.empty?
+          conn.call("HDEL", Jiggler.config.processes_hash, *to_prune) unless to_prune.empty?
         end
-        count
+
+        to_prune.size
       end
 
       def initial_wait
@@ -126,7 +120,6 @@ module Jiggler
         end
         @condition.wait
       ensure
-        # periodically clean out the `processes` set in Redis
         cleanup
       end
     end

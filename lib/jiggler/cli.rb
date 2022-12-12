@@ -17,8 +17,14 @@ module Jiggler
     attr_reader :logger, :config, :environment
     
     SIGNAL_HANDLERS = {
-      :INT => ->(cli) { cli.stop },
-      :TERM => ->(cli) { cli.stop },
+      :INT => ->(cli) {
+        cli.logger.fatal("Received INT, shutting down")
+        cli.stop 
+      },
+      :TERM => ->(cli) {
+        cli.logger.fatal("Received TERM, shutting down")
+        cli.stop 
+      },
       :TSTP => ->(cli) {
         cli.logger.info("Received TSTP, no longer accepting new work")
         cli.quite
@@ -48,7 +54,7 @@ module Jiggler
         setup_signal_handlers
         @launcher.start
       end
-      @launcher.cleanup
+      @launcher&.cleanup
     end
 
     def stop
@@ -204,7 +210,7 @@ module Jiggler
     def load_app
       require config[:require]
     rescue LoadError => e
-      logger.error("Could not load jobs: #{e.message}")
+      logger.fatal("Could not load jobs: #{e.message}")
       exit(1)
     end
   end

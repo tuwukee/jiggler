@@ -33,7 +33,7 @@
           <% processes_data.each do |data| %>
             <tr>
               <td colspan="5" title="process">
-                <span><%= "#{data[0]}:#{data[1]['hostname']}" %></span></br>
+                <span><%= "#{data[0]}:#{data[1]["hostname"]}" %></span></br>
                 <span><i><%= data[1]["queues"] %></i></span>
               </td>
               <td colspan="1" title="pid" class="right">
@@ -46,12 +46,17 @@
                 <span>?</span>
               </td>
               <td colspan="2" title="started" class="right">
-                <span><%= data[1]["started_at"] %></span>
+                <span><%= Time.at(data[1]["started_at"]).to_datetime %></span>
               </td>
             </tr>
           <% end %>
         </tbody>
       </table>
+
+      <div class="stats">
+        <span><%= "Jobs to retry: #{jobs_to_retry_count}" %></span>
+        <span><%= "Dead jobs: #{dead_jobs_count}" %></span>
+      </div>
 
       <table class="main-table queues">
         <thead>
@@ -87,7 +92,10 @@
             <th colspan="2" title="job">
               <span>Job</span>
             </th>
-            <th colspan="2" title="job">
+            <th colspan="1" title="job">
+              <span>JID</span>
+            </th>
+            <th colspan="1" title="job">
               <span>TID</span>
             </th>
             <th colspan="2" title="queue">

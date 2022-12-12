@@ -5,8 +5,7 @@ require_relative "./errors"
 module Jiggler
   class Worker
     include Component
-    # timeout for brpop
-    TIMEOUT = 5
+    TIMEOUT = 5 # timeout for brpop
 
     CurrentJob = Struct.new(:queue, :args, keyword_init: true)
 
@@ -110,9 +109,12 @@ module Jiggler
       klass = Object.const_get(parsed_job["name"])
       instance = klass.new
       args = parsed_job["args"]
+
+      logger.info("Executing #{klass} on #{instance.queue} tid=#{tid} jid=#{instance.jid}")
       with_retry(instance, parsed_job, queue) do
         instance.perform(*args)
       end
+      logger.info("Done tid=#{tid} jid=#{instance.jid}")
     end
 
     def with_retry(instance, args, queue)
@@ -148,7 +150,7 @@ module Jiggler
     end
 
     def queues
-      @queues ||= config.prefixed_queues
+      @queues ||= config.queues_hash.values
     end
 
     def constantize(str)
