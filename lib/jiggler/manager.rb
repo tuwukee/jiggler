@@ -2,19 +2,17 @@
 
 require "async"
 require "securerandom"
-require_relative "./component"
-require_relative "./worker"
-require_relative './retrier'
 
 module Jiggler
   class Manager
-    include Component
+    include Support::Component
 
-    def initialize(config)
+    def initialize(config, collection)
       @workers = Set.new
       @done = false
       @config = config
       @timeout = @config[:timeout]
+      @collection = collection
       @config[:concurrency].times do
         @workers << init_worker
       end
@@ -56,7 +54,7 @@ module Jiggler
 
     def init_worker
       Jiggler::Worker.new(
-        config, &method(:process_worker_result)
+        config, @collection, &method(:process_worker_result)
       )
     end
 

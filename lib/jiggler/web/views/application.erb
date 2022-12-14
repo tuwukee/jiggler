@@ -12,7 +12,7 @@
 
       <div class="stats-block">
         <div class="stats-entry">
-          <span><%= "To Retry: #{@retry_jobs_count}" %></span>
+          <span><%= "To Retry: #{@retry_jobs_count} #{@monitor_enabled}" %></span>
         </div>
         <div class="stats-entry">
           <span><%= "Dead: #{@dead_jobs_count}" %></span>
@@ -53,7 +53,7 @@
                 <span><%= data[1]["concurrency"] %></span>
               </td>
               <td colspan="2" title="RSS" class="right">
-                <span>?</span>
+                <span><%= format_memory(data[1]["rss"]) %></span>
               </td>
               <td colspan="2" title="Started" class="right">
                 <span><%= format_datetime(data[1]["started_at"]) %></span>

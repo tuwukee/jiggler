@@ -1,21 +1,20 @@
 # frozen_string_literal: true
 
-require_relative "./errors"
-
 module Jiggler
   class Worker
-    include Component
+    include Support::Component
     TIMEOUT = 5 # timeout for brpop
 
     CurrentJob = Struct.new(:queue, :args, keyword_init: true)
 
-    attr_reader :current_job, :config, :done
+    attr_reader :current_job, :config, :done, :collection
 
-    def initialize(config, &callback)
+    def initialize(config, collection, &callback)
       @done = false
       @current_job = nil
       @callback = callback
       @config = config
+      @collection = collection
     end
 
     def run
@@ -28,6 +27,7 @@ module Jiggler
           @callback.call(self)
           break
         rescue => ex
+          increase_failures_counter
           @callback.call(self, ex)
           break
         end
@@ -44,7 +44,7 @@ module Jiggler
     end
 
     def wait
-      @runner.wait
+      @runner&.wait
     end
 
     private
@@ -76,6 +76,7 @@ module Jiggler
       parsed_args = JSON.parse(current_job.args)
       begin
         execute(parsed_args, current_job.queue)
+        increase_processed_counter
       rescue Async::Stop => err
         raise err
       rescue Jiggler::RetryHandled => handled
@@ -99,6 +100,7 @@ module Jiggler
         )
       end
     rescue JSON::ParserError
+      increase_failures_counter
       send_to_dead
     end
 
@@ -108,10 +110,14 @@ module Jiggler
       args = parsed_job["args"]
 
       logger.info("Starting #{klass} queue=#{klass.queue} tid=#{tid} jid=#{instance._jid}")
+      add_current_job_to_collection(instance._jid, parsed_job)
       with_retry(instance, parsed_job, queue) do
         instance.perform(*args)
       end
       logger.info("Finished #{klass} queue=#{klass.queue} tid=#{tid} jid=#{instance._jid}")
+    ensure
+      logger.debug("Removing job #{instance._jid}...")
+      remove_current_job_from_collection
     end
 
     def with_retry(instance, args, queue)
@@ -139,6 +145,30 @@ module Jiggler
         },
         raise_ex: true
       )
+    end
+
+    def add_current_job_to_collection(jid, parsed_job)
+      return unless config[:stats_enabled]
+      collection.data[:current_jobs][tid] = {
+        jid: jid,
+        job_args: parsed_job,
+        started_at: Time.now.to_f
+      }
+    end
+
+    def remove_current_job_from_collection
+      return unless config[:stats_enabled]
+      collection.data[:current_jobs].delete(tid)
+    end
+
+    def increase_processed_counter
+      return unless config[:stats_enabled]
+      collection.data[:processed] += 1
+    end
+
+    def increase_failures_counter
+      return unless config[:stats_enabled]
+      collection.data[:failures] += 1
     end
 
     def send_to_dead
