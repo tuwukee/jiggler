@@ -17,8 +17,14 @@ module Jiggler
     attr_reader :logger, :config, :environment
     
     SIGNAL_HANDLERS = {
-      :INT => ->(cli) { cli.stop },
-      :TERM => ->(cli) { cli.stop },
+      :INT => ->(cli) {
+        cli.logger.fatal("Received INT, shutting down")
+        cli.stop 
+      },
+      :TERM => ->(cli) {
+        cli.logger.fatal("Received TERM, shutting down")
+        cli.stop 
+      },
       :TSTP => ->(cli) {
         cli.logger.info("Received TSTP, no longer accepting new work")
         cli.quite
@@ -41,14 +47,14 @@ module Jiggler
       validate!
     end
 
-    def start(boot_app: true)
+    def start(boot_app: config[:boot_app])
       Async do
         load_app if boot_app
         @launcher = Launcher.new(config)
         setup_signal_handlers
         @launcher.start
       end
-      @launcher.cleanup
+      @launcher&.cleanup
     end
 
     def stop
@@ -80,15 +86,7 @@ module Jiggler
     end
 
     def validate!
-      return
-      if !File.exist?(config[:require])
-        logger.info "=================================================================="
-        logger.info "  Please point Jiggler to a Ruby file  "
-        logger.info "  to load your job classes with -r [FILE]."
-        logger.info "=================================================================="
-        exit(1)
-      end
-
+      # TODO: extend validations
       [:concurrency, :timeout].each do |opt|
         raise ArgumentError, "#{opt}: #{config[opt]} is not a valid value" if config[opt].to_i <= 0
       end
@@ -211,6 +209,9 @@ module Jiggler
 
     def load_app
       require config[:require]
+    rescue LoadError => e
+      logger.fatal("Could not load jobs: #{e.message}")
+      exit(1)
     end
   end
 end

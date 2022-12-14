@@ -5,7 +5,7 @@ require "json"
 
 module Jiggler
   module Job
-    attr_reader :name, :args
+    attr_reader :_args, :_jid
 
     module ClassMethods
       def perform_async(**args)
@@ -36,8 +36,8 @@ module Jiggler
       
       base.class_exec do
         def initialize(**args)
-          @name = self.class.name
-          @args = args
+          @_args = args
+          @_jid = args["jid"] || SecureRandom.hex(8)
         end
       end
     end
@@ -53,7 +53,7 @@ module Jiggler
     end
 
     def job_args
-      @job_args ||= { name: name, args: args, retries: self.class.retries }.to_json
+      @job_args ||= { name: self.class.name, args: _args, retries: self.class.retries }.to_json
     end
   end
 end

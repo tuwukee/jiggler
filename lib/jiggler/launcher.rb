@@ -2,7 +2,7 @@
 
 require_relative "./manager"
 require_relative "./component"
-require_relative "./scheduled"
+require_relative "./scheduled/poller"
 
 module Jiggler
   class Launcher
@@ -42,12 +42,14 @@ module Jiggler
     end
 
     def process_data
+      timestamp = Time.now.to_f
       {
         pid: Process.pid,
         hostname: hostname,
         concurrency: config[:concurrency],
         queues: config[:queues].join(", "),
-        started_at: Time.now.to_s,
+        started_at: timestamp,
+        heartbeat: timestamp,
       }.to_json
     end
 

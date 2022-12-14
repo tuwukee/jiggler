@@ -15,15 +15,14 @@ module Jiggler
     def wrapped(instance, msg, queue)
       yield
     rescue Async::Stop => stop
-      logger.debug("Async::Stop in wrapped")
       raise stop
     rescue => err
-      logger.debug("Error in wrapped: #{err}")
+      handle_exception(err, { context: "'Error in #{instance.class.name}'", tid: tid, jid: instance._jid })
       raise Async::Stop if exception_caused_by_shutdown?(err)
 
       process_retry(instance, msg, queue, err)
       
-      # todo: should it raise the error?
+      # exception is handled, so we can raise this to stop the worker
       raise Jiggler::RetryHandled
     end
 
@@ -34,28 +33,28 @@ module Jiggler
       max_retry_attempts = job_class.retries.to_i 
       count = msg["attempt"].to_i + 1
 
-      m = exception_message(exception)
-      if m.respond_to?(:scrub!)
-        m.force_encoding("utf-8")
-        m.scrub!
+      message = exception_message(exception)
+      if message.respond_to?(:scrub!)
+        message.force_encoding("utf-8")
+        message.scrub!
       end
 
-      msg["error_message"] = m
+      msg["error_message"] = message
       msg["error_class"] = exception.class.name
       msg["queue"] = job_class.retry_queue
       msg["class"] = job_class.name
-
-      if count.zero?
-        msg["failed_at"] = Time.now.to_f
-      else
-        msg["retried_at"] = Time.now.to_f
-      end
+      msg["jid"] = jobinst._jid
+      msg["started_at"] ||= Time.now.to_f
 
       return retries_exhausted(jobinst, msg, exception) if count >= max_retry_attempts
 
       jitter = rand(10) * (count + 1)
-      delay = (count**4) + 15
+      delay = count**4 + 15
       retry_at = Time.now.to_f + delay + jitter
+      msg["retry_at"] = retry_at
+      if count > 1
+        msg["retried_at"] = Time.now.to_f
+      end
       msg["attempt"] = count
       payload = JSON.generate(msg)
 
@@ -65,23 +64,21 @@ module Jiggler
     end
 
     def retries_exhausted(jobinst, msg, exception)
-      # todo: add option retries exhausted callback
+      logger.warn("Retries exhausted for #{msg["class"]} tid=#{tid} jid=#{jobinst._jid}")
 
-      send_to_morgue(msg) unless msg["dead"] == false
-
-      # todo: add on_death custom handling
+      send_to_morgue(msg, jobinst._jid)
     end
 
     # todo: review this
-    def send_to_morgue(msg)
-      logger.warn("#{msg["class"]} job has been sent to dead #{msg["tid"]}")
+    def send_to_morgue(msg, jid)
+      logger.warn("#{msg["class"]} has been sent to dead tid=#{tid} jid=#{jid}")
       payload = JSON.generate(msg)
       now = Time.now.to_f
 
       redis do |conn|
         conn.multi do |xa|
           xa.zadd(config.dead_set, now.to_s, payload)
-          xa.zremrangebyscore(config.dead_set, "-inf", now - config[:dead_timeout_in_seconds])
+          xa.zremrangebyscore(config.dead_set, "-inf", now - config[:dead_timeout])
           xa.zremrangebyrank(config.dead_set, 0, - config[:max_dead_jobs])
         end
       end

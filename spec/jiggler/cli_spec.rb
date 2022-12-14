@@ -75,7 +75,10 @@ RSpec.describe Jiggler::CLI do
       it { expect { cli.parse(["-c", "invalid"]) }.to raise_error(ArgumentError) }
       it { expect { cli.parse(["-c", "-1"]) }.to raise_error(ArgumentError) }
       it { expect { cli.parse(["-t", "yo"]) }.to raise_error(ArgumentError) }
-      it { expect { cli.parse(["-r", "test.rb"]) }.to raise_error(SystemExit) }
+      it do 
+        cli.parse(["-r", "test.rb"])
+        expect { cli.send(:load_app) }.to raise_error(SystemExit) 
+      end
     end
   end
 end

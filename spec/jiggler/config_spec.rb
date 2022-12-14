@@ -27,7 +27,7 @@ RSpec.describe Jiggler::Config do
     end
 
     it "generates prefixed queues" do
-      expect(config.prefixed_queues).to eq ["jiggler:list:test", "jiggler:list:test2"]
+      expect(config.queues_hash.values).to eq ["jiggler:list:test", "jiggler:list:test2"]
     end
 
     it "gets redis options" do

@@ -10,6 +10,8 @@ module Jiggler
     STYLESHEET = "#{WEB_PATH}/assets/stylesheets/application.css"
 
     def call(env)
+      @retry_jobs_count = retry_jobs_count
+      @dead_jobs_count = dead_jobs_count
       compiled_template = ERB.new(File.read(LAYOUT)).result(binding)
       [200, {}, [compiled_template]]
     end
@@ -28,16 +30,33 @@ module Jiggler
       end
     end
 
-    def indentity(data)
-      "#{data[1]["hostname"] - data[1]["pid"]}"
+    def retry_jobs_count
+      Jiggler.redis(async: false) do |conn| 
+        conn.call("zcard", Jiggler.config.retries_set)
+      end
     end
 
-    def processed_count
-      0 # Jiggler.redis(async: false) { |conn| conn.call("get", Jiggler.processed_counter) }
+    def dead_jobs_count
+      Jiggler.redis(async: false) do |conn| 
+        conn.call("zcard", Jiggler.config.dead_set)
+      end
     end
 
-    def failed_count
-      0 # Jiggler.redis(async: false) { |conn| conn.call("get", Jiggler.failed_counter) }
+    def last_5_dead_jobs
+      Jiggler.redis(async: false) do |conn|
+        conn.call("zrange", Jiggler.config.dead_set, -5, -1)
+      end.map { |job| JSON.parse(job) }
+    end
+
+    def last_5_retry_jobs
+      Jiggler.redis(async: false) do |conn|
+        conn.call("zrange", Jiggler.config.retries_set, -5, -1)
+      end.map { |job| JSON.parse(job) }
+    end
+
+    def format_datetime(timestamp)
+      return if timestamp.nil?
+      Time.at(timestamp.to_f).to_datetime
     end
 
     def styles
