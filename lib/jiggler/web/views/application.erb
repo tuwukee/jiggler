@@ -12,10 +12,10 @@
 
       <div class="stats-block">
         <div class="stats-entry">
-          <span><%= "To Retry: #{jobs_to_retry_count}" %></span>
+          <span><%= "To Retry: #{@retry_jobs_count}" %></span>
         </div>
         <div class="stats-entry">
-          <span><%= "Dead: #{dead_jobs_count}" %></span>
+          <span><%= "Dead: #{@dead_jobs_count}" %></span>
         </div>
       </div>
 
@@ -42,21 +42,21 @@
         <tbody>
           <% processes_data.each do |data| %>
             <tr>
-              <td colspan="5" title="process">
+              <td colspan="5" title="Process">
                 <span><%= "#{data[0]}:#{data[1]["hostname"]}" %></span></br>
                 <span><i><%= data[1]["queues"] %></i></span>
               </td>
-              <td colspan="1" title="pid" class="right">
+              <td colspan="1" title="PID" class="right">
                 <span><%= data[1]["pid"] %></span>
               </td>
-              <td colspan="2" title="concurrency" class="right">
+              <td colspan="2" title="Concurrency" class="right">
                 <span><%= data[1]["concurrency"] %></span>
               </td>
-              <td colspan="2" title="rss" class="right">
+              <td colspan="2" title="RSS" class="right">
                 <span>?</span>
               </td>
-              <td colspan="2" title="started" class="right">
-                <span><%= Time.at(data[1]["started_at"]).to_datetime %></span>
+              <td colspan="2" title="Started" class="right">
+                <span><%= format_datetime(data[1]["started_at"]) %></span>
               </td>
             </tr>
           <% end %>
@@ -80,14 +80,15 @@
               <td colspan="6" title="Queue">
                 <span><i><%= queue[0] %></i></span>
               </td>
-              <td colspan="6" title="size" class="right">
+              <td colspan="6" title="Size" class="right">
                 <span><%= queue[1] %></span>
               </td>
             </tr>
           <% end %>
         </tbody>
       </table>
-
+      
+      <h3>Busy Jobs</h3>
       <table class="main-table jobs">
         <thead>
           <tr>
@@ -117,6 +118,134 @@
         <tbody>
         </tbody>
       </table>
+      
+      <% if @retry_jobs_count > 0 %>
+        <h3>Last 5 Jobs to Retry</h3>
+        <table class="main-table retry_jobs">
+          <thead>
+            <tr>
+              <th colspan="1" title="Job">
+                <span>Job</span>
+              </th>
+              <th colspan="1" title="JID">
+                <span>JID</span>
+              </th>
+              <th colspan="1" title="Queue">
+                <span>Queue</span>
+              </th>
+              <th colspan="1" title="Error">
+                <span>Error</span>
+              </th>
+              <th colspan="2" title="Args">
+                <span>Args</span>
+              </th>
+              <th colspan="1" title="Attempt">
+                <span>Attempt</span>
+              </th>
+              <th colspan="1" title="Started">
+                <span>Started</span>
+              </th>
+              <th colspan="1" title="Retried">
+                <span>Retried</span>
+              </th>
+              <th colspan="1" title="To Retry At">
+                <span>To Retry At</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <% last_5_retry_jobs.each do |data| %>
+              <tr>
+                <td colspan="1" title="Job">
+                  <span><%= data["class"] %></span>
+                </td>
+                <td colspan="1" title="JID">
+                  <span><%= data["jid"] %></span>
+                </td>
+                <td colspan="1" title="Queue">
+                  <span><%= data["queue"] %></span>
+                </td>
+                <td colspan="1" title="Error">
+                  <span><%= "#{data["error_class"]}: #{data["error_message"]}" %></span>
+                </td>
+                <td colspan="2" title="Args">
+                  <span><%= data["args"] %></span>
+                </td>
+                <td colspan="1" title="Attempt" class="right">
+                  <span><%= data["attempt"] %></span>
+                </td>
+                <td colspan="1" title="Started" class="right">
+                  <span><%= format_datetime(data["started_at"]) %></span>
+                </td>
+                <td colspan="1" title="Retried" class="right">
+                  <span><%= format_datetime(data["retried_at"]) %></span>
+                </td>
+                <td colspan="1" title="To Retry At" class="right">
+                  <span><%= format_datetime(data["retry_at"]) %></span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+
+      <% if @dead_jobs_count > 0 %>
+        <h3>Last 5 Dead Jobs</h3>
+        <table class="main-table dead_jobs">
+          <thead>
+            <tr>
+              <th colspan="2" title="Job">
+                <span>Job</span>
+              </th>
+              <th colspan="1" title="JID">
+                <span>JID</span>
+              </th>
+              <th colspan="1" title="Queue">
+                <span>Queue</span>
+              </th>
+              <th colspan="2" title="Error">
+                <span>Error</span>
+              </th>
+              <th colspan="2" title="Args">
+                <span>Args</span>
+              </th>
+              <th colspan="1" title="Started">
+                <span>Started</span>
+              </th>
+              <th colspan="1" title="Retried">
+                <span>Retried</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <% last_5_dead_jobs.each do |data| %>
+              <tr>
+                <td colspan="2" title="Job">
+                  <span><%= data["class"] %></span>
+                </td>
+                <td colspan="1" title="JID">
+                  <span><%= data["jid"] %></span>
+                </td>
+                <td colspan="1" title="Queue">
+                  <span><%= data["queue"] %></span>
+                </td>
+                <td colspan="2" title="Error">
+                  <span><%= "#{data["error_class"]}: #{data["error_message"]}" %></span>
+                </td>
+                <td colspan="2" title="Args">
+                  <span><%= data["args"] %></span>
+                </td>
+                <td colspan="1" title="Started" class="right">
+                  <span><%= format_datetime(data["started_at"]) %></span>
+                </td>
+                <td colspan="1" title="Retried" class="right">
+                  <span><%= format_datetime(data["retried_at"]) %></span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
     </div>
   </body>
 </html>

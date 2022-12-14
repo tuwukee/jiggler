@@ -90,7 +90,7 @@ module Jiggler
         )
       rescue Exception => ex
         handle_exception(
-          ex, 
+          ex,
           {
             context: "'Internal exception'",
             tid: tid
