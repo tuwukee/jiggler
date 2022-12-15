@@ -29,6 +29,7 @@ module Jiggler
 
       def terminate
         cleanup
+        @condition.signal
         @done = true
       end
 
@@ -38,7 +39,7 @@ module Jiggler
           rss: process_rss,
           current_jobs: collection.data[:current_jobs],
         })
-        logger.debug("Loading stats into redis: #{process_data}")
+        logger.debug("Loading stats into redis: #{collection.uuid}, #{process_data}")
         redis { |conn| conn.set(MONITOR_FLAG, "1", update: false, seconds: config[:stats_interval] * 3) }
         redis { |conn| conn.call("hset", config.stats_hash, collection.uuid, process_data) }
 
@@ -62,7 +63,6 @@ module Jiggler
         redis { |conn| conn.call("hdel", config.stats_hash, collection.uuid) }
       end
 
-      # todo: can it be simpler?
       def wait
         Async(transient: true) do
           sleep(config[:stats_interval])
@@ -73,7 +73,6 @@ module Jiggler
         handle_exception(
           ex, { context: "'Error while waiting for stats'", tid: tid }
         )
-        sleep(5)
       end
     end
   end

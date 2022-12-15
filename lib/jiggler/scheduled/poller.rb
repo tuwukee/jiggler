@@ -59,7 +59,6 @@ module Jiggler
         handle_exception(
           ex, { context: "'Error while waiting for scheduled jobs'", tid: tid }
         )
-        sleep(5)
       end
 
       def random_poll_interval
@@ -74,7 +73,7 @@ module Jiggler
       end
 
       def process_count
-        pcount = redis(async: false) { |conn| conn.call("HLEN", config.processes_hash) }
+        pcount = redis(async: false) { |conn| conn.call("hlen", config.processes_hash) }
         pcount = 1 if pcount == 0
         pcount
       end

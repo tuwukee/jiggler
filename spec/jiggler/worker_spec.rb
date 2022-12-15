@@ -12,8 +12,9 @@ RSpec.describe Jiggler::Worker do
       queues: ["default", "test"]
     ) 
   end
+  let(:collection) { Jiggler::Stats::Collection.new(config) }
   let(:worker) do 
-    described_class.new(config) do
+    described_class.new(config, collection) do
       config.logger.debug("Callback called: #{rand(100)}")
     end
   end

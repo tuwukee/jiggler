@@ -2,10 +2,6 @@
 
 require "debug"
 
-Dir["/jiggler/lib/jiggler/*.rb"].each do |file|
-  require file
-end
-
 require "/jiggler/lib/jiggler.rb"
 
 RSpec.configure do |config|

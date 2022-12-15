@@ -17,6 +17,7 @@ require_relative "./jiggler/retrier"
 require_relative "./jiggler/launcher"
 require_relative "./jiggler/manager"
 require_relative "./jiggler/worker"
+require_relative "./jiggler/cli"
 
 module Jiggler
   VERSION = "0.1.0"

@@ -99,9 +99,9 @@ module Jiggler
           raise_ex: true
         )
       end
-    rescue JSON::ParserError
+    rescue JSON::ParserError => err
       increase_failures_counter
-      send_to_dead
+      logger.error("Failed to parse job: #{current_job.args}")
     end
 
     def execute(parsed_job, queue)
@@ -110,7 +110,7 @@ module Jiggler
       args = parsed_job["args"]
 
       logger.info("Starting #{klass} queue=#{klass.queue} tid=#{tid} jid=#{instance._jid}")
-      add_current_job_to_collection(instance._jid, parsed_job)
+      add_current_job_to_collection(instance._jid, parsed_job, klass.queue)
       with_retry(instance, parsed_job, queue) do
         instance.perform(*args)
       end
@@ -147,11 +147,12 @@ module Jiggler
       )
     end
 
-    def add_current_job_to_collection(jid, parsed_job)
+    def add_current_job_to_collection(jid, parsed_job, queue)
       return unless config[:stats_enabled]
       collection.data[:current_jobs][tid] = {
         jid: jid,
         job_args: parsed_job,
+        queue: queue,
         started_at: Time.now.to_f
       }
     end
@@ -169,11 +170,6 @@ module Jiggler
     def increase_failures_counter
       return unless config[:stats_enabled]
       collection.data[:failures] += 1
-    end
-
-    def send_to_dead
-      config.logger.warn("Send to dead: #{current_job.inspect}")
-      # todo
     end
 
     def queues
