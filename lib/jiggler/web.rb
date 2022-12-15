@@ -12,14 +12,37 @@ module Jiggler
     def call(env)
       @retry_jobs_count = retry_jobs_count
       @dead_jobs_count = dead_jobs_count
+      @monitor_enabled = Jiggler.redis(async: false) do |conn|
+        conn.call("get", Jiggler::Stats::Monitor::MONITOR_FLAG)
+      end
+      fetch_and_format_data
+
       compiled_template = ERB.new(File.read(LAYOUT)).result(binding)
       [200, {}, [compiled_template]]
     end
 
-    def processes_data
-      Jiggler.redis(async: false) do |conn| 
+    # current_jobs entry example:
+    # {"2gx":{"jid":"8639997c1d5d5a12","job_args":{"name":"MyJob","args":{},"retries":0},"started_at":1671059371.245427}
+    def fetch_and_format_data
+      @processes_data = {}
+
+      processes.each_slice(2) do |uuid, process_data|
+        parsed_process_data = JSON.parse(process_data)
+        if @monitor_enabled
+          stats_data = Jiggler.redis(async: false) do |conn| 
+            conn.call("hget", Jiggler.config.stats_hash, uuid)
+          end
+          parsed_process_data.merge!(JSON.parse(stats_data)) if stats_data
+          parsed_process_data["current_jobs"] ||= []
+        end
+        @processes_data[uuid] = parsed_process_data
+      end
+    end
+
+    def processes
+      @processes ||= Jiggler.redis(async: false) do |conn| 
         conn.call("hgetall", Jiggler.config.processes_hash) 
-      end.each_slice(2).map { |k, v| [k, JSON.parse(v)] }
+      end
     end
 
     def queues
@@ -57,6 +80,11 @@ module Jiggler
     def format_datetime(timestamp)
       return if timestamp.nil?
       Time.at(timestamp.to_f).to_datetime
+    end
+
+    def format_memory(kb)
+      return "?" if kb.nil?
+      "#{(kb/1024.0).round(2)} MB"
     end
 
     def styles

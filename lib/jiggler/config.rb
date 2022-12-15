@@ -2,7 +2,6 @@
 
 require "forwardable"
 require "logger"
-require_relative "./redis_store"
 
 module Jiggler
   class Config
@@ -11,8 +10,9 @@ module Jiggler
     DEFAULT_QUEUE = "default"
     QUEUE_PREFIX = "jiggler:list:"
     PROCESSES_HASH = "jiggler:hash:processes"
+    STATS_HASH = "jiggler:hash:stats"
     RETRIES_SET = "jiggler:set:retries"
-    SCHEDULED_SET = "jiggler:set:scheduled"
+    SCHEDULED_SET = "jiggler:set:scheduled" # todo
     DEAD_SET = "jiggler:set:dead"
 
     DEFAULTS = {
@@ -22,6 +22,9 @@ module Jiggler
       concurrency: 5,
       timeout: 25,
       max_dead_jobs: 10_000,
+      stats_enabled: true,
+      stats_interval: 20,
+      poller_enabled: true,
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
     }
@@ -51,6 +54,10 @@ module Jiggler
 
     def dead_set
       DEAD_SET
+    end
+
+    def stats_hash
+      STATS_HASH
     end
 
     def queues_hash

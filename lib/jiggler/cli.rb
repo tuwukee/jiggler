@@ -7,9 +7,6 @@ require "erb"
 require "debug"
 require "yaml"
 
-require_relative "./launcher"
-require_relative "./job"
-
 module Jiggler
   class CLI
     include Singleton
@@ -86,7 +83,6 @@ module Jiggler
     end
 
     def validate!
-      # TODO: extend validations
       [:concurrency, :timeout].each do |opt|
         raise ArgumentError, "#{opt}: #{config[opt]} is not a valid value" if config[opt].to_i <= 0
       end

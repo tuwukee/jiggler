@@ -54,8 +54,7 @@ module Jiggler
         if @lua_zpopbyscore_sha.nil?
           @lua_zpopbyscore_sha = conn.call("SCRIPT", "LOAD", LUA_ZPOPBYSCORE)
         end
-        res = conn.call("EVALSHA", @lua_zpopbyscore_sha, keys.length, *keys, *argv)
-        res
+        conn.call("EVALSHA", @lua_zpopbyscore_sha, keys.length, *keys, *argv)
       rescue Protocol::Redis::Error => e
         raise unless e.message.start_with?("NOSCRIPT")
 

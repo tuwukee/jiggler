@@ -1,10 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "./errors"
-
 module Jiggler
   class Retrier
-    include Component
+    include Support::Component
 
     attr_reader :config
 

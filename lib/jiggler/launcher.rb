@@ -1,40 +1,36 @@
 # frozen_string_literal: true
 
-require_relative "./manager"
-require_relative "./component"
-require_relative "./scheduled/poller"
-
 module Jiggler
   class Launcher
-    include Component
+    include Support::Component
 
     attr_reader :config
 
     def initialize(config)
       @done = false
-      @manager = Manager.new(config)
-      @poller = Scheduled::Poller.new(config)
       @config = config
       @uuid = "jiggler-#{SecureRandom.hex(6)}"
     end
 
     def start
       set_process_data
-      @manager.start
-      @poller.start
+      manager.start
+      poller.start if config[:poller_enabled]
+      monitor.start if config[:stats_enabled]
     end
 
     def quite
       return if @done
 
       @done = true
-      @manager.quite
-      @poller.terminate
+      manager.quite
+      poller.terminate if config[:poller_enabled]
+      monitor.terminate if config[:stats_enabled]
     end
 
     def stop
       quite
-      @manager.terminate
+      manager.terminate
     end
 
     def hostname
@@ -59,6 +55,24 @@ module Jiggler
 
     def set_process_data
       redis { |conn| conn.call("hset", config.processes_hash, @uuid, process_data) }
+    end
+
+    private
+
+    def collection
+      @collection ||= Stats::Collection.new(@uuid)
+    end
+
+    def manager
+      @manager = Manager.new(config, collection)
+    end
+
+    def poller
+      @poller ||= Scheduled::Poller.new(config)
+    end
+
+    def monitor
+      @monitor ||= Stats::Monitor.new(config, collection)
     end
   end
 end

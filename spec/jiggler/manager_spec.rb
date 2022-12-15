@@ -2,7 +2,8 @@
 
 RSpec.describe Jiggler::Manager do
   let(:config) { Jiggler::Config.new(concurrency: 4, timeout: 3, verbose: true) }
-  let(:manager) { described_class.new(config) }
+  let(:collection) { Jiggler::Stats::Collection.new(config) }
+  let(:manager) { described_class.new(config, collection) }
 
   it { expect(manager.instance_variable_get(:@workers).count).to be 4 }
 
