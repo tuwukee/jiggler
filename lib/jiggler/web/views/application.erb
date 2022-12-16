@@ -51,7 +51,9 @@
           <% @processes_data.each do |uuid, data| %>
             <tr>
               <td colspan="5" title="Process">
-                <span><%= "#{uuid}:#{data["hostname"]}" %></span></br>
+                <span><%= "#{uuid}:#{data["hostname"]}" %></span>
+                <%= monitored_badge(data["stats_enabled"]) %>
+                </br>
                 <span><i><%= data["queues"] %></i></span>
               </td>
               <td colspan="1" title="PID" class="right">

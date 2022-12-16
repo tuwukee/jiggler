@@ -28,13 +28,13 @@ module Jiggler
 
       processes.each_slice(2) do |uuid, process_data|
         parsed_process_data = JSON.parse(process_data)
-        if @monitor_enabled
+        if parsed_process_data["stats_enabled"]
           stats_data = Jiggler.redis(async: false) do |conn| 
-            conn.call("hget", Jiggler.config.stats_hash, uuid)
+            conn.get("#{Jiggler.config.stats_prefix}#{uuid}")
           end
           parsed_process_data.merge!(JSON.parse(stats_data)) if stats_data
-          parsed_process_data["current_jobs"] ||= []
         end
+        parsed_process_data["current_jobs"] ||= []
         @processes_data[uuid] = parsed_process_data
       end
     end
@@ -85,6 +85,10 @@ module Jiggler
     def format_memory(kb)
       return "?" if kb.nil?
       "#{(kb/1024.0).round(2)} MB"
+    end
+
+    def monitored_badge(stats_enabled)
+      stats_enabled ? "<span class='badge badge-success'>Monitored</span>" : "<span class='badge'>Unmonitored</span>"
     end
 
     def styles

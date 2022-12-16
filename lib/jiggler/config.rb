@@ -10,7 +10,7 @@ module Jiggler
     DEFAULT_QUEUE = "default"
     QUEUE_PREFIX = "jiggler:list:"
     PROCESSES_HASH = "jiggler:hash:processes"
-    STATS_HASH = "jiggler:hash:stats"
+    STATS_PREFIX = "jiggler:stats:"
     RETRIES_SET = "jiggler:set:retries"
     SCHEDULED_SET = "jiggler:set:scheduled" # todo
     DEAD_SET = "jiggler:set:dead"
@@ -19,11 +19,11 @@ module Jiggler
       boot_app: true,
       require: ".",
       environment: "development",
-      concurrency: 5,
+      concurrency: 10,
       timeout: 25,
       max_dead_jobs: 10_000,
       stats_enabled: true,
-      stats_interval: 20,
+      stats_interval: 15,
       poller_enabled: true,
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
@@ -56,8 +56,8 @@ module Jiggler
       DEAD_SET
     end
 
-    def stats_hash
-      STATS_HASH
+    def stats_prefix
+      STATS_PREFIX
     end
 
     def queues_hash
