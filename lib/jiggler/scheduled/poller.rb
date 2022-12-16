@@ -6,7 +6,6 @@ module Jiggler
   module Scheduled    
     class Poller
       include Support::Component
-      include Support::Cleaner
 
       INITIAL_WAIT = 10
 
@@ -78,10 +77,6 @@ module Jiggler
         pcount
       end
 
-      def cleanup
-        prune_outdated_processes_data(config.processes_hash)
-      end
-
       def initial_wait
         total = INITIAL_WAIT + (5 * rand)
 
@@ -90,8 +85,6 @@ module Jiggler
           @condition.signal
         end
         @condition.wait
-      ensure
-        cleanup
       end
     end
   end

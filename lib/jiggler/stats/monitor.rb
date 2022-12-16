@@ -4,17 +4,17 @@ module Jiggler
   module Stats
     class Monitor
       include Support::Component
-      include Support::Cleaner
-
       MONITOR_FLAG = "jiggler:flag:monitor"
 
-      attr_reader :collection
+      attr_reader :collection, :data_key, :exp
 
       def initialize(config, collection)
         @config = config
         @collection = collection
         @done = false
         @condition = Async::Condition.new
+        @data_key = "#{config.stats_prefix}#{collection.uuid}"
+        @exp = config[:stats_interval] * 2
       end
 
       def start
@@ -28,22 +28,29 @@ module Jiggler
       end
 
       def terminate
-        cleanup
         @condition.signal
         @done = true
+        cleanup
       end
 
       def load_data_into_redis
         process_data = JSON.generate({
+          uuid: collection.uuid,
           heartbeat: Time.now.to_f,
           rss: process_rss,
           current_jobs: collection.data[:current_jobs],
         })
-        logger.debug("Loading stats into redis: #{collection.uuid}, #{process_data}")
-        redis { |conn| conn.set(MONITOR_FLAG, "1", update: false, seconds: config[:stats_interval] * 3) }
-        redis { |conn| conn.call("hset", config.stats_hash, collection.uuid, process_data) }
+        logger.debug("Loading stats into redis") { process_data }
 
-        prune_outdated_processes_data(config.stats_hash)
+        redis do |conn| 
+          conn.set(MONITOR_FLAG, "1", seconds: exp)
+          conn.set(data_key, process_data, seconds: exp)
+        end
+
+        config.cleaner.unforsed_prune_outdated_processes_data(
+          config.processes_hash, config.stats_prefix
+        )
+        logger.debug("Pruned outdated processes data...")
       end
 
       def process_rss
@@ -59,8 +66,7 @@ module Jiggler
 
       def cleanup
         logger.debug("Cleaning up stats...")
-        redis { |conn| conn.del(MONITOR_FLAG) }
-        redis { |conn| conn.call("hdel", config.stats_hash, collection.uuid) }
+        redis { |conn| conn.del(data_key) }
       end
 
       def wait

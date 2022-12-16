@@ -7,7 +7,7 @@ RSpec.describe Jiggler::CLI do
     context "with no args" do
       it "uses default config" do
         cli.parse
-        expect(cli.config[:concurrency]).to be 5
+        expect(cli.config[:concurrency]).to be 10
         expect(cli.config[:queues]).to eq ["default"]
         expect(cli.config[:require]).to eq "."
         expect(cli.config[:timeout]).to be 25
@@ -27,8 +27,8 @@ RSpec.describe Jiggler::CLI do
       end
 
       it "fetches concurrency" do
-        cli.parse(["-c", "10"])
-        expect(cli.config[:concurrency]).to be 10
+        cli.parse(["-c", "11"])
+        expect(cli.config[:concurrency]).to be 11
       end
 
       it "fetches queues" do  

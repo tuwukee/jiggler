@@ -12,17 +12,17 @@
 
       <div class="stats-block">
         <div class="stats-entry">
-          <span><%= "To Retry: #{@retry_jobs_count}" %></span>
+          <span><%= "To Retry: #{@summary["retry_jobs_count"]}" %></span>
         </div>
         <div class="stats-entry">
-          <span><%= "Dead: #{@dead_jobs_count}" %></span>
+          <span><%= "Dead: #{@summary["dead_jobs_count"]}" %></span>
         </div>
-        <% if @monitor_enabled %>
+        <% if @summary["monitor_enabled"] %>
           <div class="stats-entry">
-            <span><%= "Failures: #{@failures_count}" %></span>
+            <span><%= "Failures: #{@summary["failures_count"]}" %></span>
           </div>
           <div class="stats-entry">
-            <span><%= "Processed: #{@processed_count}" %></span>
+            <span><%= "Processed: #{@summary["processed_count"]}" %></span>
           </div>
         <% end %>
       </div>
@@ -48,10 +48,12 @@
           </tr>
         </thead>
         <tbody>
-          <% @processes_data.each do |uuid, data| %>
+          <% @summary["processes"].each do |uuid, data| %>
             <tr>
               <td colspan="5" title="Process">
-                <span><%= "#{uuid}:#{data["hostname"]}" %></span></br>
+                <span><%= "#{uuid}:#{data["hostname"]}" %></span>
+                <%= monitored_badge(data["stats_enabled"]) %>
+                </br>
                 <span><i><%= data["queues"] %></i></span>
               </td>
               <td colspan="1" title="PID" class="right">
@@ -83,7 +85,7 @@
           </tr>
         </thead>
         <tbody>
-          <% queues.each do |queue| %>
+          <% @summary["queues"].each do |queue| %>
             <tr>
               <td colspan="6" title="Queue">
                 <span><i><%= queue[0] %></i></span>
@@ -96,7 +98,7 @@
         </tbody>
       </table>
       
-      <% if @monitor_enabled %>
+      <% if @summary["monitor_enabled"] %>
         <h3>Busy Jobs</h3>
         <table class="main-table jobs">
           <thead>
@@ -125,7 +127,7 @@
             </tr>
           </thead>
           <tbody>
-            <% @processes_data.each do |uuid, process_data| %>
+            <% @summary["processes"].each do |uuid, process_data| %>
               <% process_data["current_jobs"].each do |tid, job_data| %>
                 <tr>
                   <td colspan="2" title="Process">
@@ -156,7 +158,7 @@
         </table>
       <% end %>
       
-      <% if @retry_jobs_count > 0 %>
+      <% if @summary["retry_jobs_count"] > 0 %>
         <h3>Last 5 Jobs to Retry</h3>
         <table class="main-table retry_jobs">
           <thead>
@@ -226,7 +228,7 @@
         </table>
       <% end %>
 
-      <% if @dead_jobs_count > 0 %>
+      <% if @summary["dead_jobs_count"] > 0 %>
         <h3>Last 5 Dead Jobs</h3>
         <table class="main-table dead_jobs">
           <thead>

@@ -1,11 +1,8 @@
 # frozen_string_literal: true
 
-require_relative "./jiggler/support/cleaner"
 require_relative "./jiggler/support/component"
-
 require_relative "./jiggler/scheduled/enqueuer"
 require_relative "./jiggler/scheduled/poller"
-
 require_relative "./jiggler/stats/collection"
 require_relative "./jiggler/stats/monitor"
 
@@ -13,10 +10,12 @@ require_relative "./jiggler/errors"
 require_relative "./jiggler/redis_store"
 require_relative "./jiggler/job"
 require_relative "./jiggler/config"
+require_relative "./jiggler/cleaner"
 require_relative "./jiggler/retrier"
 require_relative "./jiggler/launcher"
 require_relative "./jiggler/manager"
 require_relative "./jiggler/worker"
+require_relative "./jiggler/summary"
 require_relative "./jiggler/cli"
 
 module Jiggler
@@ -44,5 +43,9 @@ module Jiggler
 
   def self.redis(async: true, &block)
     config.with_redis(async:, &block)
+  end
+
+  def self.summary
+    Jiggler::Summary.all
   end
 end

@@ -26,6 +26,7 @@ module Jiggler
       manager.quite
       poller.terminate if config[:poller_enabled]
       monitor.terminate if config[:stats_enabled]
+      cleanup
     end
 
     def stop
@@ -38,14 +39,13 @@ module Jiggler
     end
 
     def process_data
-      timestamp = Time.now.to_f
       {
         pid: Process.pid,
         hostname: hostname,
         concurrency: config[:concurrency],
         queues: config[:queues].join(", "),
-        started_at: timestamp,
-        heartbeat: timestamp,
+        started_at: Time.now.to_f,
+        stats_enabled: config[:stats_enabled]
       }.to_json
     end
 
