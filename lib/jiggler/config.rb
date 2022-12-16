@@ -81,6 +81,10 @@ module Jiggler
       @redis ||= Jiggler::RedisStore.new(redis_options).client
     end
 
+    def cleaner
+      @cleaner ||= Jiggler::Cleaner.new(redis)
+    end
+
     def logger=(new_logger)
       @logger = new_logger
     end

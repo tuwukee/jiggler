@@ -4,8 +4,6 @@ module Jiggler
   module Stats
     class Monitor
       include Support::Component
-      include Support::Cleaner
-
       MONITOR_FLAG = "jiggler:flag:monitor"
 
       attr_reader :collection, :data_key, :exp
@@ -42,12 +40,17 @@ module Jiggler
           rss: process_rss,
           current_jobs: collection.data[:current_jobs],
         })
-        logger.debug("Loading stats into redis: #{process_data}")
+        logger.debug("Loading stats into redis") { process_data }
 
-        redis { |conn| conn.set(MONITOR_FLAG, "1", seconds: exp) }
-        redis { |conn| conn.set(data_key, process_data, seconds: exp) }
+        redis do |conn| 
+          conn.set(MONITOR_FLAG, "1", seconds: exp)
+          conn.set(data_key, process_data, seconds: exp)
+        end
 
-        prune_outdated_processes_data
+        config.cleaner.unforsed_prune_outdated_processes_data(
+          config.processes_hash, config.stats_prefix
+        )
+        logger.debug("Pruned outdated processes data...")
       end
 
       def process_rss
