@@ -60,6 +60,10 @@ module Jiggler
       STATS_PREFIX
     end
 
+    def default_queue
+      DEFAULT_QUEUE
+    end
+
     def queues_hash
       @queues_hash ||= @options[:queues].each_with_object({}) do |name, hash| 
         hash[name] = "#{QUEUE_PREFIX}#{name}" 
@@ -82,7 +86,7 @@ module Jiggler
     end
 
     def cleaner
-      @cleaner ||= Jiggler::Cleaner.new(redis)
+      @cleaner ||= Jiggler::Cleaner.new(redis, self)
     end
 
     def logger=(new_logger)

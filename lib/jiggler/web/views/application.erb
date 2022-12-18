@@ -11,17 +11,20 @@
     <div id="content">
 
       <div class="stats-block">
-        <div class="stats-entry">
+        <div class="stats-entry" title="Jobs to be retried">
           <span><%= "To Retry: #{@summary["retry_jobs_count"]}" %></span>
         </div>
-        <div class="stats-entry">
+        <div class="stats-entry" title="Jobs with delayed enqueuing">
+          <span><%= "Scheduled: #{@summary["scheduled_jobs_count"]}" %></span>
+        </div>
+        <div class="stats-entry" title="Completely failed jobs">
           <span><%= "Dead: #{@summary["dead_jobs_count"]}" %></span>
         </div>
         <% if @summary["monitor_enabled"] %>
-          <div class="stats-entry">
+          <div class="stats-entry" title="Unsuccessful perform attempts">
             <span><%= "Failures: #{@summary["failures_count"]}" %></span>
           </div>
-          <div class="stats-entry">
+          <div class="stats-entry" title="Successfully completed jobs">
             <span><%= "Processed: #{@summary["processed_count"]}" %></span>
           </div>
         <% end %>
@@ -221,6 +224,40 @@
                 </td>
                 <td colspan="1" title="To Retry At" class="right">
                   <span><%= format_datetime(data["retry_at"]) %></span>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      <% end %>
+
+      <% if @summary["scheduled_jobs_count"] > 0 %>
+        <h3>Last 5 Scheduled Jobs</h3>
+        <table class="main-table retry_jobs">
+          <thead>
+            <tr>
+              <th colspan="4" title="Job">
+                <span>Job</span>
+              </th>
+              <th colspan="6" title="Args">
+                <span>Args</span>
+              </th>
+              <th colspan="2" title="Scheduled At">
+                <span>Scheduled At</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <% last_5_scheduled_jobs.each do |data| %>
+              <tr>
+                <td colspan="4" title="Job">
+                  <span><%= data["name"] %></span>
+                </td>
+                <td colspan="6" title="Args">
+                  <span><%= data["args"] %></span>
+                </td>
+                <td colspan="2" title="Scheduled At" class="right">
+                  <span><%= format_datetime(data["scheduled_at"]) %></span>
                 </td>
               </tr>
             <% end %>

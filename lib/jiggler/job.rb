@@ -12,6 +12,10 @@ module Jiggler
         new(**args).perform_async
       end
 
+      def perform_in(seconds, **args)
+        new(**args).perform_in(seconds)
+      end
+
       def queue
         @queue || Jiggler::Config::DEFAULT_QUEUE
       end
@@ -46,6 +50,17 @@ module Jiggler
       Jiggler.redis { |conn| conn.lpush(list_name, job_args) }
     end
 
+    def perform_in(seconds)
+      timestamp = Time.now.to_f + seconds
+      Jiggler.redis do |conn| 
+        conn.zadd(
+          Jiggler.config.scheduled_set, 
+          timestamp, 
+          raw_job_args.merge(scheduled_at: timestamp).to_json
+        ) 
+      end
+    end
+
     private
 
     def list_name
@@ -53,7 +68,11 @@ module Jiggler
     end
 
     def job_args
-      @job_args ||= { name: self.class.name, args: _args, retries: self.class.retries }.to_json
+      @job_args ||= raw_job_args.to_json
+    end
+
+    def raw_job_args
+      { name: self.class.name, args: _args, retries: self.class.retries }
     end
   end
 end

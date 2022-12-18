@@ -38,6 +38,8 @@ module Jiggler
           logger.debug("Pushing job back to the queue: #{job_args}")
           @config.with_redis { |conn| conn.lpush(list_name, job_args) }
         end
+      rescue => err
+        logger.error("Error while pushing job back to the queue: #{err}")
       end
       
       def sets
