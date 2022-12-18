@@ -5,6 +5,8 @@ module Jiggler
     class Monitor
       include Support::Component
       MONITOR_FLAG = "jiggler:flag:monitor"
+      PROCESSED_STATS = "jiggler:stats:processed"
+      FAILURES_STATS = "jiggler:stats:failures"
 
       attr_reader :collection, :data_key, :exp
 
@@ -41,10 +43,20 @@ module Jiggler
           current_jobs: collection.data[:current_jobs],
         })
         logger.debug("Loading stats into redis") { process_data }
+        processed_jobs = collection.data[:processed]
+        failed_jobs = collection.data[:failures]
+        collection.data[:processed] -= processed_jobs
+        collection.data[:failures] -= failed_jobs
 
-        redis do |conn| 
-          conn.set(MONITOR_FLAG, "1", seconds: exp)
-          conn.set(data_key, process_data, seconds: exp)
+        redis do |conn|
+          conn.pipeline do |pipeline|
+            pipeline.collect do
+              pipeline.set(MONITOR_FLAG, '1', seconds: exp)
+              pipeline.set(data_key, process_data, seconds: exp)
+              pipeline.incrby(PROCESSED_STATS, processed_jobs)
+              pipeline.incrby(FAILURES_STATS, failed_jobs)
+            end
+          end
         end
 
         config.cleaner.unforsed_prune_outdated_processes_data(
