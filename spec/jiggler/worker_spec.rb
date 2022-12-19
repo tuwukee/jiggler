@@ -20,13 +20,14 @@ RSpec.describe Jiggler::Worker do
   end
 
   describe "#run" do
+    # flaky test
     it "runs the worker and performs the job" do
       expect do
         task = Async do
           expect(worker).to receive(:fetch_one).at_least(:once).and_call_original
           expect(worker).to receive(:execute_job).and_call_original
           worker.run
-          MyJob.perform_async
+          MyJob.enqueue
           Async do
             sleep 1
             worker.terminate
@@ -43,7 +44,7 @@ RSpec.describe Jiggler::Worker do
           expect(worker).to receive(:fetch_one).and_call_original
           expect(worker).to receive(:execute_job).and_call_original
           worker.run
-          MyFailedJob.perform_async
+          MyFailedJob.enqueue       
         end
          task.wait 
       end.to change { 

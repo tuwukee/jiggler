@@ -107,15 +107,16 @@ module Jiggler
       klass = Object.const_get(parsed_job["name"])
       instance = klass.new
       args = parsed_job["args"]
+      jid = parsed_job["jid"]
 
-      logger.info("Starting #{klass} queue=#{klass.queue} tid=#{tid} jid=#{instance._jid}")
-      add_current_job_to_collection(instance._jid, parsed_job, klass.queue)
+      logger.info("Starting #{klass} queue=#{klass.queue} tid=#{tid} jid=#{jid}")
+      add_current_job_to_collection(parsed_job, klass.queue)
       with_retry(instance, parsed_job, queue) do
         instance.perform(*args)
       end
-      logger.info("Finished #{klass} queue=#{klass.queue} tid=#{tid} jid=#{instance._jid}")
+      logger.info("Finished #{klass} queue=#{klass.queue} tid=#{tid} jid=#{jid}")
     ensure
-      logger.debug("Removing job #{instance._jid}...")
+      logger.debug("Removing job #{jid}...")
       remove_current_job_from_collection
     end
 
@@ -146,10 +147,9 @@ module Jiggler
       )
     end
 
-    def add_current_job_to_collection(jid, parsed_job, queue)
+    def add_current_job_to_collection(parsed_job, queue)
       return unless config[:stats_enabled]
       collection.data[:current_jobs][tid] = {
-        jid: jid,
         job_args: parsed_job,
         queue: queue,
         started_at: Time.now.to_f

@@ -29,8 +29,10 @@ module Jiggler
 
     def last_5_scheduled_jobs
       Jiggler.redis(async: false) do |conn|
-        conn.call("zrange", Jiggler.config.scheduled_set, -5, -1)
-      end.map { |job| JSON.parse(job) }
+        conn.call("zrange", Jiggler.config.scheduled_set, -5, -1, 'WITHSCORES')
+      end.each_slice(2).map do |(job, score)|
+        JSON.parse(job).merge('scheduled_at' => score)
+      end
     end
 
     def format_datetime(timestamp)

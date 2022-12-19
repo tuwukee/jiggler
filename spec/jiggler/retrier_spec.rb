@@ -29,7 +29,7 @@ RSpec.describe Jiggler::Retrier do
       end
 
       it "does not retry if max retries are reached" do
-        msg = { "attempt" => 3 }
+        msg = { "attempt" => 3, "jid" => "123" }
         expect do
           retrier.wrapped(job, msg, "test") do
             job.perform

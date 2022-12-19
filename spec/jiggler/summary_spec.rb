@@ -30,12 +30,13 @@ RSpec.describe Jiggler::Summary do
       expect(subject["processes"]).to be_a Hash
       expect(subject["queues"]).to be_a Hash
     end
-
+    
+    # flaky test
     it "gets latest data" do
       task = Async do
         launcher = Jiggler::Launcher.new(config)
         uuid = launcher.instance_variable_get(:@uuid)
-        MyJob.perform_async
+        MyJob.enqueue
         
         first_summary = described_class.all(config)
         expect(first_summary["queues"]).to include({

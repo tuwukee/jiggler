@@ -15,7 +15,6 @@ module Jiggler
     rescue Async::Stop => stop
       raise stop
     rescue => err
-      handle_exception(err, { context: "'Error in #{instance.class.name}'", tid: tid, jid: instance._jid })
       raise Async::Stop if exception_caused_by_shutdown?(err)
 
       process_retry(instance, msg, queue, err)
@@ -41,7 +40,6 @@ module Jiggler
       msg["error_class"] = exception.class.name
       msg["queue"] = job_class.retry_queue
       msg["class"] = job_class.name
-      msg["jid"] = jobinst._jid
       msg["started_at"] ||= Time.now.to_f
 
       return retries_exhausted(jobinst, msg, exception) if count >= max_retry_attempts
@@ -62,14 +60,14 @@ module Jiggler
     end
 
     def retries_exhausted(jobinst, msg, exception)
-      logger.warn("Retries exhausted for #{msg["class"]} tid=#{tid} jid=#{jobinst._jid}")
+      logger.warn("Retries exhausted for #{msg["class"]} tid=#{tid} jid=#{msg["jid"]}")
 
-      send_to_morgue(msg, jobinst._jid)
+      send_to_morgue(msg)
     end
 
     # todo: review this
-    def send_to_morgue(msg, jid)
-      logger.warn("#{msg["class"]} has been sent to dead tid=#{tid} jid=#{jid}")
+    def send_to_morgue(msg)
+      logger.warn("#{msg["class"]} has been sent to dead tid=#{tid} jid=#{msg["jid"]}")
       payload = JSON.generate(msg)
       now = Time.now.to_f
 
