@@ -3,31 +3,12 @@
 require_relative "../lib/jiggler"
 require_relative "../lib/jiggler/cli"
 
-def integrate_with_systemd
-  return unless ENV["NOTIFY_SOCKET"]
-
-  Jiggler.configure_server do |config|
-    config.logger.info "Enabling systemd notification integration"
-    # implement based on sidekiq
-    # require "sidekiq/sd_notify"
-    # config.on(:startup) do
-    #   Sidekiq::SdNotify.ready
-    # end
-    # config.on(:shutdown) do
-    #   Sidekiq::SdNotify.stopping
-    # end
-    # Sidekiq.start_watchdog if Sidekiq::SdNotify.watchdog?
-  end
-end
-
 begin
   cli = Jiggler::CLI.instance
   cli.parse
   
   cli.config.logger.info("*---* Jiggler is starting in #{Jiggler.config[:environment].upcase} *---*")
   cli.config.logger.info("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config[:queues].join(',')}")
-
-  integrate_with_systemd
 
   cli.start
 rescue => e

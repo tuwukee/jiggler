@@ -23,7 +23,6 @@ module Jiggler
           break @callback.call(self) if @done
           process_job
         rescue Async::Stop
-          # cleanup (?)
           @callback.call(self)
           break
         rescue => ex

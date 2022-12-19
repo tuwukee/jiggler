@@ -86,7 +86,7 @@ module Jiggler
     end
 
     def cleaner
-      @cleaner ||= Jiggler::Cleaner.new(redis, self)
+      @cleaner ||= Jiggler::Cleaner.new(self)
     end
 
     def logger=(new_logger)

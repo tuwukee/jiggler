@@ -3,13 +3,14 @@
 module Jiggler
   class Summary
     KEYS = %w[
-      retry_jobs_count 
-      dead_jobs_count 
+      retry_jobs_count
+      dead_jobs_count
       scheduled_jobs_count
+      failures_count
+      processed_count
       monitor_enabled
-      failures_count 
-      processed_count 
-      processes queues
+      processes
+      queues
     ].freeze
 
     attr_reader :config
@@ -27,18 +28,20 @@ module Jiggler
       collected_data = config.with_redis(async: false) do |conn|
         conn.pipeline do |pipeline|
           data = pipeline.collect do
-            pipeline.call("zcard", config.retries_set).to_i
-            pipeline.call("zcard", config.dead_set).to_i
-            pipeline.call("zcard", config.scheduled_set).to_i
+            pipeline.call("zcard", config.retries_set)
+            pipeline.call("zcard", config.dead_set)
+            pipeline.call("zcard", config.scheduled_set)
+            pipeline.call("get", Jiggler::Stats::Monitor::FAILURES_COUNTER)
+            pipeline.call("get", Jiggler::Stats::Monitor::PROCESSED_COUNTER)
             pipeline.call("get", Jiggler::Stats::Monitor::MONITOR_FLAG)
-            pipeline.call("get", Jiggler::Stats::Monitor::FAILURES_COUNTER).to_i
-            pipeline.call("get", Jiggler::Stats::Monitor::PROCESSED_COUNTER).to_i
           end
           [*data, fetch_and_format_processes(conn), fetch_and_format_queues(conn)]
         end
       end
       KEYS.each_with_index do |key, index|
-        summary[key] = collected_data[index]
+        val = collected_data[index]
+        val = val.to_i if index <= 4 # counters
+        summary[key] = val
       end
       summary
     end

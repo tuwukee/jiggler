@@ -3,10 +3,9 @@
 module Jiggler
   class Cleaner
     CLEANUP_FLAG = "jiggler:flag:cleanup"
-    attr_reader :redis, :config
+    attr_reader :config
 
-    def initialize(redis, config)
-      @redis = redis
+    def initialize(config)
       @config = config
     end
 
