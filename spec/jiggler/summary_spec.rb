@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../fixtures/my_job"
-
 RSpec.describe Jiggler::Summary do
   let(:queues) { ["default", "queue1"] }
   let(:config) do
@@ -30,17 +28,16 @@ RSpec.describe Jiggler::Summary do
       expect(subject["processes"]).to be_a Hash
       expect(subject["queues"]).to be_a Hash
     end
-    
-    # flaky test
+
     it "gets latest data" do
       task = Async do
         launcher = Jiggler::Launcher.new(config)
         uuid = launcher.instance_variable_get(:@uuid)
-        MyJob.enqueue
+        MyJob.with_options(queue: "queue1").enqueue
         
         first_summary = described_class.all(config)
         expect(first_summary["queues"]).to include({
-          "default" => 1
+          "queue1" => 1
         })
         expect(first_summary["processes"].keys).to_not include(uuid)
         
@@ -50,7 +47,7 @@ RSpec.describe Jiggler::Summary do
         launcher.stop
 
         expect(second_summary["queues"]).to_not include({
-          "default" => 1
+          "queue1" => 1
         })
         expect(second_summary["processes"].keys).to include(uuid)
         expect(second_summary["processes"][uuid]).to include({

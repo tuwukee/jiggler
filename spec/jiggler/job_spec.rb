@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../fixtures/my_job"
-
 RSpec.describe Jiggler::Job do
   describe ".job_options" do
     context "on default" do
@@ -14,6 +12,8 @@ RSpec.describe Jiggler::Job do
       it "has correct attrs" do
         expect(job.class.queue).to eq "default"
         expect(job.class.retries).to be 0
+        expect(job.class.async).to be false
+        expect(job.class.retry_queue).to eq "default"
         expect(job.class.name).to eq "MyJob"
       end
     end
@@ -22,14 +22,25 @@ RSpec.describe Jiggler::Job do
       let(:job) { MyJob.new }
 
       before do
-        MyJob.job_options(queue: "custom", retries: 3)
+        MyJob.job_options(queue: "custom", retries: 3, async: true, retry_queue: "custom_retry")
       end
 
       it "has correct attrs" do
         expect(job.class.queue).to eq "custom"
         expect(job.class.retries).to be 3
+        expect(job.class.async).to be true
+        expect(job.class.retry_queue).to eq "custom_retry"
         expect(job.class.name).to eq "MyJob"
       end
+    end
+  end
+
+  describe ".with_options" do
+    it "allows to override options on job level" do
+      expect { MyJob.with_options(queue: "woo").enqueue }.to change { 
+        Jiggler.config.with_redis(async: false) { |conn| conn.llen("jiggler:list:woo") }
+      }.by(1)
+      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:woo") }
     end
   end
 

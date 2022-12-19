@@ -18,39 +18,37 @@ module Jiggler
         @lua_zpopbyscore_sha = nil
       end
 
-      def enqueue_jobs(sorted_sets = sets)
-        @config.with_redis(async: false) do |conn|
+      def enqueue_jobs
+        @config.with_redis do |conn|
           sorted_sets.each do |sorted_set|
             # Get next item in the queue with score (time to execute) <= now
-            while !@done && (job_args = zpopbyscore(conn, keys: [sorted_set], argv: [Time.now.to_f.to_s]))
-              push_job(job_args)
+            job_args = zpopbyscore(conn, keys: [sorted_set], argv: [Time.now.to_f.to_s])
+            while !@done && job_args
+              push_job(conn, job_args)
+              job_args = zpopbyscore(conn, keys: [sorted_set], argv: [Time.now.to_f.to_s])
             end
           end
         end
-      end
-
-      def push_job(job_args)
-        name = JSON.parse(job_args)["queue"] || @config.default_queue
-        list_name = @config.queues_hash[name]
-        if list_name.nil?
-          logger.warn("Queue #{name} does not exist. Dropping job: #{job_args}")
-        else
-          logger.debug("Pushing job back to the queue: #{job_args}")
-          @config.with_redis { |conn| conn.lpush(list_name, job_args) }
-        end
-      rescue => err
-        logger.error("Error while pushing job back to the queue: #{err}")
-      end
-      
-      def sets
-        [@config.retries_set, @config.scheduled_set]
       end
 
       def terminate
         @done = true
       end
 
+      def push_job(conn, job_args)
+        name = JSON.parse(job_args)["queue"] || @config.default_queue
+        list_name = "#{@config.queue_prefix}#{name}"
+        logger.debug("Poller Enqueuer") { "Pushing #{job_args} to #{list_name}" }
+        conn.lpush(list_name, job_args)
+      rescue => err
+        logger.error("Error while pushing #{job_args} to queue: #{err}")
+      end
+
       private
+      
+      def sorted_sets
+        @sorted_sets ||= [@config.retries_set, @config.scheduled_set].freeze
+      end
 
       def zpopbyscore(conn, keys: nil, argv: nil)
         if @lua_zpopbyscore_sha.nil?

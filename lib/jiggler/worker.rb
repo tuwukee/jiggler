@@ -84,8 +84,14 @@ module Jiggler
           err, 
           { 
             context: "'Job raised exception'",
-            tid: tid
-          }.merge(parsed_args),
+            error_class: err.class.name,
+            name: parsed_args["name"],
+            queue: parsed_args["queue"],
+            args: parsed_args["args"],
+            attempt: parsed_args["attempt"],
+            tid: tid,
+            jid: parsed_args["jid"]
+          },
           raise_ex: true
         )
       rescue Exception => ex
@@ -93,8 +99,9 @@ module Jiggler
           ex,
           {
             context: "'Internal exception'",
-            tid: tid
-          }.merge(parsed_args),
+            tid: tid,
+            jid: parsed_args["jid"]
+          },
           raise_ex: true
         )
       end
@@ -116,7 +123,6 @@ module Jiggler
       end
       logger.info("Finished #{klass} queue=#{klass.queue} tid=#{tid} jid=#{jid}")
     ensure
-      logger.debug("Removing job #{jid}...")
       remove_current_job_from_collection
     end
 
@@ -172,7 +178,7 @@ module Jiggler
     end
 
     def queues
-      @queues ||= config.queues_hash.values
+      @queues ||= config.prefixed_queues
     end
 
     def constantize(str)

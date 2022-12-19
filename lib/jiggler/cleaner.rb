@@ -98,9 +98,23 @@ module Jiggler
 
         unless to_prune.empty?
           conn.call("hdel", config.processes_hash, *to_prune)
+          config.logger.info("Prune outdated processes") { to_prune }
         end
       end
+
       to_prune
+    end
+
+    def prune_all_unmonitored_processes
+      config.with_redis(async: false) do |conn|
+        processes_hash = Hash[*conn.call("hgetall", config.processes_hash)]
+        processes_hash.each do |k, v|
+          process_data = JSON.parse(v)
+          if !process_data["stats_enabled"]
+            prune_process(k)
+          end
+        end
+      end
     end
 
     private

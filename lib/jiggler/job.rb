@@ -7,11 +7,11 @@ module Jiggler
   module Job
     module ClassMethods
       def enqueue(*args)
-        Enqueuer.new(self, {}).enqueue(*args)
+        Enqueuer.new(self, { async: async }).enqueue(*args)
       end
 
       def enqueue_in(seconds, *args)
-        Enqueuer.new(self, {}).enqueue_in(seconds, *args)
+        Enqueuer.new(self, { async: async }).enqueue_in(seconds, *args)
       end
 
       # MyJob.with_options(queue: "custom", retries: 3).enqueue(*args)
@@ -31,10 +31,15 @@ module Jiggler
         @retries || 0
       end
 
-      def job_options(queue: Jiggler::Config::DEFAULT_QUEUE, retries: 0, retry_queue: nil)
+      def async
+        @async || false
+      end
+
+      def job_options(queue: Jiggler::Config::DEFAULT_QUEUE, retries: 0, retry_queue: nil, async: false)
         @queue = queue
         @retries = retries
         @retry_queue = retry_queue || queue
+        @async = async
       end
     end
     class Enqueuer

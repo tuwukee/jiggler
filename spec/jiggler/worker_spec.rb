@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../fixtures/my_job"
-require_relative "../fixtures/my_failed_job"
-
 RSpec.describe Jiggler::Worker do
   let(:config) do
     Jiggler::Config.new(
@@ -20,39 +17,67 @@ RSpec.describe Jiggler::Worker do
   end
 
   describe "#run" do
-    # flaky test
     it "runs the worker and performs the job" do
+      task = Async do
+        Async do
+          expect(worker).to receive(:fetch_one).at_least(:once).and_call_original
+          expect(worker).to receive(:execute_job).at_least(:once).and_call_original
+          MyJob.enqueue
+          worker.run
+        end
+        sleep(1)
+        worker.terminate
+      end
+      task.wait
+    end
+
+    it "runs the worker and performs the job with args" do
       expect do
         task = Async do
-          expect(worker).to receive(:fetch_one).at_least(:once).and_call_original
-          expect(worker).to receive(:execute_job).and_call_original
-          worker.run
-          MyJob.enqueue
           Async do
-            sleep 1
-            worker.terminate
+            expect(worker).to receive(:fetch_one).at_least(:once).and_call_original
+            expect(worker).to receive(:execute_job).at_least(:once).and_call_original
+            MyJobWithArgs.enqueue("str", 1, 2.0, true, [1, 2], { a: 1, b: 2 })
+            worker.run
           end
+          sleep(1)
+          worker.terminate
         end
         task.wait 
-      end.to output("Hello World\n").to_stdout
-      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:default") }
+      end.to_not change { 
+        config.with_redis(async: false) { |conn| conn.zcard(config.retries_set) }
+      }
     end
 
     it "runs the worker and adds the job to retry queue" do
       expect do
         task = Async do
-          expect(worker).to receive(:fetch_one).and_call_original
-          expect(worker).to receive(:execute_job).and_call_original
-          worker.run
-          MyFailedJob.enqueue       
+          Async do
+            expect(worker).to receive(:fetch_one).at_least(:once).and_call_original
+            expect(worker).to receive(:execute_job).at_least(:once).and_call_original
+            MyFailedJob.enqueue
+            worker.run
+          end
+          sleep(1)
+          worker.terminate
         end
-         task.wait 
+        task.wait
       end.to change { 
-        Jiggler.config.with_redis(async: false) { |conn| conn.zcard(config.retries_set) }
+        config.with_redis(async: false) { |conn| conn.zcard(config.retries_set) }
       }.by(1)
-      worker.terminate
-      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:test") }
-      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:set:retries") }
+      config.with_redis(async: false) { |conn| conn.del("jiggler:set:retries") }
+    end
+  end
+
+  describe "#execute_job" do
+    it "executes the job" do
+      expect do
+        worker.instance_variable_set(
+          :@current_job, 
+          Jiggler::Worker::CurrentJob.new(queue: "default", args: "{ \"name\": \"MyJob\", \"jid\": \"321\" }")
+        )
+        worker.send(:execute_job)
+      end.to output("Hello World\n").to_stdout
     end
   end
 
@@ -61,7 +86,7 @@ RSpec.describe Jiggler::Worker do
       it "terminates the worker" do
         task = Async do
           expect(worker.done).to be false
-          worker.run
+          Async { worker.run }
           worker.terminate
         end
         task.wait

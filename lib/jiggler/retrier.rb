@@ -39,7 +39,6 @@ module Jiggler
       msg["error_message"] = message
       msg["error_class"] = exception.class.name
       msg["queue"] = job_class.retry_queue
-      msg["class"] = job_class.name
       msg["started_at"] ||= Time.now.to_f
 
       return retries_exhausted(jobinst, msg, exception) if count >= max_retry_attempts
@@ -60,14 +59,14 @@ module Jiggler
     end
 
     def retries_exhausted(jobinst, msg, exception)
-      logger.warn("Retries exhausted for #{msg["class"]} tid=#{tid} jid=#{msg["jid"]}")
+      logger.warn("Retries exhausted for #{msg["name"]} tid=#{tid} jid=#{msg["jid"]}")
 
       send_to_morgue(msg)
     end
 
     # todo: review this
     def send_to_morgue(msg)
-      logger.warn("#{msg["class"]} has been sent to dead tid=#{tid} jid=#{msg["jid"]}")
+      logger.warn("#{msg["name"]} has been sent to dead tid=#{tid} jid=#{msg["jid"]}")
       payload = JSON.generate(msg)
       now = Time.now.to_f
 

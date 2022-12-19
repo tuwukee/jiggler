@@ -42,7 +42,7 @@ module Jiggler
           rss: process_rss,
           current_jobs: collection.data[:current_jobs],
         })
-        logger.debug("Loading stats into redis") { process_data }
+        logger.debug("Monitor") { process_data }
         processed_jobs = collection.data[:processed]
         failed_jobs = collection.data[:failures]
         collection.data[:processed] -= processed_jobs
@@ -60,7 +60,6 @@ module Jiggler
         end
 
         config.cleaner.unforsed_prune_outdated_processes_data
-        logger.debug("Pruned outdated processes data...")
       end
 
       def process_rss
@@ -75,7 +74,7 @@ module Jiggler
       end
 
       def cleanup
-        logger.debug("Cleaning up stats...")
+        logger.debug("Monitor") { "Cleaning up stats..." }
         redis { |conn| conn.del(data_key) }
       end
 

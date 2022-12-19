@@ -8,11 +8,11 @@ RSpec.describe Jiggler::Manager do
   it { expect(manager.instance_variable_get(:@workers).count).to be 4 }
 
   describe "#start" do
-    after { manager.quite }
-
     it "starts the manager" do
       expect(manager.instance_variable_get(:@workers)).to all(receive(:run))
-      manager.start
+      Async { manager.start }
+      sleep(0.5)
+      manager.terminate
     end
   end
 
@@ -20,7 +20,8 @@ RSpec.describe Jiggler::Manager do
     it "quits the manager" do
       expect(manager.instance_variable_get(:@workers)).to all(receive(:quite).and_call_original)
       task = Async do
-        manager.start
+        Async { manager.start }
+        sleep(0.5)
         manager.quite
         expect(manager.instance_variable_get(:@done)).to be true
       end
@@ -33,7 +34,8 @@ RSpec.describe Jiggler::Manager do
       expect(manager.instance_variable_get(:@workers)).to all(receive(:quite).and_call_original)
       expect(manager.instance_variable_get(:@workers)).to all(receive(:terminate).and_call_original)
       task = Async do
-        manager.start
+        Async { manager.start }
+        sleep(0.5)
         manager.terminate
         expect(manager.instance_variable_get(:@done)).to be true
       end
