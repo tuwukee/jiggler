@@ -5,8 +5,8 @@ module Jiggler
     class Monitor
       include Support::Component
       MONITOR_FLAG = "jiggler:flag:monitor"
-      PROCESSED_STATS = "jiggler:stats:processed"
-      FAILURES_STATS = "jiggler:stats:failures"
+      PROCESSED_COUNTER = "jiggler:stats:processed_counter"
+      FAILURES_COUNTER = "jiggler:stats:failures_counter"
 
       attr_reader :collection, :data_key, :exp
 
@@ -42,7 +42,7 @@ module Jiggler
           rss: process_rss,
           current_jobs: collection.data[:current_jobs],
         })
-        logger.debug("Loading stats into redis") { process_data }
+        logger.debug("Monitor") { process_data }
         processed_jobs = collection.data[:processed]
         failed_jobs = collection.data[:failures]
         collection.data[:processed] -= processed_jobs
@@ -51,18 +51,15 @@ module Jiggler
         redis do |conn|
           conn.pipeline do |pipeline|
             pipeline.collect do
-              pipeline.set(MONITOR_FLAG, '1', seconds: exp)
+              pipeline.set(MONITOR_FLAG, "1", seconds: exp)
               pipeline.set(data_key, process_data, seconds: exp)
-              pipeline.incrby(PROCESSED_STATS, processed_jobs)
-              pipeline.incrby(FAILURES_STATS, failed_jobs)
+              pipeline.incrby(PROCESSED_COUNTER, processed_jobs)
+              pipeline.incrby(FAILURES_COUNTER, failed_jobs)
             end
           end
         end
 
-        config.cleaner.unforsed_prune_outdated_processes_data(
-          config.processes_hash, config.stats_prefix
-        )
-        logger.debug("Pruned outdated processes data...")
+        config.cleaner.unforsed_prune_outdated_processes_data
       end
 
       def process_rss
@@ -77,7 +74,7 @@ module Jiggler
       end
 
       def cleanup
-        logger.debug("Cleaning up stats...")
+        logger.debug("Monitor") { "Cleaning up stats..." }
         redis { |conn| conn.del(data_key) }
       end
 

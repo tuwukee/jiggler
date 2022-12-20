@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require_relative "../fixtures/my_job"
-require_relative "../fixtures/my_failed_job"
-
 RSpec.describe Jiggler::Retrier do
   let(:config) do
     Jiggler::Config.new(
@@ -29,7 +26,7 @@ RSpec.describe Jiggler::Retrier do
       end
 
       it "does not retry if max retries are reached" do
-        msg = { "attempt" => 3 }
+        msg = { "attempt" => 3, "jid" => "123", "name" => "MyFailedJob" }
         expect do
           retrier.wrapped(job, msg, "test") do
             job.perform

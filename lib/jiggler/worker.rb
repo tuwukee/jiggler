@@ -23,7 +23,6 @@ module Jiggler
           break @callback.call(self) if @done
           process_job
         rescue Async::Stop
-          # cleanup (?)
           @callback.call(self)
           break
         rescue => ex
@@ -85,8 +84,14 @@ module Jiggler
           err, 
           { 
             context: "'Job raised exception'",
-            tid: tid
-          }.merge(parsed_args),
+            error_class: err.class.name,
+            name: parsed_args["name"],
+            queue: parsed_args["queue"],
+            args: parsed_args["args"],
+            attempt: parsed_args["attempt"],
+            tid: tid,
+            jid: parsed_args["jid"]
+          },
           raise_ex: true
         )
       rescue Exception => ex
@@ -94,8 +99,9 @@ module Jiggler
           ex,
           {
             context: "'Internal exception'",
-            tid: tid
-          }.merge(parsed_args),
+            tid: tid,
+            jid: parsed_args["jid"]
+          },
           raise_ex: true
         )
       end
@@ -108,15 +114,15 @@ module Jiggler
       klass = Object.const_get(parsed_job["name"])
       instance = klass.new
       args = parsed_job["args"]
+      jid = parsed_job["jid"]
 
-      logger.info("Starting #{klass} queue=#{klass.queue} tid=#{tid} jid=#{instance._jid}")
-      add_current_job_to_collection(instance._jid, parsed_job, klass.queue)
+      logger.info("Starting #{klass} queue=#{klass.queue} tid=#{tid} jid=#{jid}")
+      add_current_job_to_collection(parsed_job, klass.queue)
       with_retry(instance, parsed_job, queue) do
         instance.perform(*args)
       end
-      logger.info("Finished #{klass} queue=#{klass.queue} tid=#{tid} jid=#{instance._jid}")
+      logger.info("Finished #{klass} queue=#{klass.queue} tid=#{tid} jid=#{jid}")
     ensure
-      logger.debug("Removing job #{instance._jid}...")
       remove_current_job_from_collection
     end
 
@@ -147,10 +153,9 @@ module Jiggler
       )
     end
 
-    def add_current_job_to_collection(jid, parsed_job, queue)
+    def add_current_job_to_collection(parsed_job, queue)
       return unless config[:stats_enabled]
       collection.data[:current_jobs][tid] = {
-        jid: jid,
         job_args: parsed_job,
         queue: queue,
         started_at: Time.now.to_f
@@ -173,7 +178,7 @@ module Jiggler
     end
 
     def queues
-      @queues ||= config.queues_hash.values
+      @queues ||= config.prefixed_queues
     end
 
     def constantize(str)

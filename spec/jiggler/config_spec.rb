@@ -24,10 +24,14 @@ RSpec.describe Jiggler::Config do
       expect(config[:require]).to eq "test.rb"
       expect(config[:max_dead_jobs]).to be 100
       expect(config[:dead_timeout_in_seconds]).to be 100
+      expect(config[:stats_enabled]).to be true
+      expect(config[:stats_interval]).to be 15
+      expect(config[:poller_enabled]).to be true
+      expect(config[:poll_interval]).to be 5
     end
 
     it "generates prefixed queues" do
-      expect(config.queues_hash.values).to eq ["jiggler:list:test", "jiggler:list:test2"]
+      expect(config.prefixed_queues).to eq ["jiggler:list:test", "jiggler:list:test2"]
     end
 
     it "gets redis options" do

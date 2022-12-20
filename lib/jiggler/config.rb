@@ -60,9 +60,13 @@ module Jiggler
       STATS_PREFIX
     end
 
-    def queues_hash
-      @queues_hash ||= @options[:queues].each_with_object({}) do |name, hash| 
-        hash[name] = "#{QUEUE_PREFIX}#{name}" 
+    def default_queue
+      DEFAULT_QUEUE
+    end
+
+    def prefixed_queues
+      @prefixed_queues ||= @options[:queues].map do |name| 
+        "#{QUEUE_PREFIX}#{name}" 
       end
     end
 
@@ -82,7 +86,7 @@ module Jiggler
     end
 
     def cleaner
-      @cleaner ||= Jiggler::Cleaner.new(redis)
+      @cleaner ||= Jiggler::Cleaner.new(self)
     end
 
     def logger=(new_logger)
@@ -94,8 +98,8 @@ module Jiggler
     end
 
     def handle_exception(ex, ctx = {}, raise_ex: false)
-      err_context = ctx.select { |k, v| v }.map { |k, v| "#{k}=#{v}" }.join(" ")
-      logger.error("#{ex.message} #{err_context}")
+      err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(" ")
+      logger.error("error_message='#{ex.message}' #{err_context}")
       logger.error(ex.backtrace.first(10).join("\n")) if !ex.backtrace.nil? || raise_ex == false
       raise ex if raise_ex
     end

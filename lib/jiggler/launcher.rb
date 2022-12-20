@@ -24,6 +24,7 @@ module Jiggler
 
       @done = true
       manager.quite
+
       poller.terminate if config[:poller_enabled]
       monitor.terminate if config[:stats_enabled]
       cleanup
@@ -43,9 +44,11 @@ module Jiggler
         pid: Process.pid,
         hostname: hostname,
         concurrency: config[:concurrency],
+        timeout: config[:timeout],
         queues: config[:queues].join(", "),
         started_at: Time.now.to_f,
-        stats_enabled: config[:stats_enabled]
+        stats_enabled: config[:stats_enabled],
+        poller_enabled: config[:poller_enabled]
       }.to_json
     end
 
@@ -64,7 +67,7 @@ module Jiggler
     end
 
     def manager
-      @manager = Manager.new(config, collection)
+      @manager ||= Manager.new(config, collection)
     end
 
     def poller

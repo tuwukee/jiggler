@@ -3,6 +3,7 @@
 require "debug"
 
 require "/jiggler/lib/jiggler.rb"
+require "/jiggler/spec/fixtures/jobs.rb"
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

@@ -1,62 +1,72 @@
 # frozen_string_literal: true
 
-require_relative "../fixtures/my_job"
-
 RSpec.describe Jiggler::Job do
   describe ".job_options" do
     context "on default" do
       let(:job) { MyJob.new }
 
-      before { MyJob.job_options }
+      before do
+        MyJob.job_options # reset to default
+      end
 
       it "has correct attrs" do
         expect(job.class.queue).to eq "default"
         expect(job.class.retries).to be 0
-        expect(job._args).to eq({})
+        expect(job.class.async).to be false
+        expect(job.class.retry_queue).to eq "default"
         expect(job.class.name).to eq "MyJob"
-        expect(job.send(:list_name)).to eq "jiggler:list:default"
-        expect(job.send(:job_args)).to eq({ 
-          name: "MyJob", 
-          args: {}, 
-          retries: 0
-        }.to_json)
       end
     end
 
     context "with custom options" do
-      let(:job) { MyJob.new(name: "Woo") }
+      let(:job) { MyJob.new }
 
       before do
-        MyJob.job_options(queue: "custom", retries: 3)
+        MyJob.job_options(queue: "custom", retries: 3, async: true, retry_queue: "custom_retry")
       end
 
       it "has correct attrs" do
         expect(job.class.queue).to eq "custom"
         expect(job.class.retries).to be 3
-        expect(job._args).to eq({ name: "Woo" })
+        expect(job.class.async).to be true
+        expect(job.class.retry_queue).to eq "custom_retry"
         expect(job.class.name).to eq "MyJob"
-        expect(job.send(:list_name)).to eq "jiggler:list:custom"
-        expect(job.send(:job_args)).to eq({ 
-          name: "MyJob", 
-          args: { name: "Woo" }, 
-          retries: 3 
-        }.to_json)
       end
     end
   end
 
-  describe ".perform_async" do
-    let(:job) { MyJob.new }
-
-    before do
-      MyJob.job_options(queue: "mine", retries: 0)
+  describe ".with_options" do
+    it "allows to override options on job level" do
+      expect { MyJob.with_options(queue: "woo").enqueue }.to change { 
+        Jiggler.config.with_redis(async: false) { |conn| conn.llen("jiggler:list:woo") }
+      }.by(1)
+      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:woo") }
     end
+  end
 
+  describe ".enqueue" do
     it "adds the job to the queue" do
-      expect { job.perform_async.wait }.to change { 
+      expect { MyJob.with_options(queue: "mine").enqueue }.to change { 
         Jiggler.config.with_redis(async: false) { |conn| conn.llen("jiggler:list:mine") }
       }.by(1)
       Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:mine") }
+    end
+
+    it "adds the job to the queue asynchonously" do
+      expect { MyJob.with_options(queue: "mine", async: true).enqueue.wait }.to change { 
+        Jiggler.config.with_redis(async: false) { |conn| conn.llen("jiggler:list:mine") }
+      }.by(1)
+      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:mine") }
+    end
+  end
+
+  describe ".enqueue_in" do
+    it "adds the job to the scheduled set" do
+      expect { MyJob.with_options(queue: "mine").enqueue_in(1) }.to change { 
+        Jiggler.config.with_redis(async: false) do |conn| 
+          conn.call("zcard", Jiggler.config.scheduled_set) 
+        end
+      }.by(1)
     end
   end
 end
