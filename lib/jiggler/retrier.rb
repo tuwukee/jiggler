@@ -59,14 +59,14 @@ module Jiggler
     end
 
     def retries_exhausted(jobinst, msg, exception)
-      logger.warn("Retries exhausted for #{msg["name"]} tid=#{tid} jid=#{msg["jid"]}")
+      logger.warn("Retries exhausted for #{msg["name"]} jid=#{msg["jid"]}")
 
       send_to_morgue(msg)
     end
 
     # todo: review this
     def send_to_morgue(msg)
-      logger.warn("#{msg["name"]} has been sent to dead tid=#{tid} jid=#{msg["jid"]}")
+      logger.warn("#{msg["name"]} has been sent to dead jid=#{msg["jid"]}")
       payload = JSON.generate(msg)
       now = Time.now.to_f
 

@@ -15,6 +15,7 @@ module Jiggler
       @callback = callback
       @config = config
       @collection = collection
+      @tid = tid
     end
 
     def run
@@ -23,7 +24,7 @@ module Jiggler
           break @callback.call(self) if @done
           process_job
         rescue Async::Stop
-          @callback.call(self)
+          @callback.call(self) # shoulf it handle stop errors raised by callback?
           break
         rescue => ex
           increase_failures_counter
@@ -89,7 +90,7 @@ module Jiggler
             queue: parsed_args["queue"],
             args: parsed_args["args"],
             attempt: parsed_args["attempt"],
-            tid: tid,
+            tid: @tid,
             jid: parsed_args["jid"]
           },
           raise_ex: true
@@ -99,7 +100,7 @@ module Jiggler
           ex,
           {
             context: "'Internal exception'",
-            tid: tid,
+            tid: @tid,
             jid: parsed_args["jid"]
           },
           raise_ex: true
@@ -107,7 +108,7 @@ module Jiggler
       end
     rescue JSON::ParserError => err
       increase_failures_counter
-      logger.error("Failed to parse job: #{current_job.args}")
+      logger.error("Worker") { "Failed to parse job: #{current_job.args}" }
     end
 
     def execute(parsed_job, queue)
@@ -116,12 +117,12 @@ module Jiggler
       args = parsed_job["args"]
       jid = parsed_job["jid"]
 
-      logger.info("Starting #{klass} queue=#{klass.queue} tid=#{tid} jid=#{jid}")
+      logger.info("Worker") { "Starting #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}" }
       add_current_job_to_collection(parsed_job, klass.queue)
       with_retry(instance, parsed_job, queue) do
         instance.perform(*args)
       end
-      logger.info("Finished #{klass} queue=#{klass.queue} tid=#{tid} jid=#{jid}")
+      logger.info("Worker") { "Finished #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}" }
     ensure
       remove_current_job_from_collection
     end
@@ -147,7 +148,7 @@ module Jiggler
         ex,
         {
           context: "Fetch error",
-          tid: tid
+          tid: @tid
         },
         raise_ex: true
       )
@@ -155,7 +156,7 @@ module Jiggler
 
     def add_current_job_to_collection(parsed_job, queue)
       return unless config[:stats_enabled]
-      collection.data[:current_jobs][tid] = {
+      collection.data[:current_jobs][@tid] = {
         job_args: parsed_job,
         queue: queue,
         started_at: Time.now.to_f
@@ -164,7 +165,7 @@ module Jiggler
 
     def remove_current_job_from_collection
       return unless config[:stats_enabled]
-      collection.data[:current_jobs].delete(tid)
+      collection.data[:current_jobs].delete(@tid)
     end
 
     def increase_processed_counter

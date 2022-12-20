@@ -19,6 +19,10 @@ module Jiggler
         Enqueuer.new(self, options)
       end
 
+      def enqueue_bulk(args_arr)
+        Enqueuer.new(self, { async: async }).enqueue_bulk(args_arr)
+      end
+
       def queue
         @queue || Jiggler::Config::DEFAULT_QUEUE
       end
@@ -56,6 +60,18 @@ module Jiggler
       def enqueue(*args)
         config.with_redis(async: @options.fetch(:async, false)) do |conn|
           conn.lpush(list_name, job_args(args))
+        end
+      end
+
+      def enqueue_bulk(args_arr)
+        config.with_redis(async: @options.fetch(:async, false)) do |conn|
+          conn.pipeline do |pipeline|
+            pipeline.collect do
+              args_arr.each do |args|
+                pipeline.lpush(list_name, job_args(args))
+              end
+            end
+          end
         end
       end
 

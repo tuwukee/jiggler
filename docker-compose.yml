@@ -11,7 +11,7 @@ services:
     volumes:
       - .:/jiggler
       - jiggler_gems:/jiggler_gems
-    command: bundle exec bin/jiggler -v -r ./spec/fixtures/jobs
+    command: bundle exec bin/jigglerload
     platform: linux/amd64
     tty: true
     depends_on:
@@ -19,7 +19,7 @@ services:
 
   redis: &redis
     container_name: jiggler_redis
-    image: redis:6.0.5-alpine
+    image: redis:6.2.6-alpine
 
   web: &web
     container_name: jiggler_web

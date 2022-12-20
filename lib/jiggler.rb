@@ -41,7 +41,7 @@ module Jiggler
     yield config unless server?
   end
 
-  def self.redis(async: true, &block)
+  def self.redis(async: false, &block)
     config.with_redis(async:, &block)
   end
 

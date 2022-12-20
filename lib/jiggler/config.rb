@@ -94,7 +94,7 @@ module Jiggler
     end
 
     def logger
-      @logger = ::Logger.new(STDOUT)
+      @logger ||= ::Logger.new(STDOUT)
     end
 
     def handle_exception(ex, ctx = {}, raise_ex: false)
