@@ -23,6 +23,7 @@ GEM
       reline (>= 0.3.1)
     diff-lcs (1.5.0)
     fiber-local (1.0.0)
+    heap-profiler (0.6.0)
     io-console (0.5.11)
     io-event (1.1.4)
     irb (1.4.1)
@@ -67,6 +68,7 @@ DEPENDENCIES
   async-io
   async-redis
   debug (~> 1.6)
+  heap-profiler
   rack
   rackup
   rspec

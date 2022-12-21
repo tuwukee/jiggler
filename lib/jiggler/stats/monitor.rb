@@ -17,10 +17,12 @@ module Jiggler
         @condition = Async::Condition.new
         @data_key = "#{config.stats_prefix}#{collection.uuid}"
         @exp = config[:stats_interval] * 2
+        @rss_path = "/proc/#{Process.pid}/status"
       end
 
       def start
         @job = safe_async("Monitor") do
+          @tid = tid
           wait # initial wait
           until @done
             load_data_into_redis
@@ -48,7 +50,7 @@ module Jiggler
         collection.data[:processed] -= processed_jobs
         collection.data[:failures] -= failed_jobs
 
-        redis do |conn|
+        config.with_redis_sync do |conn|
           conn.pipeline do |pipeline|
             pipeline.collect do
               pipeline.set(MONITOR_FLAG, "1", seconds: exp)
@@ -63,13 +65,13 @@ module Jiggler
       end
 
       def process_rss
-        IO.readlines("/proc/#{Process.pid}/status").each do |line|
+        IO.readlines(@rss_path).each do |line|
           next unless line.start_with?("VmRSS:")
           break line.split[1].to_i
         end
       rescue => ex
         handle_exception(
-          ex, { context: "'Error while getting process RSS'", tid: tid }
+          ex, { context: "'Error while getting process RSS'", tid: @tid }
         )
       end
 
@@ -86,7 +88,7 @@ module Jiggler
         @condition.wait
       rescue => ex
         handle_exception(
-          ex, { context: "'Error while waiting for stats'", tid: tid }
+          ex, { context: "'Error while waiting for stats'", tid: @tid }
         )
       end
     end

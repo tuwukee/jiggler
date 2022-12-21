@@ -12,7 +12,7 @@ module Jiggler
     PROCESSES_HASH = "jiggler:hash:processes"
     STATS_PREFIX = "jiggler:stats:"
     RETRIES_SET = "jiggler:set:retries"
-    SCHEDULED_SET = "jiggler:set:scheduled" # todo
+    SCHEDULED_SET = "jiggler:set:scheduled"
     DEAD_SET = "jiggler:set:dead"
 
     DEFAULTS = {
@@ -67,6 +67,18 @@ module Jiggler
     def prefixed_queues
       @prefixed_queues ||= @options[:queues].map do |name| 
         "#{QUEUE_PREFIX}#{name}" 
+      end
+    end
+
+    def with_async(redis)
+      Async do
+        yield redis
+      end
+    end
+
+    def with_sync(redis)
+      Sync do
+        yield redis
       end
     end
 

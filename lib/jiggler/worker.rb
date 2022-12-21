@@ -15,16 +15,17 @@ module Jiggler
       @callback = callback
       @config = config
       @collection = collection
-      @tid = tid
     end
 
     def run
-      @runner = safe_async("worker") do
+      @runner = safe_async("Worker") do
+      # @runner = Async do
+        @tid = tid
         loop do
           break @callback.call(self) if @done
           process_job
         rescue Async::Stop
-          @callback.call(self) # shoulf it handle stop errors raised by callback?
+          @callback.call(self) # should it handle stop errors raised by callback?
           break
         rescue => ex
           increase_failures_counter
@@ -57,7 +58,7 @@ module Jiggler
     end
 
     def fetch_one
-      queue, args = redis(async: false) { |conn| conn.brpop(*queues, timeout: TIMEOUT) }
+      queue, args = config.with_redis_sync { |conn| conn.brpop(*queues, timeout: TIMEOUT) }
       if queue
         if @done
           requeue(queue, args)
@@ -112,23 +113,26 @@ module Jiggler
     end
 
     def execute(parsed_job, queue)
-      klass = Object.const_get(parsed_job["name"])
-      instance = klass.new
-      args = parsed_job["args"]
+      klass = constantize(parsed_job["name"])
       jid = parsed_job["jid"]
+      instance = klass.new
 
-      logger.info("Worker") { "Starting #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}" }
+      logger.info("Worker") {
+        "Starting #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
+      }
       add_current_job_to_collection(parsed_job, klass.queue)
       with_retry(instance, parsed_job, queue) do
-        instance.perform(*args)
+        instance.perform(*parsed_job["args"])
       end
-      logger.info("Worker") { "Finished #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}" }
+      logger.info("Worker") { 
+        "Finished #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
+      }
     ensure
       remove_current_job_from_collection
     end
 
-    def with_retry(instance, args, queue)
-      retrier.wrapped(instance, args, queue) do
+    def with_retry(instance, parsed_job, queue)
+      retrier.wrapped(instance, parsed_job, queue) do
         yield
       end
     end
@@ -138,7 +142,7 @@ module Jiggler
     end
 
     def requeue(queue, args)
-      redis do |conn|
+      config.with_redis_async do |conn|
         conn.rpush(queue, args)
       end
     end

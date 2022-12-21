@@ -6,12 +6,14 @@ require_relative "../lib/jiggler"
 require_relative "../lib/jiggler/cli"
 
 require "ruby-prof"
+require "heap-profiler"
 
 class LoadJob
   include Jiggler::Job
   job_options retries: 1
 
   def perform(idx, ts = nil)
+    # sleep(0.2)
     puts(Time.now.to_f - ts) if !ts.nil?
   end
 end
@@ -19,7 +21,7 @@ end
 Jiggler.configure_server do |config|
   # config[:poll_interval] = 2
   config[:boot_app] = false
-  config[:poller_enabled] = false
+  # config[:poller_enabled] = false
   config[:stats_enabled] = false
   config.logger.level = Logger::WARN
 end
@@ -28,7 +30,7 @@ Jiggler.config.cleaner.prune_all
 
 cli = Jiggler::CLI.instance
 
-iter = 5
+iter = 10
 count = 10_000
 iter.times do |i|
   arr = Array.new(count) { |idx| [idx] }
@@ -42,34 +44,40 @@ end
 
 start = Time.now
 Monitoring = Thread.new do
+#  loop do
+#    sleep 2.0
+#    qsize = Jiggler.redis do |conn|
+#      conn.llen "jiggler:list:default"
+#    end
+#    total = qsize
+#    Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
+#    if total == 0
+#      Jiggler.logger.warn("Done, #{iter * count} jobs in #{Time.now - start} sec")
+#      Jiggler.logger.warn("Latency for three jobs")
+#
+#      LoadJob.enqueue(1, Time.now.to_f)
+#      LoadJob.enqueue(2, Time.now.to_f)
+#      LoadJob.enqueue(3, Time.now.to_f)
+#
+#      sleep 0.2
+#
+#      Process.kill("INT", Process.pid)
+#      break
+#    end
+#  end
+
   loop do
-    sleep 1.0
-    qsize = Jiggler.redis do |conn|
-      conn.llen "jiggler:list:default"
-    end
-    total = qsize
-    Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
-    if total == 0
-      Jiggler.logger.warn("Done, #{iter * count} jobs in #{Time.now - start} sec")
-      Jiggler.logger.warn("Latency for three jobs")
-
-      LoadJob.enqueue(1, Time.now.to_f)
-      LoadJob.enqueue(2, Time.now.to_f)
-      LoadJob.enqueue(3, Time.now.to_f)
-
-      sleep 0.2
-
-      Process.kill("INT", Process.pid)
-      break
-    end
+    sleep 5
+    # print GC statistics
+    # Jiggler.logger.warn(GC.stat)
+    Jiggler.logger.warn("RSS") { Process.rss } 
   end
 end
 
-RubyProf.exclude_threads = [Monitoring]
-RubyProf.measure_mode = RubyProf::ALLOCATIONS
-result = RubyProf.profile(:track_allocations => true) do
+def start_jiggler(cli)
   begin
     cli.parse
+
     cli.config.logger.warn "...Starting Jiggler for loadtest..."
     cli.config.logger.warn("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config[:queues].join(',')}")
     cli.start
@@ -80,7 +88,34 @@ result = RubyProf.profile(:track_allocations => true) do
   end
 end
 
-Jiggler.logger.warn("Profiling...")
+start_jiggler(cli)
 
-printer = RubyProf::GraphHtmlPrinter.new(result)
-printer.print(File.new("output.html", "w"), min_percent: 1)
+
+# async loop: 79624 (23:06:45) -> 79900 (23:07:46) -> 80116 (23:11:45)
+# poller (poll int 5): 
+# 80088 (23:12:48) -> 80376 (1min 23:13:13) -> 83592 (5min 23:17:43)
+# poller (poll int 5) & manager (concurrency 2): 
+# 82384 (23:19:35) -> 90388 (1min 23:20:37) -> 92016 (5min 23:24:16)
+#
+# Async do
+#  loop do
+#    sleep(2)
+#    Jiggler.logger.warn("looping...")
+#  end
+# end
+
+# -> RubyProf
+# RubyProf.exclude_threads = [Monitoring]
+# RubyProf.measure_mode = RubyProf::ALLOCATIONS
+# result = RubyProf.profile(:track_allocations => true) do
+#   start_jiggler(cli)
+#   Jiggler.logger.warn("Ruby-prof is wrapping up...")
+# end
+# printer = RubyProf::GraphHtmlPrinter.new(result)
+# printer.print(File.new("tmp/rubyprof.html", "w"), min_percent: 10)
+
+# -> HeapProfiler
+# heap-profiler tmp/allocated.heap
+# HeapProfiler.report("tmp") do
+#   start_jiggler(cli)
+# end

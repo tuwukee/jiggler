@@ -10,7 +10,7 @@ module Jiggler
     end
 
     def prune_all
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         conn.pipeline do |pipeline|
           prn_retries_set(pipeline)
           prn_scheduled_set(pipeline)
@@ -24,68 +24,69 @@ module Jiggler
     end
 
     def prune_failures_counter
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         prn_failures_counter(conn)
       end
     end
 
     def prune_processed_counter
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         prn_processed_counter(conn)
       end
     end
 
     def prune_all_processes
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         prn_all_processes(conn)
       end
     end
 
     def prune_process(uuid)
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         conn.call("hdel", config.processes_hash, uuid)
       end
     end
 
     def prune_dead_set
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         prn_dead_set(conn)
       end
     end
 
     def prune_retries_set
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         prn_retries_set(conn)
       end
     end
 
     def prune_scheduled_set
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         prn_scheduled_set(conn)
       end
     end
 
     def prune_all_queues
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         prn_all_queues(conn)
       end
     end
 
     def prune_queue(queue_name)
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         conn.call("del", "#{config.queue_prefix}#{queue_name}")
       end
     end
 
     def unforsed_prune_outdated_processes_data
-      return unless config.with_redis(async: false) { |conn| conn.set(CLEANUP_FLAG, "1", update: false, seconds: 60) }
+      return unless config.with_redis_sync { |conn| conn.set(CLEANUP_FLAG, "1", update: false, seconds: 60) }
 
       prune_outdated_processes_data
     end
 
+    # sometimes cleans valid processes :'(
     def prune_outdated_processes_data
       to_prune = []
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         processes_hash = Hash[*conn.call("hgetall", config.processes_hash)]
         stats_keys = conn.call("scan", "0", "match", "#{config.stats_prefix}*").last
         
@@ -98,7 +99,7 @@ module Jiggler
 
         unless to_prune.empty?
           conn.call("hdel", config.processes_hash, *to_prune)
-          config.logger.info("Prune outdated processes") { to_prune }
+          config.logger.warn("Pruned outdated processes") { to_prune }
         end
       end
 
@@ -106,7 +107,7 @@ module Jiggler
     end
 
     def prune_all_unmonitored_processes
-      config.with_redis(async: false) do |conn|
+      config.with_redis_sync do |conn|
         processes_hash = Hash[*conn.call("hgetall", config.processes_hash)]
         processes_hash.each do |k, v|
           process_data = JSON.parse(v)

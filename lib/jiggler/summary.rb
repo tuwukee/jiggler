@@ -25,7 +25,7 @@ module Jiggler
 
     def all
       summary = {}
-      collected_data = config.with_redis(async: false) do |conn|
+      collected_data = config.with_redis_sync do |conn|
         conn.pipeline do |pipeline|
           data = pipeline.collect do
             pipeline.call("zcard", config.retries_set)
