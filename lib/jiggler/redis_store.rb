@@ -1,36 +1,42 @@
 # frozen_string_literal: true
 
-require "async/redis"
+require 'redis_client'
+require 'async/pool'
 
 module Jiggler
   class RedisStore
-    attr_reader :client
+    :config
 
     def initialize(options = {})
       @options = options
-      endpoint = options[:redis_url].is_a?(String) ? 
-        make_redis_endpoint(URI(options[:redis_url])) : Async::Redis.local_endpoint 
-      @client = Async::Redis::Client.new(endpoint, **options.slice(:concurrency))
+      @redis_config = RedisClient.config(url: options[:redis_url])
     end
 
-    private
-
-    def make_redis_endpoint(uri)
-      tcp_endpoint = Async::IO::Endpoint.tcp(uri.hostname, uri.port)
-      case uri.scheme
-      when "redis"
-        tcp_endpoint
-      when "rediss"
-        ssl_context = OpenSSL::SSL::SSLContext.new
-        ssl_context.set_params(
-          ca_file: @options[:ca_file],
-          cert: OpenSSL::X509::Certificate.new(File.read(@options[:cert])),
-          key: OpenSSL::PKey::RSA.new(File.read(@options[:key])),
-        )
-        Async::IO::SSLEndpoint.new(tcp_endpoint, ssl_context: ssl_context)
-      else
-        raise ArgumentError
+    def pool
+      return @options[:redis_pool] if @options[:redis_pool]
+      Async::Pool::Controller.wrap(limit: @options[:concurrency]) do
+        @redis_config.new_client
       end
+    end
+  end
+end
+
+module Jiggler
+  class RedisClient < ::RedisClient
+    def concurrency
+      1
+    end
+
+    def viable?
+      connected?
+    end
+
+    def closed?
+      @raw_connection.nil?
+    end
+
+    def reusable?
+      !@raw_connection.nil?
     end
   end
 end

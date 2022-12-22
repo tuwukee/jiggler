@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
-require_relative "../lib/jiggler"
-require_relative "../lib/jiggler/cli"
+require_relative '../lib/jiggler'
+require_relative '../lib/jiggler/cli'
 
 begin
   cli = Jiggler::CLI.instance
@@ -12,7 +12,6 @@ begin
 
   cli.start
 rescue => e
-  raise e if $DEBUG
   warn e.message
   warn e.backtrace.join("\n")
   exit 1

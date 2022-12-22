@@ -1,37 +1,38 @@
 # frozen_string_literal: true
 
-require "forwardable"
-require "logger"
+require 'forwardable'
+require 'logger'
 
 module Jiggler
   class Config
     extend Forwardable
 
-    DEFAULT_QUEUE = "default"
-    QUEUE_PREFIX = "jiggler:list:"
-    PROCESSES_HASH = "jiggler:hash:processes"
-    STATS_PREFIX = "jiggler:stats:"
-    RETRIES_SET = "jiggler:set:retries"
-    SCHEDULED_SET = "jiggler:set:scheduled" # todo
-    DEAD_SET = "jiggler:set:dead"
+    DEFAULT_QUEUE = 'default'
+    QUEUE_PREFIX = 'jiggler:list:'
+    PROCESSES_HASH = 'jiggler:hash:processes'
+    STATS_PREFIX = 'jiggler:stats:'
+    RETRIES_SET = 'jiggler:set:retries'
+    SCHEDULED_SET = 'jiggler:set:scheduled'
+    DEAD_SET = 'jiggler:set:dead'
 
     DEFAULTS = {
       boot_app: true,
-      require: ".",
-      environment: "development",
+      require: '.',
+      environment: 'development',
       concurrency: 10,
       timeout: 25,
       max_dead_jobs: 10_000,
       stats_enabled: true,
-      stats_interval: 15,
+      stats_interval: 10,
       poller_enabled: true,
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
+      redis_pool: nil
     }
 
     def initialize(options = {})
       @options = DEFAULTS.merge(options)
-      @options[:redis_url] = ENV["REDIS_URL"] if @options[:redis_url].nil? && ENV["REDIS_URL"]
+      @options[:redis_url] = ENV['REDIS_URL'] if @options[:redis_url].nil? && ENV['REDIS_URL']
       @options[:queues] ||= [DEFAULT_QUEUE]
       @directory = {}
     end
@@ -70,19 +71,45 @@ module Jiggler
       end
     end
 
+    def with_async_redis
+      Async do
+        redis_pool.acquire do |conn|
+          yield conn
+        end
+      end
+    end
+
+    def with_sync_redis
+      Sync do
+        redis_pool.acquire do |conn|
+          yield conn
+        end
+      end
+    end
+
     def with_redis(async: true)
       wrapper = async ? :Async : :Sync
       Kernel.public_send(wrapper) do
-        yield redis
+        redis_pool.acquire do |conn|
+          yield conn
+        end 
       end
     end
 
     def redis_options
-      @redis_options ||= @options.slice(:concurrency, :redis_url, :cert, :key)
+      @redis_options ||= begin
+        opts = @options.slice(:concurrency, :redis_url, :cert, :key, :redis_pool)
+        if Jiggler.server?
+          opts[:concurrency] += 2 # safity margin
+          opts[:concurrency] += 2 if @options[:poller_enabled] # poller uses 2 fibers
+          opts[:concurrency] += 1 if @options[:stats_enabled]
+        end
+        opts
+      end
     end
 
-    def redis
-      @redis ||= Jiggler::RedisStore.new(redis_options).client
+    def redis_pool
+      @redis_pool ||= Jiggler::RedisStore.new(redis_options).pool
     end
 
     def cleaner
@@ -94,11 +121,11 @@ module Jiggler
     end
 
     def logger
-      @logger = ::Logger.new(STDOUT)
+      @logger ||= ::Logger.new(STDOUT)
     end
 
     def handle_exception(ex, ctx = {}, raise_ex: false)
-      err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(" ")
+      err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(' ')
       logger.error("error_message='#{ex.message}' #{err_context}")
       logger.error(ex.backtrace.first(10).join("\n")) if !ex.backtrace.nil? || raise_ex == false
       raise ex if raise_ex

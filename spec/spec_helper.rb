@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require "debug"
+require 'debug'
 
-require "/jiggler/lib/jiggler.rb"
-require "/jiggler/spec/fixtures/jobs.rb"
+require '/jiggler/lib/jiggler.rb'
+require '/jiggler/spec/fixtures/jobs.rb'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
@@ -17,13 +17,17 @@ RSpec.configure do |config|
   config.shared_context_metadata_behavior = :apply_to_host_groups
 
   config.filter_run_when_matching :focus
-  config.example_status_persistence_file_path = "spec/examples.txt"
+  config.example_status_persistence_file_path = 'spec/examples.txt'
   config.disable_monkey_patching!
   config.warnings = true
 
   if config.files_to_run.one?
-    config.default_formatter = "doc"
+    config.default_formatter = 'doc'
   end
+
+  config.before(:suite) do
+    Jiggler.config.cleaner.prune_all
+  end 
 
   config.around(:each) do |example|
     Timeout.timeout(10) do

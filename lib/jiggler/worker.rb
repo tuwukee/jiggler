@@ -18,12 +18,13 @@ module Jiggler
     end
 
     def run
-      @runner = safe_async("worker") do
+      @runner = safe_async('Worker') do
+        @tid = tid
         loop do
           break @callback.call(self) if @done
           process_job
         rescue Async::Stop
-          @callback.call(self)
+          @callback.call(self) # should it handle stop errors raised by callback?
           break
         rescue => ex
           increase_failures_counter
@@ -56,7 +57,7 @@ module Jiggler
     end
 
     def fetch_one
-      queue, args = redis(async: false) { |conn| conn.brpop(*queues, timeout: TIMEOUT) }
+      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) }
       if queue
         if @done
           requeue(queue, args)
@@ -83,14 +84,14 @@ module Jiggler
         handle_exception(
           err, 
           { 
-            context: "'Job raised exception'",
+            context: '\'Job raised exception\'',
             error_class: err.class.name,
-            name: parsed_args["name"],
-            queue: parsed_args["queue"],
-            args: parsed_args["args"],
-            attempt: parsed_args["attempt"],
-            tid: tid,
-            jid: parsed_args["jid"]
+            name: parsed_args['name'],
+            queue: parsed_args['queue'],
+            args: parsed_args['args'],
+            attempt: parsed_args['attempt'],
+            tid: @tid,
+            jid: parsed_args['jid']
           },
           raise_ex: true
         )
@@ -98,36 +99,39 @@ module Jiggler
         handle_exception(
           ex,
           {
-            context: "'Internal exception'",
-            tid: tid,
-            jid: parsed_args["jid"]
+            context: '\'Internal exception\'',
+            tid: @tid,
+            jid: parsed_args['jid']
           },
           raise_ex: true
         )
       end
     rescue JSON::ParserError => err
       increase_failures_counter
-      logger.error("Failed to parse job: #{current_job.args}")
+      logger.error('Worker') { "Failed to parse job: #{current_job.args}" }
     end
 
     def execute(parsed_job, queue)
-      klass = Object.const_get(parsed_job["name"])
+      klass = constantize(parsed_job['name'])
+      jid = parsed_job['jid']
       instance = klass.new
-      args = parsed_job["args"]
-      jid = parsed_job["jid"]
 
-      logger.info("Starting #{klass} queue=#{klass.queue} tid=#{tid} jid=#{jid}")
+      logger.info('Worker') {
+        "Starting #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
+      }
       add_current_job_to_collection(parsed_job, klass.queue)
       with_retry(instance, parsed_job, queue) do
-        instance.perform(*args)
+        instance.perform(*parsed_job['args'])
       end
-      logger.info("Finished #{klass} queue=#{klass.queue} tid=#{tid} jid=#{jid}")
+      logger.info("Worker") { 
+        "Finished #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
+      }
     ensure
       remove_current_job_from_collection
     end
 
-    def with_retry(instance, args, queue)
-      retrier.wrapped(instance, args, queue) do
+    def with_retry(instance, parsed_job, queue)
+      retrier.wrapped(instance, parsed_job, queue) do
         yield
       end
     end
@@ -137,8 +141,8 @@ module Jiggler
     end
 
     def requeue(queue, args)
-      redis do |conn|
-        conn.rpush(queue, args)
+      config.with_async_redis do |conn|
+        conn.call('RPUSH', queue, args)
       end
     end
 
@@ -146,8 +150,8 @@ module Jiggler
       handle_exception(
         ex,
         {
-          context: "Fetch error",
-          tid: tid
+          context: 'Fetch error',
+          tid: @tid
         },
         raise_ex: true
       )
@@ -155,7 +159,7 @@ module Jiggler
 
     def add_current_job_to_collection(parsed_job, queue)
       return unless config[:stats_enabled]
-      collection.data[:current_jobs][tid] = {
+      collection.data[:current_jobs][@tid] = {
         job_args: parsed_job,
         queue: queue,
         started_at: Time.now.to_f
@@ -164,7 +168,7 @@ module Jiggler
 
     def remove_current_job_from_collection
       return unless config[:stats_enabled]
-      collection.data[:current_jobs].delete(tid)
+      collection.data[:current_jobs].delete(@tid)
     end
 
     def increase_processed_counter
@@ -182,9 +186,9 @@ module Jiggler
     end
 
     def constantize(str)
-      return Object.const_get(str) unless str.include?("::")
+      return Object.const_get(str) unless str.include?('::')
 
-      names = str.split("::")
+      names = str.split('::')
       names.shift if names.empty? || names.first.empty?
 
       names.inject(Object) do |constant, name|

@@ -4,9 +4,9 @@ module Jiggler
   module Stats
     class Monitor
       include Support::Component
-      MONITOR_FLAG = "jiggler:flag:monitor"
-      PROCESSED_COUNTER = "jiggler:stats:processed_counter"
-      FAILURES_COUNTER = "jiggler:stats:failures_counter"
+      MONITOR_FLAG = 'jiggler:flag:monitor'
+      PROCESSED_COUNTER = 'jiggler:stats:processed_counter'
+      FAILURES_COUNTER = 'jiggler:stats:failures_counter'
 
       attr_reader :collection, :data_key, :exp
 
@@ -17,10 +17,12 @@ module Jiggler
         @condition = Async::Condition.new
         @data_key = "#{config.stats_prefix}#{collection.uuid}"
         @exp = config[:stats_interval] * 2
+        @rss_path = "/proc/#{Process.pid}/status"
       end
 
       def start
-        @job = safe_async("Monitor") do
+        @job = safe_async('Monitor') do
+          @tid = tid
           wait # initial wait
           until @done
             load_data_into_redis
@@ -42,40 +44,44 @@ module Jiggler
           rss: process_rss,
           current_jobs: collection.data[:current_jobs],
         })
-        logger.debug("Monitor") { process_data }
+        logger.debug('Monitor') { process_data }
+
         processed_jobs = collection.data[:processed]
         failed_jobs = collection.data[:failures]
         collection.data[:processed] -= processed_jobs
         collection.data[:failures] -= failed_jobs
 
-        redis do |conn|
-          conn.pipeline do |pipeline|
-            pipeline.collect do
-              pipeline.set(MONITOR_FLAG, "1", seconds: exp)
-              pipeline.set(data_key, process_data, seconds: exp)
-              pipeline.incrby(PROCESSED_COUNTER, processed_jobs)
-              pipeline.incrby(FAILURES_COUNTER, failed_jobs)
-            end
+        config.with_sync_redis do |conn|
+          conn.pipelined do |pipeline|
+            pipeline.call('SET', MONITOR_FLAG, '1', ex: exp)
+            pipeline.call('SET', data_key, process_data, ex: exp)
+            pipeline.call('INCRBY', PROCESSED_COUNTER, processed_jobs)
+            pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
           end
         end
 
         config.cleaner.unforsed_prune_outdated_processes_data
-      end
-
-      def process_rss
-        IO.readlines("/proc/#{Process.pid}/status").each do |line|
-          next unless line.start_with?("VmRSS:")
-          break line.split[1].to_i
-        end
       rescue => ex
+        Jiggler.logger.info(ex.inspect)
+        Jiggler.logger.info(ex.backtrace.join("\n"))
         handle_exception(
-          ex, { context: "'Error while getting process RSS'", tid: tid }
+          ex, { context: '\'Error while loading stats into redis\'', tid: @tid }
         )
       end
 
+      def process_rss
+        IO.readlines(@rss_path).each do |line|
+          next unless line.start_with?('VmRSS:')
+          break line.split[1].to_i
+        end
+      end
+
       def cleanup
-        logger.debug("Monitor") { "Cleaning up stats..." }
-        redis { |conn| conn.del(data_key) }
+        redis { |conn| conn.call('DEL', data_key) }
+      rescue => ex
+        handle_exception(
+          ex, { context: '\'Error while cleaning up stats\'', tid: @tid }
+        )
       end
 
       def wait
@@ -86,7 +92,7 @@ module Jiggler
         @condition.wait
       rescue => ex
         handle_exception(
-          ex, { context: "'Error while waiting for stats'", tid: tid }
+          ex, { context: '\'Error while waiting for stats\'', tid: @tid }
         )
       end
     end

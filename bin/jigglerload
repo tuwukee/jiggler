@@ -1,0 +1,115 @@
+#!/usr/bin/env ruby
+
+# command: bundle exec bin/jigglerload
+# bundle exec bin/jiggler -v -r ./spec/fixtures/jobs
+
+require_relative '../lib/jiggler'
+require_relative '../lib/jiggler/cli'
+
+# require 'ruby-prof'
+# require 'heap-profiler'
+
+class LoadJob
+  include Jiggler::Job
+  job_options retries: 1
+
+  def perform(idx, ts = nil)
+    puts("#{Time.now.to_f - ts}\n") if !ts.nil?
+  end
+end
+
+Jiggler.configure_server do |config|
+  config[:poll_interval] = 2
+  # config[:stats_interval] = 5
+  config[:boot_app] = false
+  # config[:concurrency] = 15
+  # config[:poller_enabled] = false
+  # config[:stats_enabled] = false
+  config.logger.level = Logger::WARN
+end
+
+Jiggler.config.cleaner.prune_all
+
+cli = Jiggler::CLI.instance
+
+iter = 10
+count = 10_000
+iter.times do |i|
+  arr = Array.new(count) { |idx| [idx] }
+  LoadJob.enqueue_bulk(arr)
+end
+Jiggler.logger.warn "Created #{count * iter} jobs"
+
+def Process.rss
+  `ps -o rss= -p #{Process.pid}`.chomp.to_i
+end
+
+start = Time.now
+Monitoring = Thread.new do
+  loop do
+    sleep 2.0
+    qsize = Jiggler.redis do |conn|
+      conn.call 'LLEN', 'jiggler:list:default'
+    end
+    total = qsize
+    Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
+    if total == 0
+      Jiggler.logger.warn("Done, #{iter * count} jobs in #{Time.now - start} sec")
+      Jiggler.logger.warn("Latency for three jobs")
+
+      LoadJob.enqueue(1, Time.now.to_f)
+      LoadJob.enqueue(2, Time.now.to_f)
+      LoadJob.enqueue(3, Time.now.to_f)
+
+      sleep 0.2
+
+      Process.kill("INT", Process.pid)
+      break
+    end
+  end
+end
+
+def start_jiggler(cli)
+  begin
+    cli.parse
+
+    cli.config.logger.warn "...Starting Jiggler for loadtest..."
+    cli.config.logger.warn("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config[:queues].join(',')}")
+    cli.start
+  rescue => e
+    warn e.message
+    warn e.backtrace.join("\n")
+    # exit 1
+  end
+end
+
+start_jiggler(cli)
+
+# async loop: 79624 (23:06:45) -> 79900 (23:07:46) -> 80116 (23:11:45)
+# poller (poll int 5): 
+# 80088 (23:12:48) -> 80376 (1min 23:13:13) -> 83592 (5min 23:17:43)
+# poller (poll int 5) & manager (concurrency 2): 
+# 82384 (23:19:35) -> 90388 (1min 23:20:37) -> 92016 (5min 23:24:16)
+#
+# Async do
+#  loop do
+#    sleep(2)
+#    Jiggler.logger.warn("looping...")
+#  end
+# end
+
+# -> RubyProf
+# RubyProf.exclude_threads = [Monitoring]
+# RubyProf.measure_mode = RubyProf::ALLOCATIONS
+# result = RubyProf.profile(:track_allocations => true) do
+#   start_jiggler(cli)
+#   Jiggler.logger.warn("Ruby-prof is wrapping up...")
+# end
+# printer = RubyProf::GraphHtmlPrinter.new(result)
+# printer.print(File.new("tmp/rubyprof.html", "w"), min_percent: 10)
+
+# -> HeapProfiler
+# heap-profiler tmp/allocated.heap
+# HeapProfiler.report("tmp") do
+#   start_jiggler(cli)
+# end

@@ -36,7 +36,7 @@ module Jiggler
     end
 
     def hostname
-      ENV["DYNO"] || Socket.gethostname
+      ENV['DYNO'] || Socket.gethostname
     end
 
     def process_data
@@ -45,7 +45,7 @@ module Jiggler
         hostname: hostname,
         concurrency: config[:concurrency],
         timeout: config[:timeout],
-        queues: config[:queues].join(", "),
+        queues: config[:queues].join(', '),
         started_at: Time.now.to_f,
         stats_enabled: config[:stats_enabled],
         poller_enabled: config[:poller_enabled]
@@ -53,11 +53,11 @@ module Jiggler
     end
 
     def cleanup
-      redis { |conn| conn.call("hdel", config.processes_hash, @uuid) }
+      redis { |conn| conn.call('HDEL', config.processes_hash, @uuid) }
     end
 
     def set_process_data
-      redis { |conn| conn.call("hset", config.processes_hash, @uuid, process_data) }
+      redis { |conn| conn.call('HSET', config.processes_hash, @uuid, process_data) }
     end
 
     private

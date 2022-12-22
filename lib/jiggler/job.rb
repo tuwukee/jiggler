@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "async"
-require "json"
+require 'async'
+require 'json'
 
 module Jiggler
   module Job
@@ -14,9 +14,13 @@ module Jiggler
         Enqueuer.new(self, { async: async }).enqueue_in(seconds, *args)
       end
 
-      # MyJob.with_options(queue: "custom", retries: 3).enqueue(*args)
+      # MyJob.with_options(queue: 'custom', retries: 3).enqueue(*args)
       def with_options(options)
         Enqueuer.new(self, options)
+      end
+
+      def enqueue_bulk(args_arr)
+        Enqueuer.new(self, { async: async }).enqueue_bulk(args_arr)
       end
 
       def queue
@@ -55,14 +59,25 @@ module Jiggler
 
       def enqueue(*args)
         config.with_redis(async: @options.fetch(:async, false)) do |conn|
-          conn.lpush(list_name, job_args(args))
+          conn.call('LPUSH', list_name, job_args(args))
+        end
+      end
+
+      def enqueue_bulk(args_arr)
+        config.with_redis(async: @options.fetch(:async, false)) do |conn|
+          conn.pipelined do |pipeline|
+            args_arr.each do |args|
+              pipeline.call('LPUSH', list_name, job_args(args))
+            end
+          end
         end
       end
 
       def enqueue_in(seconds, *args)
         timestamp = Time.now.to_f + seconds
         config.with_redis(async: @options.fetch(:async, false)) do |conn| 
-          conn.zadd(
+          conn.call(
+            'ZADD',
             config.scheduled_set, 
             timestamp, 
             job_args(args)
@@ -102,7 +117,7 @@ module Jiggler
     end
 
     def perform(**args)
-      raise #{self.class} must implement 'perform' method"
+      raise "#{self.class} must implement 'perform' method"
     end
   end
 end

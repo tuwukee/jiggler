@@ -25,18 +25,16 @@ module Jiggler
 
     def all
       summary = {}
-      collected_data = config.with_redis(async: false) do |conn|
-        conn.pipeline do |pipeline|
-          data = pipeline.collect do
-            pipeline.call("zcard", config.retries_set)
-            pipeline.call("zcard", config.dead_set)
-            pipeline.call("zcard", config.scheduled_set)
-            pipeline.call("get", Jiggler::Stats::Monitor::FAILURES_COUNTER)
-            pipeline.call("get", Jiggler::Stats::Monitor::PROCESSED_COUNTER)
-            pipeline.call("get", Jiggler::Stats::Monitor::MONITOR_FLAG)
-          end
-          [*data, fetch_and_format_processes(conn), fetch_and_format_queues(conn)]
+      collected_data = config.with_sync_redis do |conn|
+        data = conn.pipelined do |pipeline|
+          pipeline.call('ZCARD', config.retries_set)
+          pipeline.call('ZCARD', config.dead_set)
+          pipeline.call('ZCARD', config.scheduled_set)
+          pipeline.call('GET', Jiggler::Stats::Monitor::FAILURES_COUNTER)
+          pipeline.call('GET', Jiggler::Stats::Monitor::PROCESSED_COUNTER)
+          pipeline.call('GET', Jiggler::Stats::Monitor::MONITOR_FLAG)
         end
+        [*data, fetch_and_format_processes(conn), fetch_and_format_queues(conn)]
       end
       KEYS.each_with_index do |key, index|
         val = collected_data[index]
@@ -49,43 +47,39 @@ module Jiggler
     private
 
     def fetch_and_format_processes(conn)
-      processes = conn.call("hgetall", config.processes_hash)
+      processes = conn.call('HGETALL', config.processes_hash)
       processes_data = {}
 
-      collected_data = conn.pipeline do |pipeline|
-        pipeline.collect do
-          processes.each_slice(2) do |uuid, process_data|
-            processes_data[uuid] = JSON.parse(process_data)
-            if processes_data[uuid]["stats_enabled"]
-              pipeline.get("#{config.stats_prefix}#{uuid}")
-            end
+      collected_data = conn.pipelined do |pipeline|
+        processes.each do |uuid, process_data|
+          processes_data[uuid] = JSON.parse(process_data)
+          if processes_data[uuid]['stats_enabled']
+            pipeline.call('GET', "#{config.stats_prefix}#{uuid}")
           end
         end
       end
       
-      processes.each_slice(2) do |uuid, _|
-        if processes_data[uuid]["stats_enabled"]
+      processes.each do |uuid, _|
+        if processes_data[uuid]['stats_enabled']
           stats_data = collected_data.shift
           processes_data[uuid].merge!(JSON.parse(stats_data)) if stats_data
         end
-        processes_data[uuid]["current_jobs"] ||= []
+        processes_data[uuid]['current_jobs'] ||= []
       end
       processes_data
     end
 
     def fetch_and_format_queues(conn)
-      lists = conn.call("keys", "#{config.queue_prefix}*")
+      lists = conn.call('SCAN', '0', 'MATCH', "#{config.queue_prefix}*").last
       lists_data = {}
 
-      collected_data = conn.pipeline do |pipeline|
-        pipeline.collect do
-          lists.each do |list|
-            pipeline.call("llen", list)
-          end
+      collected_data = conn.pipelined do |pipeline|
+        lists.each do |list|
+          pipeline.call('LLEN', list)
         end
       end
       lists.each_with_index do |list, index|
-        lists_data[list.split(":").last] = collected_data[index]
+        lists_data[list.split(':').last] = collected_data[index]
       end
       lists_data
     end

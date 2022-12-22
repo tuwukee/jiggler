@@ -29,7 +29,8 @@ module Jiggler
       end
 
       def start
-        @job = safe_async("Poller") do
+        @job = safe_async('Poller') do
+          @tid = tid
           initial_wait
           until @done
             enqueue
@@ -42,7 +43,7 @@ module Jiggler
         @enqueuer.enqueue_jobs
       rescue => ex
         handle_exception(
-          ex, { context: "'Error while enqueueing jobs'", tid: tid }
+          ex, { context: '\'Error while enqueueing jobs\'', tid: @tid }
         )
       end
 
@@ -56,7 +57,7 @@ module Jiggler
         @condition.wait
       rescue => ex
         handle_exception(
-          ex, { context: "'Error while waiting for scheduled jobs'", tid: tid }
+          ex, { context: '\'Error while waiting for scheduled jobs\'', tid: @tid }
         )
       end
 
@@ -72,7 +73,7 @@ module Jiggler
       end
 
       def process_count
-        pcount = redis(async: false) { |conn| conn.call("hlen", config.processes_hash) }
+        pcount = config.with_sync_redis { |conn| conn.call('HLEN', config.processes_hash) }
         pcount = 1 if pcount == 0
         pcount
       end
