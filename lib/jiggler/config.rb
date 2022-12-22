@@ -70,31 +70,44 @@ module Jiggler
       end
     end
 
-    def with_async(redis)
+    def with_async_redis(redis)
       Async do
-        yield redis
+        redis_pool.acquire |conn|
+          yield conn
+        end
       end
     end
 
-    def with_sync(redis)
+    def with_sync_redis(redis)
       Sync do
-        yield redis
+        redis_pool.acquire |conn|
+          yield conn
+        end
       end
     end
 
     def with_redis(async: true)
       wrapper = async ? :Async : :Sync
       Kernel.public_send(wrapper) do
-        yield redis
+        redis_pool.acquire |conn|
+          yield conn
+        end 
       end
     end
 
     def redis_options
-      @redis_options ||= @options.slice(:concurrency, :redis_url, :cert, :key)
+      @redis_options ||= begin
+        opts = @options.slice(:concurrency, :redis_url, :cert, :key)
+        if Jiggler.server?
+          opts[:concurrency] += 2 if @options[:poller_enabled]
+          opts[:concurrency] += 1 if @options[:stats_enabled]
+        end
+        opts
+      end
     end
 
-    def redis
-      @redis ||= Jiggler::RedisStore.new(redis_options).client
+    def redis_pool
+      @redis ||= Jiggler::RedisStore.new(redis_options).pool
     end
 
     def cleaner

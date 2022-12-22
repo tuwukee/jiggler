@@ -17,20 +17,20 @@ module Jiggler
 
     def last_5_dead_jobs
       Jiggler.redis(async: false) do |conn|
-        conn.call("zrange", Jiggler.config.dead_set, -5, -1)
+        conn.call("ZRANGE", Jiggler.config.dead_set, -5, -1)
       end.map { |job| JSON.parse(job) }
     end
 
     def last_5_retry_jobs
       Jiggler.redis(async: false) do |conn|
-        conn.call("zrange", Jiggler.config.retries_set, -5, -1)
+        conn.call("ZRANGE", Jiggler.config.retries_set, -5, -1)
       end.map { |job| JSON.parse(job) }
     end
 
     def last_5_scheduled_jobs
       Jiggler.redis(async: false) do |conn|
-        conn.call("zrange", Jiggler.config.scheduled_set, -5, -1, 'WITHSCORES')
-      end.each_slice(2).map do |(job, score)|
+        conn.call("ZRANGE", Jiggler.config.scheduled_set, -5, -1, 'WITHSCORES')
+      end.map do |(job, score)|
         JSON.parse(job).merge("scheduled_at" => score)
       end
     end

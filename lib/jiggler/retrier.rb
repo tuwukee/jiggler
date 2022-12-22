@@ -53,8 +53,8 @@ module Jiggler
       parsed_job["attempt"] = count
       payload = JSON.generate(parsed_job)
 
-      config.with_redis_async do |conn|
-        conn.zadd(config.retries_set, retry_at.to_s, payload)
+      config.with_async_redis do |conn|
+        conn.call("ZADD", config.retries_set, retry_at.to_s, payload)
       end
     end
 
@@ -74,11 +74,11 @@ module Jiggler
       payload = JSON.generate(parsed_job)
       now = Time.now.to_f
 
-      config.with_redis_async do |conn|
+      config.with_async_redis do |conn|
         conn.multi do |xa|
-          xa.zadd(config.dead_set, now.to_s, payload)
-          xa.zremrangebyscore(config.dead_set, "-inf", now - config[:dead_timeout])
-          xa.zremrangebyrank(config.dead_set, 0, - config[:max_dead_jobs])
+          xa.call("ZADD", config.dead_set, now.to_s, payload)
+          xa.call("ZREMRANGEBYSCORE", config.dead_set, "-inf", now - config[:dead_timeout])
+          xa.call("ZREMRANGEBYRANK", config.dead_set, 0, - config[:max_dead_jobs])
         end
       end
     end

@@ -38,25 +38,25 @@ RSpec.describe Jiggler::Job do
   describe ".with_options" do
     it "allows to override options on job level" do
       expect { MyJob.with_options(queue: "woo").enqueue }.to change { 
-        Jiggler.config.with_redis(async: false) { |conn| conn.llen("jiggler:list:woo") }
+        Jiggler.config.with_redis(async: false) { |conn| conn.call("LLEN", "jiggler:list:woo") }
       }.by(1)
-      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:woo") }
+      Jiggler.config.with_redis(async: false) { |conn| conn.call("DEL", "jiggler:list:woo") }
     end
   end
 
   describe ".enqueue" do
     it "adds the job to the queue" do
       expect { MyJob.with_options(queue: "mine").enqueue }.to change { 
-        Jiggler.config.with_redis(async: false) { |conn| conn.llen("jiggler:list:mine") }
+        Jiggler.config.with_redis(async: false) { |conn| conn.call("LLEN", "jiggler:list:mine") }
       }.by(1)
-      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:mine") }
+      Jiggler.config.with_redis(async: false) { |conn| conn.call("DEL", "jiggler:list:mine") }
     end
 
     it "adds the job to the queue asynchonously" do
       expect { MyJob.with_options(queue: "mine", async: true).enqueue.wait }.to change { 
-        Jiggler.config.with_redis(async: false) { |conn| conn.llen("jiggler:list:mine") }
+        Jiggler.config.with_redis(async: false) { |conn| conn.call("LLEN", "jiggler:list:mine") }
       }.by(1)
-      Jiggler.config.with_redis(async: false) { |conn| conn.del("jiggler:list:mine") }
+      Jiggler.config.with_redis(async: false) { |conn| conn.call("DEL", "jiggler:list:mine") }
     end
   end
 
@@ -64,7 +64,7 @@ RSpec.describe Jiggler::Job do
     it "adds the job to the scheduled set" do
       expect { MyJob.with_options(queue: "mine").enqueue_in(1) }.to change { 
         Jiggler.config.with_redis(async: false) do |conn| 
-          conn.call("zcard", Jiggler.config.scheduled_set) 
+          conn.call("ZCARD", Jiggler.config.scheduled_set) 
         end
       }.by(1)
     end

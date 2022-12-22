@@ -5,11 +5,34 @@ module Jiggler
     :config
 
     def initialize(options = {})
-      @redis_config = RedisClient.new(options[:redis_url])
+      @options = options
+      @redis_config = RedisClient.config(url: options[:redis_url])
     end
 
-    def client
-      @redis_config.new_client
+    def pool
+      Async::Pool::Controller.new(limit: options[:concurrency]).wrap do
+        @redis_config.new_client
+      end
+    end
+  end
+end
+
+module Jiggler
+  class RedisClient < ::RedisClient
+    def concurrency
+      1
+    end
+
+    def viable?
+      connected?
+    end
+
+    def closed?
+      @raw_connection.nil?
+    end
+
+    def reusable?
+      !@raw_connection.nil?
     end
   end
 end

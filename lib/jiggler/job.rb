@@ -59,17 +59,15 @@ module Jiggler
 
       def enqueue(*args)
         config.with_redis(async: @options.fetch(:async, false)) do |conn|
-          conn.lpush(list_name, job_args(args))
+          conn.call("LPUSH", list_name, job_args(args))
         end
       end
 
       def enqueue_bulk(args_arr)
         config.with_redis(async: @options.fetch(:async, false)) do |conn|
-          conn.pipeline do |pipeline|
-            pipeline.collect do
-              args_arr.each do |args|
-                pipeline.lpush(list_name, job_args(args))
-              end
+          conn.pipelined do |pipeline|
+            args_arr.each do |args|
+              pipeline.call("LPUSH", list_name, job_args(args))
             end
           end
         end
@@ -78,7 +76,8 @@ module Jiggler
       def enqueue_in(seconds, *args)
         timestamp = Time.now.to_f + seconds
         config.with_redis(async: @options.fetch(:async, false)) do |conn| 
-          conn.zadd(
+          conn.call(
+            "ZADD"
             config.scheduled_set, 
             timestamp, 
             job_args(args)

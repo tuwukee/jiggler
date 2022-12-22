@@ -58,7 +58,7 @@ module Jiggler
     end
 
     def fetch_one
-      queue, args = config.with_redis_sync { |conn| conn.brpop(*queues, timeout: TIMEOUT) }
+      queue, args = config.with_sync_redis { |conn| conn.brpop(*queues, timeout: TIMEOUT) }
       if queue
         if @done
           requeue(queue, args)
@@ -142,8 +142,8 @@ module Jiggler
     end
 
     def requeue(queue, args)
-      config.with_redis_async do |conn|
-        conn.rpush(queue, args)
+      config.with_async_redis do |conn|
+        conn.call("RPUSH", queue, args)
       end
     end
 

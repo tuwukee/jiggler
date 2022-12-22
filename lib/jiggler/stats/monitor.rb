@@ -50,14 +50,12 @@ module Jiggler
         collection.data[:processed] -= processed_jobs
         collection.data[:failures] -= failed_jobs
 
-        config.with_redis_sync do |conn|
-          conn.pipeline do |pipeline|
-            pipeline.collect do
-              pipeline.set(MONITOR_FLAG, "1", seconds: exp)
-              pipeline.set(data_key, process_data, seconds: exp)
-              pipeline.incrby(PROCESSED_COUNTER, processed_jobs)
-              pipeline.incrby(FAILURES_COUNTER, failed_jobs)
-            end
+        config.with_sync_redis do |conn|
+          conn.pipelined do |pipeline|
+            pipeline.call("SET", MONITOR_FLAG, "1", seconds: exp)
+            pipeline.call("SET", data_key, process_data, seconds: exp)
+            pipeline.call("INCRBY", PROCESSED_COUNTER, processed_jobs)
+            pipeline.call("INCRBY", FAILURES_COUNTER, failed_jobs)
           end
         end
 

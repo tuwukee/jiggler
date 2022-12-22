@@ -39,7 +39,7 @@ module Jiggler
         name = JSON.parse(job_args)["queue"] || @config.default_queue
         list_name = "#{@config.queue_prefix}#{name}"
         logger.debug("Poller Enqueuer") { "Pushing #{job_args} to #{list_name}" }
-        conn.lpush(list_name, job_args)
+        conn.call("LPUSH", list_name, job_args)
       rescue => err
         logger.error("Error while pushing #{job_args} to queue: #{err}")
       end
@@ -55,7 +55,7 @@ module Jiggler
           @lua_zpopbyscore_sha = conn.call("SCRIPT", "LOAD", LUA_ZPOPBYSCORE)
         end
         conn.call("EVALSHA", @lua_zpopbyscore_sha, keys.length, *keys, *argv)
-      rescue Protocol::Redis::Error => e
+      rescue RedisClient::CommandError => e
         raise unless e.message.start_with?("NOSCRIPT")
 
         @lua_zpopbyscore_sha = nil
