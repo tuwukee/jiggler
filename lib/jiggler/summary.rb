@@ -27,12 +27,12 @@ module Jiggler
       summary = {}
       collected_data = config.with_sync_redis do |conn|
         data = conn.pipelined do |pipeline|
-          pipeline.call("ZCARD", config.retries_set)
-          pipeline.call("ZCARD", config.dead_set)
-          pipeline.call("ZCARD", config.scheduled_set)
-          pipeline.call("GET", Jiggler::Stats::Monitor::FAILURES_COUNTER)
-          pipeline.call("GET", Jiggler::Stats::Monitor::PROCESSED_COUNTER)
-          pipeline.call("GET", Jiggler::Stats::Monitor::MONITOR_FLAG)
+          pipeline.call('ZCARD', config.retries_set)
+          pipeline.call('ZCARD', config.dead_set)
+          pipeline.call('ZCARD', config.scheduled_set)
+          pipeline.call('GET', Jiggler::Stats::Monitor::FAILURES_COUNTER)
+          pipeline.call('GET', Jiggler::Stats::Monitor::PROCESSED_COUNTER)
+          pipeline.call('GET', Jiggler::Stats::Monitor::MONITOR_FLAG)
         end
         [*data, fetch_and_format_processes(conn), fetch_and_format_queues(conn)]
       end
@@ -47,39 +47,39 @@ module Jiggler
     private
 
     def fetch_and_format_processes(conn)
-      processes = conn.call("hgetall", config.processes_hash)
+      processes = conn.call('hgetall', config.processes_hash)
       processes_data = {}
 
       collected_data = conn.pipelined do |pipeline|
         processes.each do |uuid, process_data|
           processes_data[uuid] = JSON.parse(process_data)
-          if processes_data[uuid]["stats_enabled"]
-            pipeline.call("GET", "#{config.stats_prefix}#{uuid}")
+          if processes_data[uuid]['stats_enabled']
+            pipeline.call('GET', "#{config.stats_prefix}#{uuid}")
           end
         end
       end
       
       processes.each do |uuid, _|
-        if processes_data[uuid]["stats_enabled"]
+        if processes_data[uuid]['stats_enabled']
           stats_data = collected_data.shift
           processes_data[uuid].merge!(JSON.parse(stats_data)) if stats_data
         end
-        processes_data[uuid]["current_jobs"] ||= []
+        processes_data[uuid]['current_jobs'] ||= []
       end
       processes_data
     end
 
     def fetch_and_format_queues(conn)
-      lists = conn.call("KEYS", "#{config.queue_prefix}*")
+      lists = conn.call('KEYS', "#{config.queue_prefix}*")
       lists_data = {}
 
       collected_data = conn.pipelined do |pipeline|
         lists.each do |list|
-          pipeline.call("LLEN", list)
+          pipeline.call('LLEN', list)
         end
       end
       lists.each_with_index do |list, index|
-        lists_data[list.split(":").last] = collected_data[index]
+        lists_data[list.split(':').last] = collected_data[index]
       end
       lists_data
     end

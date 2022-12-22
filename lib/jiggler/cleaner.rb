@@ -2,7 +2,7 @@
 
 module Jiggler
   class Cleaner
-    CLEANUP_FLAG = "jiggler:flag:cleanup"
+    CLEANUP_FLAG = 'jiggler:flag:cleanup'
     attr_reader :config
 
     def initialize(config)
@@ -43,7 +43,7 @@ module Jiggler
 
     def prune_process(uuid)
       config.with_sync_redis do |conn|
-        conn.call("HDEL", config.processes_hash, uuid)
+        conn.call('HDEL', config.processes_hash, uuid)
       end
     end
 
@@ -73,12 +73,12 @@ module Jiggler
 
     def prune_queue(queue_name)
       config.with_sync_redis do |conn|
-        conn.call("DEL", "#{config.queue_prefix}#{queue_name}")
+        conn.call('DEL', "#{config.queue_prefix}#{queue_name}")
       end
     end
 
     def unforsed_prune_outdated_processes_data
-      return unless config.with_sync_redis { |conn| conn.call("SET", CLEANUP_FLAG, "1", update: false, seconds: 60) }
+      return unless config.with_sync_redis { |conn| conn.call('SET', CLEANUP_FLAG, '1', update: false, seconds: 60) }
 
       prune_outdated_processes_data
     end
@@ -87,19 +87,19 @@ module Jiggler
     def prune_outdated_processes_data
       to_prune = []
       config.with_sync_redis do |conn|
-        processes_hash = Hash[*conn.call("HGETALL", config.processes_hash)]
-        stats_keys = conn.call("SCAN", "0", "MATCH", "#{config.stats_prefix}*").last
+        processes_hash = Hash[*conn.call('HGETALL', config.processes_hash)]
+        stats_keys = conn.call('SCAN', '0', 'MATCH', "#{config.stats_prefix}*").last
         
         processes_hash.each do |k, v|
           process_data = JSON.parse(v)
-          if process_data["stats_enabled"] && !stats_keys.include?("#{config.stats_prefix}#{k}")
+          if process_data['stats_enabled'] && !stats_keys.include?("#{config.stats_prefix}#{k}")
             to_prune << k
           end
         end
 
         unless to_prune.empty?
-          conn.call("HDEL", config.processes_hash, *to_prune)
-          config.logger.warn("Pruned outdated processes") { to_prune }
+          conn.call('HDEL', config.processes_hash, *to_prune)
+          config.logger.warn('Pruned outdated processes') { to_prune }
         end
       end
 
@@ -108,10 +108,10 @@ module Jiggler
 
     def prune_all_unmonitored_processes
       config.with_sync_redis do |conn|
-        processes_hash = Hash[*conn.call("HGETALL", config.processes_hash)]
+        processes_hash = Hash[*conn.call('HGETALL', config.processes_hash)]
         processes_hash.each do |k, v|
           process_data = JSON.parse(v)
-          if !process_data["stats_enabled"]
+          if !process_data['stats_enabled']
             prune_process(k)
           end
         end
@@ -121,32 +121,32 @@ module Jiggler
     private
 
     def prn_retries_set(conn)
-      conn.call("DEL", config.retries_set)
+      conn.call('DEL', config.retries_set)
     end
 
     def prn_scheduled_set(conn)
-      conn.call("DEL", config.scheduled_set)
+      conn.call('DEL', config.scheduled_set)
     end
 
     def prn_dead_set(conn)
-      conn.call("DEL", config.dead_set)
+      conn.call('DEL', config.dead_set)
     end
 
     def prn_all_queues(conn)
-      queues = conn.call("SCAN", "0", "MATCH", "#{config.queue_prefix}*").last
-      conn.call("DEL", *queues) unless queues.empty?
+      queues = conn.call('SCAN', '0', 'MATCH', "#{config.queue_prefix}*").last
+      conn.call('DEL', *queues) unless queues.empty?
     end
 
     def prn_all_processes(conn)
-      conn.call("DEL", config.processes_hash)
+      conn.call('DEL', config.processes_hash)
     end
 
     def prn_failures_counter(conn)
-      conn.call("DEL", Jiggler::Stats::Monitor::FAILURES_COUNTER)
+      conn.call('DEL', Jiggler::Stats::Monitor::FAILURES_COUNTER)
     end
 
     def prn_processed_counter(conn)
-      conn.call("DEL", Jiggler::Stats::Monitor::PROCESSED_COUNTER)
+      conn.call('DEL', Jiggler::Stats::Monitor::PROCESSED_COUNTER)
     end
   end
 end

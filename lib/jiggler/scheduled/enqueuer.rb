@@ -5,9 +5,9 @@ module Jiggler
     class Enqueuer
       LUA_ZPOPBYSCORE = <<~LUA
         local key, now = KEYS[1], ARGV[1]
-        local jobs = redis.call("zrangebyscore", key, "-inf", now, "limit", 0, 1)
+        local jobs = redis.call('zrangebyscore', key, '-inf', now, 'limit', 0, 1)
         if jobs[1] then
-          redis.call("zrem", key, jobs[1])
+          redis.call('zrem', key, jobs[1])
           return jobs[1]
         end
       LUA
@@ -38,8 +38,8 @@ module Jiggler
       def push_job(conn, job_args)
         name = JSON.parse(job_args)["queue"] || @config.default_queue
         list_name = "#{@config.queue_prefix}#{name}"
-        logger.debug("Poller Enqueuer") { "Pushing #{job_args} to #{list_name}" }
-        conn.call("LPUSH", list_name, job_args)
+        logger.debug('Poller Enqueuer') { "Pushing #{job_args} to #{list_name}" }
+        conn.call('LPUSH', list_name, job_args)
       rescue => err
         logger.error("Error while pushing #{job_args} to queue: #{err}")
       end
@@ -52,11 +52,11 @@ module Jiggler
 
       def zpopbyscore(conn, keys: nil, argv: nil)
         if @lua_zpopbyscore_sha.nil?
-          @lua_zpopbyscore_sha = conn.call("SCRIPT", "LOAD", LUA_ZPOPBYSCORE)
+          @lua_zpopbyscore_sha = conn.call('SCRIPT', 'LOAD', LUA_ZPOPBYSCORE)
         end
-        conn.call("EVALSHA", @lua_zpopbyscore_sha, keys.length, *keys, *argv)
+        conn.call('EVALSHA', @lua_zpopbyscore_sha, keys.length, *keys, *argv)
       rescue RedisClient::CommandError => e
-        raise unless e.message.start_with?("NOSCRIPT")
+        raise unless e.message.start_with?('NOSCRIPT')
 
         @lua_zpopbyscore_sha = nil
         retry

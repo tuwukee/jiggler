@@ -1,11 +1,11 @@
 # frozen_string_literal: true
 
-require "singleton"
-require "optparse"
-require "async/io/trap"
-require "erb"
-require "debug"
-require "yaml"
+require 'singleton'
+require 'optparse'
+require 'async/io/trap'
+require 'erb'
+require 'debug'
+require 'yaml'
 
 module Jiggler
   class CLI
@@ -15,22 +15,22 @@ module Jiggler
     
     SIGNAL_HANDLERS = {
       :INT => ->(cli) {
-        cli.logger.fatal("Received INT, shutting down")
+        cli.logger.fatal('Received INT, shutting down')
         cli.stop 
       },
       :TERM => ->(cli) {
-        cli.logger.fatal("Received TERM, shutting down")
+        cli.logger.fatal('Received TERM, shutting down')
         cli.stop 
       },
       :TSTP => ->(cli) {
-        cli.logger.info("Received TSTP, no longer accepting new work")
+        cli.logger.info('Received TSTP, no longer accepting new work')
         cli.quite
       },
       :TTIN => ->(cli) {
         # log running tasks here (+ backtrace)
       }
     }
-    UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info("No signal handler registered, ignoring") }
+    UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info('No signal handler registered, ignoring') }
     SIGNAL_HANDLERS.default = UNHANDLED_SIGNAL_HANDLER
     SIGNAL_HANDLERS.freeze
 
@@ -55,12 +55,12 @@ module Jiggler
     end
 
     def stop
-      logger.info("Stopping Jiggler, bye!")
+      logger.info('Stopping Jiggler, bye!')
       @launcher.stop
     end
 
     def quite
-      logger.info("Quietly shutting down Jiggler")
+      logger.info('Quietly shutting down Jiggler')
       @launcher.quite
     end
 
@@ -97,48 +97,48 @@ module Jiggler
 
     def option_parser(opts)
       parser = OptionParser.new do |o|
-        o.on "-c", "--concurrency INT", "Number of fibers to use" do |arg|
+        o.on '-c', '--concurrency INT', 'Number of fibers to use' do |arg|
           opts[:concurrency] = Integer(arg)
         end
 
-        o.on "-e", "--environment ENV", "Application environment" do |arg|
+        o.on '-e', '--environment ENV', 'Application environment' do |arg|
           opts[:environment] = arg
         end
 
-        o.on "-q", "--queue QUEUE1,QUEUE2", "Queues to process" do |arg|
+        o.on '-q', '--queue QUEUE1,QUEUE2', 'Queues to process' do |arg|
           opts[:queues] ||= []
-          arg.split(",").each do |queue|
+          arg.split(',').each do |queue|
             opts[:queues] << queue
           end
         end
 
-        o.on "-r", "--require PATH", "File to require" do |arg|
+        o.on '-r', '--require PATH', 'File to require' do |arg|
           opts[:require] = arg
         end
 
-        o.on "-t", "--timeout NUM", "Shutdown timeout" do |arg|
+        o.on '-t', '--timeout NUM', 'Shutdown timeout' do |arg|
           opts[:timeout] = Integer(arg)
         end
 
-        o.on "-v", "--verbose", "Print more verbose output" do |arg|
+        o.on '-v', '--verbose', 'Print more verbose output' do |arg|
           opts[:verbose] = arg
         end
 
-        o.on "-C", "--config PATH", "Path to YAML config file" do |arg|
+        o.on '-C', '--config PATH', 'Path to YAML config file' do |arg|
           opts[:config_file] = arg
         end
 
-        o.on "-V", "--version", "Print version and exit" do
-          puts("Jiggler #{Jiggler::VERSION}")
+        o.on '-V', '--version', 'Print version and exit' do
+          puts('Jiggler #{Jiggler::VERSION}')
           exit(0)
         end
 
-        o.on_tail "-h", "--help", "Show help" do
+        o.on_tail '-h', '--help', 'Show help' do
           puts o 
           exit(0)
         end
       end
-      parser.banner = "Jiggler [options]"
+      parser.banner = 'Jiggler [options]'
       parser
     end
 
@@ -154,7 +154,7 @@ module Jiggler
           raise ArgumentError, "No such file #{opts[:config_file]}"
         end
       else
-        config_dir = File.join(config[:require], "config")
+        config_dir = File.join(config[:require], 'config')
 
         CONFIG_FILES.each do |config_file|
           path = File.join(config_dir, config_file)
@@ -173,7 +173,7 @@ module Jiggler
     end
 
     def set_environment(opts)
-      opts[:environment] ||= ENV["APP_ENV"] || "development"
+      opts[:environment] ||= ENV['APP_ENV'] || 'development'
       @environment = opts[:environment]
     end
 

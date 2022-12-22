@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "async"
-require "erb"
+require 'async'
+require 'erb'
 
 module Jiggler
   class Web
@@ -17,21 +17,21 @@ module Jiggler
 
     def last_5_dead_jobs
       Jiggler.redis(async: false) do |conn|
-        conn.call("ZRANGE", Jiggler.config.dead_set, -5, -1)
+        conn.call('ZRANGE', Jiggler.config.dead_set, -5, -1)
       end.map { |job| JSON.parse(job) }
     end
 
     def last_5_retry_jobs
       Jiggler.redis(async: false) do |conn|
-        conn.call("ZRANGE", Jiggler.config.retries_set, -5, -1)
+        conn.call('ZRANGE', Jiggler.config.retries_set, -5, -1)
       end.map { |job| JSON.parse(job) }
     end
 
     def last_5_scheduled_jobs
       Jiggler.redis(async: false) do |conn|
-        conn.call("ZRANGE", Jiggler.config.scheduled_set, -5, -1, 'WITHSCORES')
+        conn.call('ZRANGE', Jiggler.config.scheduled_set, -5, -1, 'WITHSCORES')
       end.map do |(job, score)|
-        JSON.parse(job).merge("scheduled_at" => score)
+        JSON.parse(job).merge('scheduled_at' => score)
       end
     end
 
@@ -41,12 +41,12 @@ module Jiggler
     end
 
     def format_memory(kb)
-      return "?" if kb.nil?
+      return '?' if kb.nil?
       "#{(kb/1024.0).round(2)} MB"
     end
 
     def monitored_badge(stats_enabled)
-      stats_enabled ? "<span class='badge badge-success'>Monitored</span>" : "<span class='badge'>Unmonitored</span>"
+      stats_enabled ? '<span class=\'badge badge-success\'>Monitored</span>' : '<span class=\'badge\'>Unmonitored</span>'
     end
 
     def styles

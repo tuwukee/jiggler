@@ -12,7 +12,7 @@ class MyJobWithArgs
       array.is_a?(Array) &&
       hash.is_a?(Hash))
 
-      raise StandardError, "Args are not the correct type ◉ ︵ ◉"
+      raise StandardError, 'Args are not the correct type ◉ ︵ ◉'
     end
   end
 end

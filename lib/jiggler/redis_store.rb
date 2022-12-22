@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+require 'redis_client'
+require 'async/pool'
+
 module Jiggler
   class RedisStore
     :config
@@ -10,7 +13,8 @@ module Jiggler
     end
 
     def pool
-      Async::Pool::Controller.new(limit: options[:concurrency]).wrap do
+      return @options[:redis_pool] if @options[:redis_pool]
+      Async::Pool::Controller.wrap(limit: @options[:concurrency]) do
         @redis_config.new_client
       end
     end

@@ -18,7 +18,7 @@ module Jiggler
     end
 
     def run
-      @runner = safe_async("Worker") do
+      @runner = safe_async('Worker') do
       # @runner = Async do
         @tid = tid
         loop do
@@ -58,7 +58,7 @@ module Jiggler
     end
 
     def fetch_one
-      queue, args = config.with_sync_redis { |conn| conn.brpop(*queues, timeout: TIMEOUT) }
+      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, "BRPOP", *queues, TIMEOUT) }
       if queue
         if @done
           requeue(queue, args)
@@ -85,14 +85,14 @@ module Jiggler
         handle_exception(
           err, 
           { 
-            context: "'Job raised exception'",
+            context: '\'Job raised exception\'',
             error_class: err.class.name,
-            name: parsed_args["name"],
-            queue: parsed_args["queue"],
-            args: parsed_args["args"],
-            attempt: parsed_args["attempt"],
+            name: parsed_args['name'],
+            queue: parsed_args['queue'],
+            args: parsed_args['args'],
+            attempt: parsed_args['attempt'],
             tid: @tid,
-            jid: parsed_args["jid"]
+            jid: parsed_args['jid']
           },
           raise_ex: true
         )
@@ -100,29 +100,29 @@ module Jiggler
         handle_exception(
           ex,
           {
-            context: "'Internal exception'",
+            context: '\'Internal exception\'',
             tid: @tid,
-            jid: parsed_args["jid"]
+            jid: parsed_args['jid']
           },
           raise_ex: true
         )
       end
     rescue JSON::ParserError => err
       increase_failures_counter
-      logger.error("Worker") { "Failed to parse job: #{current_job.args}" }
+      logger.error('Worker') { "Failed to parse job: #{current_job.args}" }
     end
 
     def execute(parsed_job, queue)
-      klass = constantize(parsed_job["name"])
-      jid = parsed_job["jid"]
+      klass = constantize(parsed_job['name'])
+      jid = parsed_job['jid']
       instance = klass.new
 
-      logger.info("Worker") {
+      logger.info('Worker') {
         "Starting #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
       }
       add_current_job_to_collection(parsed_job, klass.queue)
       with_retry(instance, parsed_job, queue) do
-        instance.perform(*parsed_job["args"])
+        instance.perform(*parsed_job['args'])
       end
       logger.info("Worker") { 
         "Finished #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
@@ -143,7 +143,7 @@ module Jiggler
 
     def requeue(queue, args)
       config.with_async_redis do |conn|
-        conn.call("RPUSH", queue, args)
+        conn.call('RPUSH', queue, args)
       end
     end
 
@@ -151,7 +151,7 @@ module Jiggler
       handle_exception(
         ex,
         {
-          context: "Fetch error",
+          context: 'Fetch error',
           tid: @tid
         },
         raise_ex: true
@@ -187,9 +187,9 @@ module Jiggler
     end
 
     def constantize(str)
-      return Object.const_get(str) unless str.include?("::")
+      return Object.const_get(str) unless str.include?('::')
 
-      names = str.split("::")
+      names = str.split('::')
       names.shift if names.empty? || names.first.empty?
 
       names.inject(Object) do |constant, name|

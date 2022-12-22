@@ -4,9 +4,9 @@ module Jiggler
   module Stats
     class Monitor
       include Support::Component
-      MONITOR_FLAG = "jiggler:flag:monitor"
-      PROCESSED_COUNTER = "jiggler:stats:processed_counter"
-      FAILURES_COUNTER = "jiggler:stats:failures_counter"
+      MONITOR_FLAG = 'jiggler:flag:monitor'
+      PROCESSED_COUNTER = 'jiggler:stats:processed_counter'
+      FAILURES_COUNTER = 'jiggler:stats:failures_counter'
 
       attr_reader :collection, :data_key, :exp
 
@@ -21,7 +21,7 @@ module Jiggler
       end
 
       def start
-        @job = safe_async("Monitor") do
+        @job = safe_async('Monitor') do
           @tid = tid
           wait # initial wait
           until @done
@@ -44,7 +44,7 @@ module Jiggler
           rss: process_rss,
           current_jobs: collection.data[:current_jobs],
         })
-        logger.debug("Monitor") { process_data }
+        logger.debug('Monitor') { process_data }
         processed_jobs = collection.data[:processed]
         failed_jobs = collection.data[:failures]
         collection.data[:processed] -= processed_jobs
@@ -52,10 +52,10 @@ module Jiggler
 
         config.with_sync_redis do |conn|
           conn.pipelined do |pipeline|
-            pipeline.call("SET", MONITOR_FLAG, "1", seconds: exp)
-            pipeline.call("SET", data_key, process_data, seconds: exp)
-            pipeline.call("INCRBY", PROCESSED_COUNTER, processed_jobs)
-            pipeline.call("INCRBY", FAILURES_COUNTER, failed_jobs)
+            pipeline.call('SET', MONITOR_FLAG, '1', seconds: exp)
+            pipeline.call('SET', data_key, process_data, seconds: exp)
+            pipeline.call('INCRBY', PROCESSED_COUNTER, processed_jobs)
+            pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
           end
         end
 
@@ -64,17 +64,16 @@ module Jiggler
 
       def process_rss
         IO.readlines(@rss_path).each do |line|
-          next unless line.start_with?("VmRSS:")
+          next unless line.start_with?('VmRSS:')
           break line.split[1].to_i
         end
       rescue => ex
         handle_exception(
-          ex, { context: "'Error while getting process RSS'", tid: @tid }
+          ex, { context: '\'Error while getting process RSS\'', tid: @tid }
         )
       end
 
       def cleanup
-        logger.debug("Monitor") { "Cleaning up stats..." }
         redis { |conn| conn.del(data_key) }
       end
 
@@ -86,7 +85,7 @@ module Jiggler
         @condition.wait
       rescue => ex
         handle_exception(
-          ex, { context: "'Error while waiting for stats'", tid: @tid }
+          ex, { context: '\'Error while waiting for stats\'', tid: @tid }
         )
       end
     end

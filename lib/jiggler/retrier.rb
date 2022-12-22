@@ -28,39 +28,39 @@ module Jiggler
     def process_retry(jobinst, parsed_job, queue, exception)
       job_class = jobinst.class
       max_retry_attempts = job_class.retries.to_i 
-      count = parsed_job["attempt"].to_i + 1
+      count = parsed_job['attempt'].to_i + 1
 
       message = exception_message(exception)
       if message.respond_to?(:scrub!)
-        message.force_encoding("utf-8")
+        message.force_encoding('utf-8')
         message.scrub!
       end
 
-      parsed_job["error_message"] = message
-      parsed_job["error_class"] = exception.class.name
-      parsed_job["queue"] = job_class.retry_queue
-      parsed_job["started_at"] ||= Time.now.to_f
+      parsed_job['error_message'] = message
+      parsed_job['error_class'] = exception.class.name
+      parsed_job['queue'] = job_class.retry_queue
+      parsed_job['started_at'] ||= Time.now.to_f
 
       return retries_exhausted(jobinst, parsed_job, exception) if count >= max_retry_attempts
 
       jitter = rand(10) * (count + 1)
       delay = count**4 + 15
       retry_at = Time.now.to_f + delay + jitter
-      parsed_job["retry_at"] = retry_at
+      parsed_job['retry_at'] = retry_at
       if count > 1
-        parsed_job["retried_at"] = Time.now.to_f
+        parsed_job['retried_at'] = Time.now.to_f
       end
-      parsed_job["attempt"] = count
+      parsed_job['attempt'] = count
       payload = JSON.generate(parsed_job)
 
       config.with_async_redis do |conn|
-        conn.call("ZADD", config.retries_set, retry_at.to_s, payload)
+        conn.call('ZADD', config.retries_set, retry_at.to_s, payload)
       end
     end
 
     def retries_exhausted(jobinst, parsed_job, exception)
-      logger.warn("Retrier") { 
-        "Retries exhausted for #{parsed_job["name"]} jid=#{parsed_job["jid"]}" 
+      logger.warn('Retrier') { 
+        "Retries exhausted for #{parsed_job['name']} jid=#{parsed_job['jid']}" 
       }
 
       send_to_morgue(parsed_job)
@@ -68,17 +68,17 @@ module Jiggler
 
     # todo: review this
     def send_to_morgue(parsed_job)
-      logger.warn("Retrier") { 
-        "#{parsed_job["name"]} has been sent to dead jid=#{parsed_job["jid"]}"
+      logger.warn('Retrier') { 
+        "#{parsed_job['name']} has been sent to dead jid=#{parsed_job['jid']}"
       }
       payload = JSON.generate(parsed_job)
       now = Time.now.to_f
 
       config.with_async_redis do |conn|
         conn.multi do |xa|
-          xa.call("ZADD", config.dead_set, now.to_s, payload)
-          xa.call("ZREMRANGEBYSCORE", config.dead_set, "-inf", now - config[:dead_timeout])
-          xa.call("ZREMRANGEBYRANK", config.dead_set, 0, - config[:max_dead_jobs])
+          xa.call('ZADD', config.dead_set, now.to_s, payload)
+          xa.call('ZREMRANGEBYSCORE', config.dead_set, '-inf', now - config[:dead_timeout])
+          xa.call('ZREMRANGEBYRANK', config.dead_set, 0, - config[:max_dead_jobs])
         end
       end
     end
@@ -98,7 +98,7 @@ module Jiggler
       # Message from app code
       exception.message.to_s[0, 10_000]
     rescue
-      "Exception message unavailable"
+      'Exception message unavailable'
     end
   end
 end

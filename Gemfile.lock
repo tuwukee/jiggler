@@ -71,6 +71,7 @@ DEPENDENCIES
   heap-profiler
   rack
   rackup
+  redis-client
   rspec
   ruby-prof
   sidekiq

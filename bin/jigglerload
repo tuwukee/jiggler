@@ -2,11 +2,11 @@
 
 # command: bundle exec bin/jigglerload
 
-require_relative "../lib/jiggler"
-require_relative "../lib/jiggler/cli"
+require_relative '../lib/jiggler'
+require_relative '../lib/jiggler/cli'
 
-require "ruby-prof"
-require "heap-profiler"
+require 'ruby-prof'
+require 'heap-profiler'
 
 class LoadJob
   include Jiggler::Job
@@ -44,33 +44,26 @@ end
 
 start = Time.now
 Monitoring = Thread.new do
-#  loop do
-#    sleep 2.0
-#    qsize = Jiggler.redis do |conn|
-#      conn.llen "jiggler:list:default"
-#    end
-#    total = qsize
-#    Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
-#    if total == 0
-#      Jiggler.logger.warn("Done, #{iter * count} jobs in #{Time.now - start} sec")
-#      Jiggler.logger.warn("Latency for three jobs")
-#
-#      LoadJob.enqueue(1, Time.now.to_f)
-#      LoadJob.enqueue(2, Time.now.to_f)
-#      LoadJob.enqueue(3, Time.now.to_f)
-#
-#      sleep 0.2
-#
-#      Process.kill("INT", Process.pid)
-#      break
-#    end
-#  end
-
   loop do
-    sleep 5
-    # print GC statistics
-    # Jiggler.logger.warn(GC.stat)
-    Jiggler.logger.warn("RSS") { Process.rss } 
+    sleep 2.0
+    qsize = Jiggler.redis do |conn|
+      conn.call 'LLEN', 'jiggler:list:default'
+    end
+    total = qsize
+    Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
+    if total == 0
+      Jiggler.logger.warn("Done, #{iter * count} jobs in #{Time.now - start} sec")
+      Jiggler.logger.warn("Latency for three jobs")
+
+      LoadJob.enqueue(1, Time.now.to_f)
+      LoadJob.enqueue(2, Time.now.to_f)
+      LoadJob.enqueue(3, Time.now.to_f)
+
+      sleep 0.2
+
+      Process.kill("INT", Process.pid)
+      break
+    end
   end
 end
 
@@ -89,7 +82,6 @@ def start_jiggler(cli)
 end
 
 start_jiggler(cli)
-
 
 # async loop: 79624 (23:06:45) -> 79900 (23:07:46) -> 80116 (23:11:45)
 # poller (poll int 5): 
