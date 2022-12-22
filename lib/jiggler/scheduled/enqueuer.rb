@@ -19,7 +19,7 @@ module Jiggler
       end
 
       def enqueue_jobs
-        @config.with_redis do |conn|
+        @config.with_async_redis do |conn|
           sorted_sets.each do |sorted_set|
             # Get next item in the queue with score (time to execute) <= now
             job_args = zpopbyscore(conn, keys: [sorted_set], argv: [Time.now.to_f.to_s])
@@ -36,7 +36,7 @@ module Jiggler
       end
 
       def push_job(conn, job_args)
-        name = JSON.parse(job_args)["queue"] || @config.default_queue
+        name = JSON.parse(job_args)['queue'] || @config.default_queue
         list_name = "#{@config.queue_prefix}#{name}"
         logger.debug('Poller Enqueuer') { "Pushing #{job_args} to #{list_name}" }
         conn.call('LPUSH', list_name, job_args)

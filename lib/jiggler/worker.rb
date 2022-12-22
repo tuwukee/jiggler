@@ -19,7 +19,6 @@ module Jiggler
 
     def run
       @runner = safe_async('Worker') do
-      # @runner = Async do
         @tid = tid
         loop do
           break @callback.call(self) if @done
@@ -58,7 +57,7 @@ module Jiggler
     end
 
     def fetch_one
-      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, "BRPOP", *queues, TIMEOUT) }
+      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) }
       if queue
         if @done
           requeue(queue, args)

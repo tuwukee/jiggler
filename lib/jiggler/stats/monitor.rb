@@ -52,14 +52,20 @@ module Jiggler
 
         config.with_sync_redis do |conn|
           conn.pipelined do |pipeline|
-            pipeline.call('SET', MONITOR_FLAG, '1', seconds: exp)
-            pipeline.call('SET', data_key, process_data, seconds: exp)
+            pipeline.call('SET', MONITOR_FLAG, '1', ex: exp)
+            pipeline.call('SET', data_key, process_data, ex: exp)
             pipeline.call('INCRBY', PROCESSED_COUNTER, processed_jobs)
             pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
           end
         end
 
         config.cleaner.unforsed_prune_outdated_processes_data
+      rescue => ex
+        Jiggler.logger.info(ex.inspect)
+        Jiggler.logger.info(ex.backtrace.join("\n"))
+        handle_exception(
+          ex, { context: '\'Error while loading stats into redis\'', tid: @tid }
+        )
       end
 
       def process_rss
@@ -67,14 +73,14 @@ module Jiggler
           next unless line.start_with?('VmRSS:')
           break line.split[1].to_i
         end
-      rescue => ex
-        handle_exception(
-          ex, { context: '\'Error while getting process RSS\'', tid: @tid }
-        )
       end
 
       def cleanup
-        redis { |conn| conn.del(data_key) }
+        redis { |conn| conn.call('DEL', data_key) }
+      rescue => ex
+        handle_exception(
+          ex, { context: '\'Error while cleaning up stats\'', tid: @tid }
+        )
       end
 
       def wait

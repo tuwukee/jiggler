@@ -14,15 +14,15 @@ class LoadJob
 
   def perform(idx, ts = nil)
     # sleep(0.2)
-    puts(Time.now.to_f - ts) if !ts.nil?
+    puts("#{Time.now.to_f - ts}\n") if !ts.nil?
   end
 end
 
 Jiggler.configure_server do |config|
-  # config[:poll_interval] = 2
+  config[:poll_interval] = 2
   config[:boot_app] = false
   # config[:poller_enabled] = false
-  config[:stats_enabled] = false
+  #config[:stats_enabled] = false
   config.logger.level = Logger::WARN
 end
 
@@ -30,7 +30,7 @@ Jiggler.config.cleaner.prune_all
 
 cli = Jiggler::CLI.instance
 
-iter = 10
+iter = 50
 count = 10_000
 iter.times do |i|
   arr = Array.new(count) { |idx| [idx] }

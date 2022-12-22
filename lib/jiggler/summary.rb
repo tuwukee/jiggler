@@ -47,7 +47,7 @@ module Jiggler
     private
 
     def fetch_and_format_processes(conn)
-      processes = conn.call('hgetall', config.processes_hash)
+      processes = conn.call('HGETALL', config.processes_hash)
       processes_data = {}
 
       collected_data = conn.pipelined do |pipeline|

@@ -6,74 +6,76 @@ RSpec.describe Jiggler::Scheduled::Enqueuer do
       concurrency: 1, 
       timeout: 1, 
       verbose: true,
-      queues: ["default", "mine"]
+      queues: ['default', 'mine']
     )
   end
   let(:enqueuer) { described_class.new(config) }
 
-  describe "#push_job" do
-    it "pushes an empty job to default queue" do
+  describe '#push_job' do
+    it 'pushes an empty job to default queue' do
       expect do
-        Sync { enqueuer.push_job(config.redis, "{ \"name\": \"MyJob\" }") }
+        config.with_sync_redis do |conn|
+          enqueuer.push_job(conn, '{ "name": "MyJob" }')
+        end
       end.to change { 
-        config.with_redis(async: false) { |conn| conn.call("LLEN", "jiggler:list:default") }
+        config.with_sync_redis { |conn| conn.call('LLEN', 'jiggler:list:default') }
       }.by(1)
     end
 
-    it "pushes job to queue from args" do
+    it 'pushes job to queue from args' do
       expect do
-        Sync do 
+        config.with_sync_redis do |conn|
           enqueuer.push_job(
-            config.redis, 
-            "{ \"name\": \"MyJob\", \"queue\": \"mine\" }"
+            conn, 
+            '{ "name": "MyJob", "queue": "mine" }'
           )
         end
       end.to change { 
-        config.with_redis(async: false) { |conn| conn.call("LLEN", "jiggler:list:mine") }
+        config.with_sync_redis { |conn| conn.call('LLEN', 'jiggler:list:mine') }
       }.by(1)
-      config.with_redis(async: false) { |conn| conn.call("DEL", "jiggler:list:mine") }
+      config.with_sync_redis { |conn| conn.call('DEL', 'jiggler:list:mine') }
     end
 
-    it "does not drop job if queue is not configured" do
+    it 'does not drop job if queue is not configured' do
       expect do
-        Sync do 
+        config.with_sync_redis do |conn|
           enqueuer.push_job(
-            config.redis, 
-            "{ \"name\": \"MyJob\", \"queue\": \"unknown\" }"
+            conn, 
+            '{ "name": "MyJob", "queue": "unknown" }'
           )
         end
       end.to change { 
-        config.with_redis(async: false) { |conn| conn.call("LLEN", "jiggler:list:unknown") }
+        config.with_sync_redis { |conn| conn.call('LLEN', 'jiggler:list:unknown') }
       }.by(1)
     end
   end
 
-  describe "#enqueue_jobs" do
-    it "enqueues jobs if their zrange is in the past" do
+  describe '#enqueue_jobs' do
+    it 'enqueues jobs if their zrange is in the past' do
       expect do
-        config.with_redis(async: false) do |conn| 
+        config.with_sync_redis do |conn| 
           conn.call(
-            "ZADD",
+            'ZADD',
             config.retries_set, 
             (Time.now.to_f - 10.0).to_s, 
-            "{ \"name\": \"MyJob\", \"queue\": \"mine\" }"
+            '{ "name": "MyJob", "queue": "mine" }'
           )
           conn.call(
-            "ZADD",
+            'ZADD',
             config.retries_set, 
             (Time.now.to_f + 10.0).to_s,
-            "{ \"name\": \"MyFailedJob\", \"queue\": \"mine\" }"
+            '{ "name": "MyFailedJob", "queue": "mine" }'
           )
-          config.logger.debug("Enqueuer Test") { conn.call("ZRANGE", config.retries_set, -5, -1) }
+          config.logger.debug('Enqueuer Test') { conn.call('ZRANGE', config.retries_set, -5, -1) }
         end
         expect(enqueuer).to receive(:push_job).at_least(:once).and_call_original
         Sync do
           enqueuer.enqueue_jobs
         end
       end.to change {
-        config.with_redis(async: false) { |conn| conn.call("LLEN", "jiggler:list:mine") }
+        config.with_sync_redis { |conn| conn.call('LLEN', 'jiggler:list:mine') }
       }.by(1)
-      config.with_redis(async: false) { |conn| conn.call("DEL", "jiggler:list:mine") }
+      config.with_sync_redis { |conn| conn.call('DEL', 'jiggler:list:mine') }
     end
   end
 end

@@ -78,7 +78,9 @@ module Jiggler
     end
 
     def unforsed_prune_outdated_processes_data
-      return unless config.with_sync_redis { |conn| conn.call('SET', CLEANUP_FLAG, '1', update: false, seconds: 60) }
+      return unless config.with_sync_redis do |conn| 
+        conn.call('SET', CLEANUP_FLAG, '1', update: false, ex: 60)
+      end
 
       prune_outdated_processes_data
     end
@@ -87,7 +89,7 @@ module Jiggler
     def prune_outdated_processes_data
       to_prune = []
       config.with_sync_redis do |conn|
-        processes_hash = Hash[*conn.call('HGETALL', config.processes_hash)]
+        processes_hash = conn.call('HGETALL', config.processes_hash)
         stats_keys = conn.call('SCAN', '0', 'MATCH', "#{config.stats_prefix}*").last
         
         processes_hash.each do |k, v|

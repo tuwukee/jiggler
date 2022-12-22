@@ -100,7 +100,7 @@ module Jiggler
       @redis_options ||= begin
         opts = @options.slice(:concurrency, :redis_url, :cert, :key, :redis_pool)
         if Jiggler.server?
-          opts[:concurrency] += 2 if @options[:poller_enabled]
+          opts[:concurrency] += 2 if @options[:poller_enabled] # poller uses 2 fibers
           opts[:concurrency] += 1 if @options[:stats_enabled]
         end
         opts
@@ -108,7 +108,7 @@ module Jiggler
     end
 
     def redis_pool
-      @redis ||= Jiggler::RedisStore.new(redis_options).pool
+      @redis_pool ||= Jiggler::RedisStore.new(redis_options).pool
     end
 
     def cleaner
