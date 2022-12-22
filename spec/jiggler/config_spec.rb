@@ -25,7 +25,7 @@ RSpec.describe Jiggler::Config do
       expect(config[:max_dead_jobs]).to be 100
       expect(config[:dead_timeout_in_seconds]).to be 100
       expect(config[:stats_enabled]).to be true
-      expect(config[:stats_interval]).to be 15
+      expect(config[:stats_interval]).to be 10
       expect(config[:poller_enabled]).to be true
       expect(config[:poll_interval]).to be 5
     end

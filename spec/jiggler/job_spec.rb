@@ -69,4 +69,20 @@ RSpec.describe Jiggler::Job do
       }.by(1)
     end
   end
+
+  describe '#enqueue_bulk' do
+    let(:args_arr) do
+      [
+        ['1', 1, 1.0, true, [1], { '1' => 1 }],
+        ['2', 2, 2.0, true, [2], { '2' => 2 }],
+        ['3', 3, 3.0, true, [3], { '3' => 3 }]
+      ]
+    end
+
+    it 'adds the jobs to the queue' do
+      expect { MyJobWithArgs.enqueue_bulk(args_arr) }.to change { 
+        Jiggler.config.with_redis(async: false) { |conn| conn.call('LLEN', 'jiggler:list:default') }
+      }.by(3)
+    end
+  end
 end

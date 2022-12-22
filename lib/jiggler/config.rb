@@ -23,7 +23,7 @@ module Jiggler
       timeout: 25,
       max_dead_jobs: 10_000,
       stats_enabled: true,
-      stats_interval: 15,
+      stats_interval: 10,
       poller_enabled: true,
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds

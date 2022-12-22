@@ -70,7 +70,7 @@ module Jiggler
     end
 
     def fetch_and_format_queues(conn)
-      lists = conn.call('KEYS', "#{config.queue_prefix}*")
+      lists = conn.call('SCAN', '0', 'MATCH', "#{config.queue_prefix}*").last
       lists_data = {}
 
       collected_data = conn.pipelined do |pipeline|

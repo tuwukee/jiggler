@@ -18,8 +18,10 @@ module Jiggler
           prn_all_processes(pipeline)
           prn_failures_counter(pipeline)
           prn_processed_counter(pipeline)
+          prn_flags(conn)
         end
         prn_all_queues(conn)
+        prn_stats(conn)
       end
     end
 
@@ -91,7 +93,7 @@ module Jiggler
       config.with_sync_redis do |conn|
         processes_hash = conn.call('HGETALL', config.processes_hash)
         stats_keys = conn.call('SCAN', '0', 'MATCH', "#{config.stats_prefix}*").last
-        
+
         processes_hash.each do |k, v|
           process_data = JSON.parse(v)
           if process_data['stats_enabled'] && !stats_keys.include?("#{config.stats_prefix}#{k}")
@@ -135,7 +137,8 @@ module Jiggler
     end
 
     def prn_all_queues(conn)
-      queues = conn.call('KEYS', "#{config.queue_prefix}*")
+      # queues = conn.call('KEYS', "#{config.queue_prefix}*")
+      queues = conn.call('SCAN', '0', 'MATCH', "#{config.queue_prefix}*").last
       conn.call('DEL', *queues) unless queues.empty?
     end
 
@@ -149,6 +152,16 @@ module Jiggler
 
     def prn_processed_counter(conn)
       conn.call('DEL', Jiggler::Stats::Monitor::PROCESSED_COUNTER)
+    end
+
+    def prn_flags(conn)
+      conn.call('DEL', CLEANUP_FLAG)
+      conn.call('DEL', Jiggler::Stats::Monitor::MONITOR_FLAG)
+    end
+
+    def prn_stats(conn)
+      stats_keys = conn.call('SCAN', '0', 'MATCH', "#{config.stats_prefix}*").last
+      conn.call('DEL', *stats_keys) unless stats_keys.empty?
     end
   end
 end

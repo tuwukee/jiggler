@@ -5,7 +5,6 @@ source "https://rubygems.org"
 gem "rack"
 gem "async", "~> 2.3"
 gem "async-io"
-gem "async-redis"
 gem "redis-client"
 
 group :development, :test do

@@ -6,8 +6,8 @@
 require_relative '../lib/jiggler'
 require_relative '../lib/jiggler/cli'
 
-require 'ruby-prof'
-require 'heap-profiler'
+# require 'ruby-prof'
+# require 'heap-profiler'
 
 class LoadJob
   include Jiggler::Job
@@ -20,7 +20,9 @@ end
 
 Jiggler.configure_server do |config|
   config[:poll_interval] = 2
+  # config[:stats_interval] = 5
   config[:boot_app] = false
+  # config[:concurrency] = 15
   # config[:poller_enabled] = false
   # config[:stats_enabled] = false
   config.logger.level = Logger::WARN

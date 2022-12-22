@@ -18,11 +18,11 @@ RSpec.describe Jiggler::Worker do
 
   describe '#run' do
     it 'runs the worker and performs the job' do
+      MyJob.enqueue
       task = Async do
         Async do
           expect(worker).to receive(:fetch_one).at_least(:once).and_call_original
           expect(worker).to receive(:execute_job).at_least(:once).and_call_original
-          MyJob.enqueue
           worker.run
         end
         sleep(1)

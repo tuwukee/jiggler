@@ -11,7 +11,7 @@ services:
     volumes:
       - .:/jiggler
       - jiggler_gems:/jiggler_gems
-    command: bundle exec bin/jigglerload
+    command: bundle exec bin/jiggler -v -r ./spec/fixtures/jobs
     platform: linux/amd64
     tty: true
     depends_on:
