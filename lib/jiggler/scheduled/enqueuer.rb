@@ -22,10 +22,10 @@ module Jiggler
         @config.with_async_redis do |conn|
           sorted_sets.each do |sorted_set|
             # Get next item in the queue with score (time to execute) <= now
-            job_args = zpopbyscore(conn, keys: [sorted_set], argv: [Time.now.to_f.to_s])
+            job_args = zpopbyscore(conn, key: sorted_set, argv: Time.now.to_f.to_s)
             while !@done && job_args
               push_job(conn, job_args)
-              job_args = zpopbyscore(conn, keys: [sorted_set], argv: [Time.now.to_f.to_s])
+              job_args = zpopbyscore(conn, key: sorted_set, argv: Time.now.to_f.to_s)
             end
           end
         end
@@ -50,11 +50,11 @@ module Jiggler
         @sorted_sets ||= [@config.retries_set, @config.scheduled_set].freeze
       end
 
-      def zpopbyscore(conn, keys: nil, argv: nil)
+      def zpopbyscore(conn, key: nil, argv: nil)
         if @lua_zpopbyscore_sha.nil?
           @lua_zpopbyscore_sha = conn.call('SCRIPT', 'LOAD', LUA_ZPOPBYSCORE)
         end
-        conn.call('EVALSHA', @lua_zpopbyscore_sha, keys.length, *keys, *argv)
+        conn.call('EVALSHA', @lua_zpopbyscore_sha, 1, key, argv)
       rescue RedisClient::CommandError => e
         raise unless e.message.start_with?('NOSCRIPT')
 

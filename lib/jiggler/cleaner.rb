@@ -135,7 +135,7 @@ module Jiggler
     end
 
     def prn_all_queues(conn)
-      queues = conn.call('SCAN', '0', 'MATCH', "#{config.queue_prefix}*").last
+      queues = conn.call('KEYS', "#{config.queue_prefix}*")
       conn.call('DEL', *queues) unless queues.empty?
     end
 

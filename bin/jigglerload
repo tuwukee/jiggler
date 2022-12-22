@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 # command: bundle exec bin/jigglerload
+# bundle exec bin/jiggler -v -r ./spec/fixtures/jobs
 
 require_relative '../lib/jiggler'
 require_relative '../lib/jiggler/cli'
@@ -13,7 +14,6 @@ class LoadJob
   job_options retries: 1
 
   def perform(idx, ts = nil)
-    # sleep(0.2)
     puts("#{Time.now.to_f - ts}\n") if !ts.nil?
   end
 end
@@ -22,7 +22,7 @@ Jiggler.configure_server do |config|
   config[:poll_interval] = 2
   config[:boot_app] = false
   # config[:poller_enabled] = false
-  #config[:stats_enabled] = false
+  # config[:stats_enabled] = false
   config.logger.level = Logger::WARN
 end
 
@@ -30,7 +30,7 @@ Jiggler.config.cleaner.prune_all
 
 cli = Jiggler::CLI.instance
 
-iter = 50
+iter = 10
 count = 10_000
 iter.times do |i|
   arr = Array.new(count) { |idx| [idx] }

@@ -41,10 +41,15 @@ RSpec.describe Jiggler::Summary do
         })
         expect(first_summary['processes'].keys).to_not include(uuid)
         
-        Async { launcher.start }
-        sleep(1)
-        second_summary = described_class.all(config)
-        launcher.stop
+        launcher_task = Async { launcher.start }
+        second_summary = nil
+        sleep_task = Async do
+          sleep(1)
+          second_summary = described_class.all(config)
+          launcher.stop
+        end
+        launcher_task.wait
+        sleep_task.wait
 
         expect(second_summary['queues']).to_not include({
           'queue1' => 1

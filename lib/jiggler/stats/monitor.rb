@@ -45,6 +45,7 @@ module Jiggler
           current_jobs: collection.data[:current_jobs],
         })
         logger.debug('Monitor') { process_data }
+
         processed_jobs = collection.data[:processed]
         failed_jobs = collection.data[:failures]
         collection.data[:processed] -= processed_jobs
