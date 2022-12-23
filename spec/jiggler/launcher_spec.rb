@@ -1,7 +1,14 @@
 # frozen_string_literal: true
 
 RSpec.describe Jiggler::Launcher do
-  let(:config) { Jiggler::Config.new(concurrency: 1, timeout: 1, verbose: true) }
+  let(:config) do
+    Jiggler::Config.new(
+      concurrency: 1, 
+      timeout: 1, 
+      verbose: true,
+      redis_mode: :async
+    )
+    end
   let(:launcher) { described_class.new(config) }
 
   describe '#initialize' do

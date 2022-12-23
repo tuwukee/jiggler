@@ -53,11 +53,12 @@ module Jiggler
     end
 
     def cleanup
-      redis { |conn| conn.call('HDEL', config.processes_hash, @uuid) }
+      config.with_async_redis { |conn| conn.call('HDEL', config.processes_hash, @uuid) }
     end
 
+    # using a sync call to throw an error an early exit if redis is down
     def set_process_data
-      redis { |conn| conn.call('HSET', config.processes_hash, @uuid, process_data) }
+      config.with_sync_redis { |conn| conn.call('HSET', config.processes_hash, @uuid, process_data) }
     end
 
     private

@@ -94,8 +94,8 @@ module Jiggler
       end
 
       def job_options
-        retries = @options[:retries] || @klass.retries
-        jid = @options[:jid] || SecureRandom.hex(8)
+        retries = @options.fetch(:retries, @klass.retries)
+        jid = @options.fetch(:jid, SecureRandom.hex(8))
         { retries: retries, jid: jid }
       end
 

@@ -7,6 +7,7 @@ RSpec.describe Jiggler::Retrier do
       timeout: 1, 
       verbose: true,
       queues: ['test'],
+      redis_mode: :async
     ) 
   end
   let(:retrier) { Jiggler::Retrier.new(config) }

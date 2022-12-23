@@ -7,6 +7,8 @@ GEM
       timers (~> 4.1)
     async-io (1.34.0)
       async
+    async-pool (0.3.12)
+      async (>= 1.25)
     concurrent-ruby (1.1.10)
     connection_pool (2.3.0)
     console (1.16.2)
@@ -56,8 +58,9 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
-  async (~> 2.3)
+  async
   async-io
+  async-pool
   debug (~> 1.6)
   heap-profiler
   rack

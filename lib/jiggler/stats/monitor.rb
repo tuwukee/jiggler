@@ -77,11 +77,7 @@ module Jiggler
       end
 
       def cleanup
-        redis { |conn| conn.call('DEL', data_key) }
-      rescue => ex
-        handle_exception(
-          ex, { context: '\'Error while cleaning up stats\'', tid: @tid }
-        )
+        config.with_async_redis { |conn| conn.call('DEL', data_key) }
       end
 
       def wait

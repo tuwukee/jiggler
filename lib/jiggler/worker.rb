@@ -79,6 +79,16 @@ module Jiggler
         increase_processed_counter
       rescue Async::Stop => err
         raise err
+      rescue UnknownJobError => err
+        handle_exception(
+          err,
+          {
+            error_class: err.class.name,
+            job: parsed_args,
+            tid: @tid
+          },
+          raise_ex: true
+        )
       rescue Jiggler::RetryHandled => handled
         err = handled.cause || handled
         handle_exception(
@@ -123,7 +133,7 @@ module Jiggler
       with_retry(instance, parsed_job, queue) do
         instance.perform(*parsed_job['args'])
       end
-      logger.info("Worker") { 
+      logger.info('Worker') { 
         "Finished #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
       }
     ensure
@@ -150,7 +160,7 @@ module Jiggler
       handle_exception(
         ex,
         {
-          context: 'Fetch error',
+          context: '\'Fetch error\'',
           tid: @tid
         },
         raise_ex: true
@@ -194,6 +204,8 @@ module Jiggler
       names.inject(Object) do |constant, name|
         constant.const_get(name, false)
       end
+    rescue => err
+      raise UnknownJobError, 'Cannot initialize job'
     end
   end
 end

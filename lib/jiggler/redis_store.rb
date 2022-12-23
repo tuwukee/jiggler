@@ -5,8 +5,6 @@ require 'async/pool'
 
 module Jiggler
   class RedisStore
-    :config
-
     def initialize(options = {})
       @options = options
       @redis_config = RedisClient.config(url: options[:redis_url])
@@ -14,9 +12,29 @@ module Jiggler
 
     def pool
       return @options[:redis_pool] if @options[:redis_pool]
+      
+      if @options[:redis_mode] == :async
+        async_pool
+      else
+        sync_pool
+      end
+    end
+
+    def async_pool
       Async::Pool::Controller.wrap(limit: @options[:concurrency]) do
         @redis_config.new_client
       end
+    end
+
+    def sync_pool
+      # use connection_pool from redis-store dependency
+      pool = ConnectionPool.new(size: @options[:concurrency]) do 
+        @redis_config.new_client
+      end
+      def pool.acquire(&block)
+        with(&block)
+      end
+      pool
     end
   end
 end

@@ -27,7 +27,8 @@ module Jiggler
       poller_enabled: true,
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
-      redis_pool: nil
+      redis_pool: nil,
+      redis_mode: :sync # :async or :sync. :sync is used on default for client connections
     }
 
     def initialize(options = {})
@@ -98,11 +99,17 @@ module Jiggler
 
     def redis_options
       @redis_options ||= begin
-        opts = @options.slice(:concurrency, :redis_url, :cert, :key, :redis_pool)
+        opts = @options.slice(
+          :concurrency,
+          :redis_url,
+          :redis_pool,
+          :redis_mode
+        )
         if Jiggler.server?
           opts[:concurrency] += 2 # safity margin
           opts[:concurrency] += 2 if @options[:poller_enabled] # poller uses 2 fibers
           opts[:concurrency] += 1 if @options[:stats_enabled]
+          opts[:redis_mode] = :async
         end
         opts
       end
@@ -127,8 +134,11 @@ module Jiggler
     def handle_exception(ex, ctx = {}, raise_ex: false)
       err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(' ')
       logger.error("error_message='#{ex.message}' #{err_context}")
-      logger.error(ex.backtrace.first(10).join("\n")) if !ex.backtrace.nil? || raise_ex == false
-      raise ex if raise_ex
+      if raise_ex
+        raise ex
+      else
+        logger.error(ex.backtrace.first(10).join("\n")) unless ex.backtrace.nil?
+      end
     end
     
     def_delegators :@options, :[], :[]=, :fetch, :key?, :has_key?, :merge!, :delete, :slice

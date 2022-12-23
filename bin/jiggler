@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
-require_relative '../lib/jiggler'
-require_relative '../lib/jiggler/cli'
+require 'jiggler'
+require 'jiggler/cli'
 
 begin
   cli = Jiggler::CLI.instance

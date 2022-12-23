@@ -2,8 +2,8 @@
 
 require 'debug'
 
-require '/jiggler/lib/jiggler.rb'
-require '/jiggler/spec/fixtures/jobs.rb'
+require 'jiggler'
+require_relative './fixtures/jobs'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|

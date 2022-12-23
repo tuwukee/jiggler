@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../lib/jiggler/cli.rb'
+
 RSpec.describe Jiggler::CLI do
   let(:cli) { Jiggler::CLI.instance }
 
