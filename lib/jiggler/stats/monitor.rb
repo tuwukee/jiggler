@@ -44,7 +44,7 @@ module Jiggler
           rss: process_rss,
           current_jobs: collection.data[:current_jobs],
         })
-        logger.debug('Monitor') { process_data }
+        # logger.debug('Monitor') { process_data }
 
         processed_jobs = collection.data[:processed]
         failed_jobs = collection.data[:failures]
@@ -62,8 +62,6 @@ module Jiggler
 
         config.cleaner.unforsed_prune_outdated_processes_data
       rescue => ex
-        Jiggler.logger.info(ex.inspect)
-        Jiggler.logger.info(ex.backtrace.join("\n"))
         handle_exception(
           ex, { context: '\'Error while loading stats into redis\'', tid: @tid }
         )

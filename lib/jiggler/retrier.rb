@@ -59,7 +59,7 @@ module Jiggler
     end
 
     def retries_exhausted(jobinst, parsed_job, exception)
-      logger.warn('Retrier') { 
+      logger.debug('Retrier') { 
         "Retries exhausted for #{parsed_job['name']} jid=#{parsed_job['jid']}" 
       }
 

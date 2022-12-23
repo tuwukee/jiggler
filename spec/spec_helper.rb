@@ -25,10 +25,6 @@ RSpec.configure do |config|
     config.default_formatter = 'doc'
   end
 
-  config.before(:suite) do
-    Jiggler.config.cleaner.prune_all
-  end 
-
   config.around(:each) do |example|
     Timeout.timeout(10) do
       example.run

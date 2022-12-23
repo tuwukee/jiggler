@@ -38,7 +38,7 @@ module Jiggler
       def push_job(conn, job_args)
         name = JSON.parse(job_args)['queue'] || @config.default_queue
         list_name = "#{@config.queue_prefix}#{name}"
-        logger.debug('Poller Enqueuer') { "Pushing #{job_args} to #{list_name}" }
+        # logger.debug('Poller Enqueuer') { "Pushing #{job_args} to #{list_name}" }
         conn.call('LPUSH', list_name, job_args)
       rescue => err
         logger.error("Error while pushing #{job_args} to queue: #{err}")

@@ -11,7 +11,7 @@ services:
     volumes:
       - .:/jiggler
       - jiggler_gems:/jiggler_gems
-    command: bundle exec bin/jiggler -v -r ./spec/fixtures/jobs
+    command: bundle exec bin/jigglerlocal -v -r ./spec/fixtures/jobs
     platform: linux/amd64
     tty: true
     depends_on:
@@ -32,7 +32,7 @@ services:
     volumes:
       - .:/jiggler
       - jiggler_gems:/jiggler_gems
-    command: bundle exec rackup lib/jiggler/web/config.ru -o 0.0.0.0
+    command: bundle exec rackup support/web/config.ru -o 0.0.0.0
     platform: linux/amd64
     ports:
       - "9292:9292"

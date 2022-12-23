@@ -12,6 +12,7 @@ RSpec.describe Jiggler::Cleaner do
     )
   end
   let(:cleaner) { described_class.new(config) }
+  after(:all) { Jiggler.config.cleaner.prune_all }
 
   describe '#prune_failures_counter' do
     it 'prunes the failures counter' do
