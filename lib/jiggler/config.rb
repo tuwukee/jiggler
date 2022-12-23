@@ -16,8 +16,7 @@ module Jiggler
     DEAD_SET = 'jiggler:set:dead'
 
     DEFAULTS = {
-      boot_app: true,
-      require: '.',
+      require: nil,
       environment: 'development',
       concurrency: 10,
       timeout: 25,
@@ -128,7 +127,7 @@ module Jiggler
     end
 
     def logger
-      @logger ||= ::Logger.new(STDOUT)
+      @logger ||= ::Logger.new(STDOUT, level: :info)
     end
 
     def handle_exception(ex, ctx = {}, raise_ex: false)

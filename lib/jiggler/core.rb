@@ -26,6 +26,6 @@ module Jiggler
   end
 
   def self.summary
-    Jiggler::Summary.all
+    Jiggler::Summary.all(self.config)
   end
 end
