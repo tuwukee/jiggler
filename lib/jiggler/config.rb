@@ -133,11 +133,8 @@ module Jiggler
     def handle_exception(ex, ctx = {}, raise_ex: false)
       err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(' ')
       logger.error("error_message='#{ex.message}' #{err_context}")
-      if raise_ex
-        raise ex
-      else
-        logger.error(ex.backtrace.first(10).join("\n")) unless ex.backtrace.nil?
-      end
+      logger.error(ex.backtrace.first(10).join("\n")) unless ex.backtrace.nil?
+      raise ex if raise_ex
     end
     
     def_delegators :@options, :[], :[]=, :fetch, :key?, :has_key?, :merge!, :delete, :slice

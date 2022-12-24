@@ -25,8 +25,11 @@ module Jiggler
           @tid = tid
           wait # initial wait
           until @done
+            # start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
             load_data_into_redis
             wait unless @done
+            # finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            # logger.warn "elapsed time for the monitor: #{finish - start}"
           end
         end
       end
@@ -52,15 +55,16 @@ module Jiggler
         collection.data[:failures] -= failed_jobs
 
         config.with_sync_redis do |conn|
-          conn.pipelined do |pipeline|
+          result = conn.pipelined do |pipeline|
             pipeline.call('SET', MONITOR_FLAG, '1', ex: exp)
             pipeline.call('SET', data_key, process_data, ex: exp)
             pipeline.call('INCRBY', PROCESSED_COUNTER, processed_jobs)
             pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
           end
+          # logger.warn('Monitor') { result + [data_key] }
         end
 
-        config.cleaner.unforsed_prune_outdated_processes_data
+        config.cleaner.prune_outdated_processes_data
       rescue => ex
         handle_exception(
           ex, { context: '\'Error while loading stats into redis\'', tid: @tid }
@@ -68,9 +72,16 @@ module Jiggler
       end
 
       def process_rss
-        IO.readlines(@rss_path).each do |line|
-          next unless line.start_with?('VmRSS:')
-          break line.split[1].to_i
+        case RUBY_PLATFORM
+        when /linux/
+          IO.readlines(@rss_path).each do |line|
+            next unless line.start_with?('VmRSS:')
+            break line.split[1].to_i
+          end
+        when /darwin|bsd/
+          `ps -o pid,rss -p #{Process.pid}`.lines.last.split.last.to_i
+        else
+          nil
         end
       end
 

@@ -58,7 +58,8 @@ module Jiggler
     end
 
     def fetch_one
-      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) }
+      retries ||= 0
+      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) } if queue.nil?
       if queue
         if @done
           requeue(queue, args)
@@ -70,6 +71,7 @@ module Jiggler
     rescue Async::Stop => e
       raise e
     rescue => ex
+      retry unless (retries += 1) > 2
       handle_fetch_error(ex)
     end
     
@@ -87,22 +89,6 @@ module Jiggler
             error_class: err.class.name,
             job: parsed_args,
             tid: @tid
-          },
-          raise_ex: true
-        )
-      rescue Jiggler::RetryHandled => handled
-        err = handled.cause || handled
-        handle_exception(
-          err, 
-          { 
-            context: '\'Job raised exception\'',
-            error_class: err.class.name,
-            name: parsed_args['name'],
-            queue: parsed_args['queue'],
-            args: parsed_args['args'],
-            attempt: parsed_args['attempt'],
-            tid: @tid,
-            jid: parsed_args['jid']
           },
           raise_ex: true
         )
@@ -124,31 +110,18 @@ module Jiggler
 
     def execute(parsed_job, queue)
       klass = constantize(parsed_job['name'])
-      jid = parsed_job['jid']
       instance = klass.new
 
-      logger.info('Worker') {
-        "Starting #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
-      }
       add_current_job_to_collection(parsed_job, klass.queue)
-      with_retry(instance, parsed_job, queue) do
+      retrier.wrapped(instance, parsed_job, queue) do
         instance.perform(*parsed_job['args'])
       end
-      logger.info('Worker') { 
-        "Finished #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
-      }
     ensure
       remove_current_job_from_collection
     end
 
-    def with_retry(instance, parsed_job, queue)
-      retrier.wrapped(instance, parsed_job, queue) do
-        yield
-      end
-    end
-
     def retrier
-      @retrier ||= Jiggler::Retrier.new(config)
+      @retrier ||= Jiggler::Retrier.new(config, collection)
     end
 
     def requeue(queue, args)

@@ -189,7 +189,8 @@ module Jiggler
 
     def load_app
       if config[:require].nil? || config[:require].empty?
-        logger.warn('No require option specified, Jiggler will not init any jobs')
+        logger.warn('No require option specified. Please specify a Ruby file to require with --require')
+        # exit(1)
         return
       end
       require config[:require]

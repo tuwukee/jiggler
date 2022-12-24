@@ -4,23 +4,43 @@ module Jiggler
   class Retrier
     include Support::Component
 
-    attr_reader :config
+    attr_reader :config, :collection
 
-    def initialize(config)
+    def initialize(config, collection)
       @config = config
+      @collection = collection
+      @tid = tid
     end
 
     def wrapped(instance, parsed_job, queue)
+      logger.info {
+        "Starting #{instance.class.name} queue=#{instance.class.queue} tid=#{@tid} jid=#{parsed_job['jid']}"
+      }
       yield
+      logger.info { 
+        "Finished #{instance.class.name} queue=#{instance.class.queue} tid=#{@tid} jid=#{parsed_job['jid']}"
+      }
     rescue Async::Stop => stop
       raise stop
     rescue => err
       raise Async::Stop if exception_caused_by_shutdown?(err)
 
       process_retry(instance, parsed_job, queue, err)
+      increase_failures_counter
       
-      # exception is handled, so we can raise this to stop the worker
-      raise Jiggler::RetryHandled
+      handle_exception(
+        err,
+        { 
+          context: '\'Job raised exception\'',
+          error_class: err.class.name,
+          name: parsed_job['name'],
+          queue: parsed_job['queue'],
+          args: parsed_job['args'],
+          attempt: parsed_job['attempt'],
+          tid: @tid,
+          jid: parsed_job['jid']
+        }
+      )
     end
 
     private
@@ -66,7 +86,6 @@ module Jiggler
       send_to_morgue(parsed_job)
     end
 
-    # todo: review this
     def send_to_morgue(parsed_job)
       logger.warn('Retrier') { 
         "#{parsed_job['name']} has been sent to dead jid=#{parsed_job['jid']}"
@@ -92,6 +111,11 @@ module Jiggler
 
       e.cause.instance_of?(Async::Stop) ||
         exception_caused_by_shutdown?(e.cause, checked_causes)
+    end
+
+    def increase_failures_counter
+      return unless config[:stats_enabled]
+      collection.data[:failures] += 1
     end
 
     def exception_message(exception)

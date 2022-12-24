@@ -79,7 +79,7 @@ module Jiggler
       end
     end
 
-    def unforsed_prune_outdated_processes_data
+    def unforced_prune_outdated_processes_data
       return unless config.with_sync_redis do |conn| 
         conn.call('GET', CLEANUP_FLAG)
       end.nil?
@@ -102,9 +102,14 @@ module Jiggler
         end
 
         unless to_prune.empty?
-          conn.call('HDEL', config.processes_hash, *to_prune)
+          
           # todo: use debug logger
           config.logger.warn('Pruned outdated processes') { to_prune }
+          config.logger.warn('Processes hash') { processes_hash }
+          config.logger.warn('Stats keys') { stats_keys }
+          config.logger.warn('All keys') { conn.call('KEYS', '*') }
+
+          conn.call('HDEL', config.processes_hash, *to_prune)
         end
 
         conn.call('SET', CLEANUP_FLAG, '1', ex: 60)
