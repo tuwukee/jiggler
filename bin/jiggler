@@ -1,13 +1,13 @@
 #!/usr/bin/env ruby
 
-require_relative '../lib/jiggler'
-require_relative '../lib/jiggler/cli'
+require 'jiggler'
+require 'jiggler/cli'
 
 begin
   cli = Jiggler::CLI.instance
   cli.parse
   
-  cli.config.logger.info("*---* Jiggler is starting in #{Jiggler.config[:environment].upcase} *---*")
+  cli.config.logger.info("Jiggler is starting in #{Jiggler.config[:environment].upcase} ✯⸜(*❛‿❛)⸝✯")
   cli.config.logger.info("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config[:queues].join(',')}")
 
   cli.start

@@ -25,10 +25,6 @@ module Jiggler
         config.logger
       end
   
-      def redis(async: true, &block)
-        config.with_redis(async:, &block)
-      end
-  
       def tid
         return unless Async::Task.current?
         (Async::Task.current.object_id ^ ::Process.pid).to_s(36)

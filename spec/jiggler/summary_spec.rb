@@ -9,7 +9,8 @@ RSpec.describe Jiggler::Summary do
       verbose: true, 
       queues: queues,
       poller_enabled: false,
-      stats_enabled: false
+      stats_enabled: false,
+      redis_mode: :async
     )
   end
 

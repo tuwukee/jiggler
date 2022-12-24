@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module Jiggler
-  class UnknownJobError < StandardError; end
+  VERSION = '0.1.0'
 end

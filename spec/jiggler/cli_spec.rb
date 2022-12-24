@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative '../../lib/jiggler/cli.rb'
+
 RSpec.describe Jiggler::CLI do
   let(:cli) { Jiggler::CLI.instance }
 
@@ -9,7 +11,7 @@ RSpec.describe Jiggler::CLI do
         cli.parse
         expect(cli.config[:concurrency]).to be 10
         expect(cli.config[:queues]).to eq ['default']
-        expect(cli.config[:require]).to eq '.'
+        expect(cli.config[:require]).to be nil
         expect(cli.config[:timeout]).to be 25
       end
     end

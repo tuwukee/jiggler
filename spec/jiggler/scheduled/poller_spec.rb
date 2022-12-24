@@ -1,7 +1,15 @@
 # frozen_string_literal: true
 
 RSpec.describe Jiggler::Scheduled::Poller do
-  let(:config) { Jiggler::Config.new(concurrency: 1, timeout: 1, verbose: true, poll_interval: 1) }
+  let(:config) do
+    Jiggler::Config.new(
+      concurrency: 1,
+      timeout: 1,
+      verbose: true,
+      poll_interval: 1,
+      redis_mode: :async
+    )
+  end
   let(:poller) { described_class.new(config) }
 
   describe '#start' do

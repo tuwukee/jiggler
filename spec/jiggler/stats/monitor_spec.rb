@@ -1,7 +1,14 @@
 # frozen_string_literal: true
 
 RSpec.describe Jiggler::Stats::Monitor do
-  let(:config) { Jiggler::Config.new(timeout: 1, verbose: true, stats_interval: 1) }
+  let(:config) do 
+    Jiggler::Config.new(
+      timeout: 1, 
+      verbose: true, 
+      stats_interval: 1,
+      redis_mode: :async
+    )
+  end
   let(:collection) { Jiggler::Stats::Collection.new('monitor-test-uuid') }
   let(:monitor) { described_class.new(config, collection) }
 

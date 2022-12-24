@@ -6,7 +6,8 @@ RSpec.describe Jiggler::Scheduled::Enqueuer do
       concurrency: 1, 
       timeout: 1, 
       verbose: true,
-      queues: ['default', 'mine']
+      queues: ['default', 'mine'],
+      redis_mode: :async
     )
   end
   let(:enqueuer) { described_class.new(config) }
@@ -15,7 +16,7 @@ RSpec.describe Jiggler::Scheduled::Enqueuer do
     it 'pushes an empty job to default queue' do
       expect do
         config.with_sync_redis do |conn|
-          enqueuer.push_job(conn, '{ "name": "MyJob" }')
+          enqueuer.push_job(conn, '{ "name": "MyJob", "jid": "001" }')
         end
       end.to change { 
         config.with_sync_redis { |conn| conn.call('LLEN', 'jiggler:list:default') }
@@ -27,7 +28,7 @@ RSpec.describe Jiggler::Scheduled::Enqueuer do
         config.with_sync_redis do |conn|
           enqueuer.push_job(
             conn, 
-            '{ "name": "MyJob", "queue": "mine" }'
+            '{ "name": "MyJob", "queue": "mine", "jid": "111" }'
           )
         end
       end.to change { 
@@ -41,7 +42,7 @@ RSpec.describe Jiggler::Scheduled::Enqueuer do
         config.with_sync_redis do |conn|
           enqueuer.push_job(
             conn, 
-            '{ "name": "MyJob", "queue": "unknown" }'
+            '{ "name": "MyJob", "queue": "unknown", "jid": "011" }'
           )
         end
       end.to change { 
@@ -58,13 +59,13 @@ RSpec.describe Jiggler::Scheduled::Enqueuer do
             'ZADD',
             config.retries_set, 
             (Time.now.to_f - 10.0).to_s, 
-            '{ "name": "MyJob", "queue": "mine" }'
+            '{ "name": "MyJob", "queue": "mine", "jid": "002" }'
           )
           conn.call(
             'ZADD',
             config.retries_set, 
             (Time.now.to_f + 10.0).to_s,
-            '{ "name": "MyFailedJob", "queue": "mine" }'
+            '{ "name": "MyFailedJob", "queue": "mine", "jid": "012" }'
           )
           config.logger.debug('Enqueuer Test') { conn.call('ZRANGE', config.retries_set, -5, -1) }
         end

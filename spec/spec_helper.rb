@@ -2,8 +2,8 @@
 
 require 'debug'
 
-require '/jiggler/lib/jiggler.rb'
-require '/jiggler/spec/fixtures/jobs.rb'
+require 'jiggler'
+require_relative './fixtures/jobs'
 
 RSpec.configure do |config|
   config.expect_with :rspec do |expectations|
@@ -24,10 +24,6 @@ RSpec.configure do |config|
   if config.files_to_run.one?
     config.default_formatter = 'doc'
   end
-
-  config.before(:suite) do
-    Jiggler.config.cleaner.prune_all
-  end 
 
   config.around(:each) do |example|
     Timeout.timeout(10) do

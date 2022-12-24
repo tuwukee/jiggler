@@ -1,7 +1,14 @@
 # frozen_string_literal: true
 
 RSpec.describe Jiggler::Manager do
-  let(:config) { Jiggler::Config.new(concurrency: 4, timeout: 3, verbose: true) }
+  let(:config) do 
+    Jiggler::Config.new(
+      concurrency: 4, 
+      timeout: 3, 
+      verbose: true,
+      redis_mode: :async
+    )
+  end
   let(:collection) { Jiggler::Stats::Collection.new(config) }
   let(:manager) { described_class.new(config, collection) }
 

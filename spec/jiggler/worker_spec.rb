@@ -6,7 +6,8 @@ RSpec.describe Jiggler::Worker do
       concurrency: 1, 
       timeout: 1, 
       verbose: true,
-      queues: ['default', 'test']
+      queues: ['default', 'test'],
+      redis_mode: :async
     ) 
   end
   let(:collection) { Jiggler::Stats::Collection.new(config) }
@@ -33,11 +34,11 @@ RSpec.describe Jiggler::Worker do
 
     it 'runs the worker and performs the job with args' do
       expect do
+        MyJobWithArgs.enqueue('str', 1, 2.0, true, [1, 2], { a: 1, b: 2 })
         task = Async do
           Async do
             expect(worker).to receive(:fetch_one).at_least(:once).and_call_original
             expect(worker).to receive(:execute_job).at_least(:once).and_call_original
-            MyJobWithArgs.enqueue('str', 1, 2.0, true, [1, 2], { a: 1, b: 2 })
             worker.run
           end
           sleep(1)
@@ -51,11 +52,11 @@ RSpec.describe Jiggler::Worker do
 
     it 'runs the worker and adds the job to retry queue' do
       expect do
+        MyFailedJob.enqueue
         task = Async do
           Async do
             expect(worker).to receive(:fetch_one).at_least(:once).and_call_original
             expect(worker).to receive(:execute_job).at_least(:once).and_call_original
-            MyFailedJob.enqueue
             worker.run
           end
           sleep(1)

@@ -24,6 +24,7 @@ module Jiggler
           break @callback.call(self) if @done
           process_job
         rescue Async::Stop
+          logger.debug('Worker') { "Worker #{@tid} stopped" }
           @callback.call(self) # should it handle stop errors raised by callback?
           break
         rescue => ex
@@ -57,7 +58,8 @@ module Jiggler
     end
 
     def fetch_one
-      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) }
+      retries ||= 0
+      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) } if queue.nil?
       if queue
         if @done
           requeue(queue, args)
@@ -69,6 +71,7 @@ module Jiggler
     rescue Async::Stop => e
       raise e
     rescue => ex
+      retry unless (retries += 1) > 2
       handle_fetch_error(ex)
     end
     
@@ -79,19 +82,13 @@ module Jiggler
         increase_processed_counter
       rescue Async::Stop => err
         raise err
-      rescue Jiggler::RetryHandled => handled
-        err = handled.cause || handled
+      rescue UnknownJobError => err
         handle_exception(
-          err, 
-          { 
-            context: '\'Job raised exception\'',
+          err,
+          {
             error_class: err.class.name,
-            name: parsed_args['name'],
-            queue: parsed_args['queue'],
-            args: parsed_args['args'],
-            attempt: parsed_args['attempt'],
-            tid: @tid,
-            jid: parsed_args['jid']
+            job: parsed_args,
+            tid: @tid
           },
           raise_ex: true
         )
@@ -113,31 +110,18 @@ module Jiggler
 
     def execute(parsed_job, queue)
       klass = constantize(parsed_job['name'])
-      jid = parsed_job['jid']
       instance = klass.new
 
-      logger.info('Worker') {
-        "Starting #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
-      }
       add_current_job_to_collection(parsed_job, klass.queue)
-      with_retry(instance, parsed_job, queue) do
+      retrier.wrapped(instance, parsed_job, queue) do
         instance.perform(*parsed_job['args'])
       end
-      logger.info("Worker") { 
-        "Finished #{klass} queue=#{klass.queue} tid=#{@tid} jid=#{jid}"
-      }
     ensure
       remove_current_job_from_collection
     end
 
-    def with_retry(instance, parsed_job, queue)
-      retrier.wrapped(instance, parsed_job, queue) do
-        yield
-      end
-    end
-
     def retrier
-      @retrier ||= Jiggler::Retrier.new(config)
+      @retrier ||= Jiggler::Retrier.new(config, collection)
     end
 
     def requeue(queue, args)
@@ -150,7 +134,7 @@ module Jiggler
       handle_exception(
         ex,
         {
-          context: 'Fetch error',
+          context: '\'Fetch error\'',
           tid: @tid
         },
         raise_ex: true
@@ -194,6 +178,8 @@ module Jiggler
       names.inject(Object) do |constant, name|
         constant.const_get(name, false)
       end
+    rescue => err
+      raise UnknownJobError, 'Cannot initialize job'
     end
   end
 end

@@ -45,8 +45,12 @@ module Jiggler
       "#{(kb/1024.0).round(2)} MB"
     end
 
-    def monitored_badge(stats_enabled)
+    def stats_badge(stats_enabled)
       stats_enabled ? '<span class=\'badge badge-success\'>Monitored</span>' : '<span class=\'badge\'>Unmonitored</span>'
+    end
+
+    def poller_badge(poller_enabled)
+      poller_enabled ? '<span class=\'badge badge-success\'>Polling</span>' : '<span class=\'badge\'>Polling Disabled</span>'
     end
 
     def styles

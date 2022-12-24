@@ -33,8 +33,6 @@ module Jiggler
     UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info('No signal handler registered, ignoring') }
     SIGNAL_HANDLERS.default = UNHANDLED_SIGNAL_HANDLER
     SIGNAL_HANDLERS.freeze
-
-    CONFIG_FILES = %w[jiggler.yml jiggler.yml.erb].freeze
     
     def parse(args = ARGV.dup)
       @config ||= Jiggler.config
@@ -44,9 +42,9 @@ module Jiggler
       validate!
     end
 
-    def start(boot_app: config[:boot_app])
+    def start
       Async do
-        load_app if boot_app
+        load_app
         @launcher = Launcher.new(config)
         setup_signal_handlers
         @launcher.start
@@ -60,7 +58,7 @@ module Jiggler
     end
 
     def quite
-      logger.info('Quietly shutting down Jiggler')
+      logger.debug('Quietly shutting down Jiggler')
       @launcher.quite
     end
 
@@ -129,7 +127,7 @@ module Jiggler
         end
 
         o.on '-V', '--version', 'Print version and exit' do
-          puts('Jiggler #{Jiggler::VERSION}')
+          puts("Jiggler #{Jiggler::VERSION}")
           exit(0)
         end
 
@@ -143,32 +141,18 @@ module Jiggler
     end
 
     def setup_options(args)
-      # parse CLI options
       opts = parse_options(args)
 
       set_environment(opts)
 
-      # check config file presence
       if opts[:config_file]
         unless File.exist?(opts[:config_file])
           raise ArgumentError, "No such file #{opts[:config_file]}"
         end
-      else
-        config_dir = File.join(config[:require], 'config')
-
-        CONFIG_FILES.each do |config_file|
-          path = File.join(config_dir, config_file)
-          opts[:config_file] ||= path if File.exist?(path)
-        end
       end
 
-      # parse config file options
       opts = parse_config(opts[:config_file]).merge(opts) if opts[:config_file]
-
-      # set defaults
       opts[:queues] = [Jiggler::Config::DEFAULT_QUEUE] if opts[:queues].nil?
-
-      # merge with defaults
       config.merge!(opts)
     end
 
@@ -204,6 +188,11 @@ module Jiggler
     end
 
     def load_app
+      if config[:require].nil? || config[:require].empty?
+        logger.warn('No require option specified. Please specify a Ruby file to require with --require')
+        # exit(1)
+        return
+      end
       require config[:require]
     rescue LoadError => e
       logger.fatal("Could not load jobs: #{e.message}")
