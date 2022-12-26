@@ -47,7 +47,6 @@ Jiggler.configure_server do |config|
   config[:concurrency] = 12               # Defaults to 10
   config[:timeout]     = 12               # Seconds Jiggler wait for jobs to finish before shotdown. Defaults to 25
   config[:require]     = "./jobs.rb"      # Path to file with jobs/app initializer
-  config[:redis_pool]  = nil              # Custom redis connections pool compatible with Async::Pool
   config[:redis_url]   = ENV["REDIS_URL"] # On default fetches the value from ENV["REDIS_URL"]
   config[:queues]      = ["shippers"]     # An array of queue names the server is going to listen to
   config[:config_file] = "./jiggler.yml"  # .yml file with Jiggler settings
@@ -58,11 +57,10 @@ Internally Jiggler server consists of 3 parts: Manager, Poller, Monitor. \
 Manager is responsible for workers. \
 Poller picks up data for retries and scheduled jobs. \
 Monitor periodically loads stats data into redis. \
-Manager is mandatory, while Poller and Monitor can be disabled in case there's no need in these services.
+Manager and Monitor are is mandatory, while Poller can be disabled in case there's no need retries/scheduled jobs.
 
 ```ruby
 Jiggler.configure_server do |config|
-  config[:stats_enabled]  = true # Defaults to true
   config[:stats_interval] = 15   # Defaults to 10
   config[:poller_enabled] = true # Defaults to true
   config[:poll_interval]  = 10   # Defaults to 5

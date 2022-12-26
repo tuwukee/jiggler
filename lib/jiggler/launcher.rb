@@ -16,7 +16,7 @@ module Jiggler
       set_process_data
       manager.start
       poller.start if config[:poller_enabled]
-      monitor.start if config[:stats_enabled]
+      monitor.start
     end
 
     def quite
@@ -26,7 +26,7 @@ module Jiggler
       manager.quite
 
       poller.terminate if config[:poller_enabled]
-      monitor.terminate if config[:stats_enabled]
+      monitor.terminate
       cleanup
     end
 

@@ -55,6 +55,13 @@ class LoadJob
   def perform(idx, ts = nil)
     # sleep(0.02)
     # puts('job is performing') if rand(1000).zero?
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    while true
+      finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      break if finish - start > 5.0
+      sleep(0.01)
+    end
+
     puts("#{Time.now.to_f - ts}\n") if !ts.nil?
   end
 end
@@ -63,7 +70,7 @@ Jiggler.config.cleaner.prune_all
 
 cli = Jiggler::CLI.instance
 
-iter = 300
+iter = 10
 count = 10_000
 Jiggler.logger.warn "Uploading #{count * iter} jobs..."
 iter.times do |i|

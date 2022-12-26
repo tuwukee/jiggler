@@ -21,7 +21,6 @@ module Jiggler
       concurrency: 10,
       timeout: 25,
       max_dead_jobs: 10_000,
-      stats_enabled: true,
       stats_interval: 10,
       poller_enabled: true,
       poll_interval: 5,
