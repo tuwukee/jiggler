@@ -47,7 +47,6 @@ module Jiggler
         timeout: config[:timeout],
         queues: config[:queues].join(', '),
         started_at: Time.now.to_f,
-        stats_enabled: config[:stats_enabled],
         poller_enabled: config[:poller_enabled]
       }.to_json
     end

@@ -114,7 +114,6 @@ module Jiggler
     end
 
     def increase_failures_counter
-      return unless config[:stats_enabled]
       collection.data[:failures] += 1
     end
 

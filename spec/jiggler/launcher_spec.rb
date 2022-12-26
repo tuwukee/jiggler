@@ -20,7 +20,6 @@ RSpec.describe Jiggler::Launcher do
         concurrency: 1,
         timeout: 1,
         queues: 'default',
-        stats_enabled: true,
         poller_enabled: true
       })
     end

@@ -55,7 +55,6 @@
             <tr>
               <td colspan='5' title='Process'>
                 <span><%= "#{uuid}:#{data['hostname']}" %></span>
-                <%= stats_badge(data['stats_enabled']) %>
                 <%= poller_badge(data['poller_enabled']) %>
                 </br>
                 <span><i><%= data['queues'] %></i></span>

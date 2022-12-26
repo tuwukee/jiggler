@@ -142,7 +142,6 @@ module Jiggler
     end
 
     def add_current_job_to_collection(parsed_job, queue)
-      return unless config[:stats_enabled]
       collection.data[:current_jobs][@tid] = {
         job_args: parsed_job,
         queue: queue,
@@ -151,17 +150,14 @@ module Jiggler
     end
 
     def remove_current_job_from_collection
-      return unless config[:stats_enabled]
       collection.data[:current_jobs].delete(@tid)
     end
 
     def increase_processed_counter
-      return unless config[:stats_enabled]
       collection.data[:processed] += 1
     end
 
     def increase_failures_counter
-      return unless config[:stats_enabled]
       collection.data[:failures] += 1
     end
 

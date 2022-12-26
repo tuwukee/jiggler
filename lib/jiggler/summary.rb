@@ -8,7 +8,6 @@ module Jiggler
       scheduled_jobs_count
       failures_count
       processed_count
-      monitor_enabled
       processes
       queues
     ].freeze
@@ -32,7 +31,6 @@ module Jiggler
           pipeline.call('ZCARD', config.scheduled_set)
           pipeline.call('GET', Jiggler::Stats::Monitor::FAILURES_COUNTER)
           pipeline.call('GET', Jiggler::Stats::Monitor::PROCESSED_COUNTER)
-          pipeline.call('GET', Jiggler::Stats::Monitor::MONITOR_FLAG)
         end
         [*data, fetch_and_format_processes(conn), fetch_and_format_queues(conn)]
       end
@@ -53,17 +51,13 @@ module Jiggler
       collected_data = conn.pipelined do |pipeline|
         processes.each do |uuid, process_data|
           processes_data[uuid] = JSON.parse(process_data)
-          if processes_data[uuid]['stats_enabled']
-            pipeline.call('GET', "#{config.stats_prefix}#{uuid}")
-          end
+          pipeline.call('GET', "#{config.stats_prefix}#{uuid}")
         end
       end
       
       processes.each do |uuid, _|
-        if processes_data[uuid]['stats_enabled']
-          stats_data = collected_data.shift
-          processes_data[uuid].merge!(JSON.parse(stats_data)) if stats_data
-        end
+        stats_data = collected_data.shift
+        processes_data[uuid].merge!(JSON.parse(stats_data)) if stats_data
         processes_data[uuid]['current_jobs'] ||= []
       end
       processes_data

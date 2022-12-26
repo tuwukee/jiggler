@@ -96,7 +96,7 @@ module Jiggler
 
         processes_hash.each do |k, v|
           process_data = JSON.parse(v)
-          if process_data['stats_enabled'] && !stats_keys.include?("#{config.stats_prefix}#{k}")
+          if !stats_keys.include?("#{config.stats_prefix}#{k}")
             to_prune << k
           end
         end

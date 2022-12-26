@@ -9,7 +9,6 @@ RSpec.describe Jiggler::Summary do
       verbose: true, 
       queues: queues,
       poller_enabled: false,
-      stats_enabled: false,
       redis_mode: :async
     )
   end
@@ -62,7 +61,6 @@ RSpec.describe Jiggler::Summary do
           'pid' => Process.pid,
           'concurrency' => 1,
           'timeout' => 1,
-          'stats_enabled' => false,
           'poller_enabled' => false,
           'current_jobs' => []
         })
