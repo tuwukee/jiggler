@@ -3,9 +3,8 @@
 RSpec.describe Jiggler::Cleaner do
   let(:config) do
     Jiggler::Config.new(
-      concurrency: 1, 
-      timeout: 1, 
-      verbose: true,
+      concurrency: 1,
+      timeout: 1,
       poller_enabled: false,
       redis_mode: :async
     )

@@ -131,7 +131,7 @@ module Jiggler
     def handle_exception(ex, ctx = {}, raise_ex: false)
       err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(' ')
       logger.error("error_message='#{ex.message}' #{err_context}")
-      logger.error(ex.backtrace.first(10).join("\n")) unless ex.backtrace.nil?
+      logger.error(ex.backtrace.first(12).join("\n")) unless ex.backtrace.nil?
       raise ex if raise_ex
     end
     

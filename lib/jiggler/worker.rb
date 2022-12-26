@@ -24,7 +24,7 @@ module Jiggler
           break @callback.call(self) if @done
           process_job
         rescue Async::Stop
-          logger.debug('Worker') { "Worker #{@tid} stopped" }
+          # binding.break
           @callback.call(self) # should it handle stop errors raised by callback?
           break
         rescue => ex

@@ -47,8 +47,7 @@ module Jiggler
 
     def process_retry(jobinst, parsed_job, queue, exception)
       job_class = jobinst.class
-      max_retry_attempts = job_class.retries.to_i 
-      count = parsed_job['attempt'].to_i + 1
+      parsed_job['started_at'] ||= Time.now.to_f
 
       message = exception_message(exception)
       if message.respond_to?(:scrub!)
@@ -58,19 +57,19 @@ module Jiggler
 
       parsed_job['error_message'] = message
       parsed_job['error_class'] = exception.class.name
-      parsed_job['queue'] = job_class.retry_queue
-      parsed_job['started_at'] ||= Time.now.to_f
+      
+      max_retry_attempts = parsed_job['retries'].to_i
+      count = parsed_job['attempt'].to_i + 1
+      return retries_exhausted(jobinst, parsed_job, exception) if count > max_retry_attempts
 
-      return retries_exhausted(jobinst, parsed_job, exception) if count >= max_retry_attempts
-
-      jitter = rand(10) * (count + 1)
       delay = count**4 + 15
-      retry_at = Time.now.to_f + delay + jitter
+      retry_at = Time.now.to_f + delay
       parsed_job['retry_at'] = retry_at
       if count > 1
         parsed_job['retried_at'] = Time.now.to_f
       end
       parsed_job['attempt'] = count
+      parsed_job['queue'] = job_class.retry_queue
       payload = JSON.generate(parsed_job)
 
       config.with_async_redis do |conn|

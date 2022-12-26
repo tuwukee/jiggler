@@ -5,7 +5,6 @@ RSpec.describe Jiggler::Scheduled::Poller do
     Jiggler::Config.new(
       concurrency: 1,
       timeout: 1,
-      verbose: true,
       poll_interval: 1,
       redis_mode: :async
     )

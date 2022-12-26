@@ -20,14 +20,12 @@
         <div class='stats-entry' title='Completely failed jobs'>
           <span><%= "Dead: #{@summary['dead_jobs_count']}" %></span>
         </div>
-        <% if @summary['monitor_enabled'] %>
-          <div class='stats-entry' title='Unsuccessful perform attempts'>
-            <span><%= "Failures: #{@summary['failures_count']}" %></span>
-          </div>
-          <div class='stats-entry' title='Successfully completed jobs'>
-            <span><%= "Processed: #{@summary['processed_count']}" %></span>
-          </div>
-        <% end %>
+        <div class='stats-entry' title='Unsuccessful perform attempts'>
+          <span><%= "Failures: #{@summary['failures_count']}" %></span>
+        </div>
+        <div class='stats-entry' title='Successfully completed jobs'>
+          <span><%= "Processed: #{@summary['processed_count']}" %></span>
+        </div>
       </div>
 
       <table class='main-table processes'>
