@@ -18,7 +18,7 @@ module Jiggler
     end
 
     def run
-      @runner = safe_async('Worker') do
+      @runner = safe_async("Worker") do
         @tid = tid
         loop do
           break @callback.call(self) if @done

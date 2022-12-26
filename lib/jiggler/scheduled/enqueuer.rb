@@ -19,13 +19,15 @@ module Jiggler
       end
 
       def enqueue_jobs
-        @config.with_async_redis do |conn|
-          sorted_sets.each do |sorted_set|
-            # Get next item in the queue with score (time to execute) <= now
-            job_args = zpopbyscore(conn, key: sorted_set, argv: Time.now.to_f.to_s)
-            while !@done && job_args
-              push_job(conn, job_args)
+        Async do
+          @config.redis_pool_poller.acquire do |conn|
+            sorted_sets.each do |sorted_set|
+              # Get next item in the queue with score (time to execute) <= now
               job_args = zpopbyscore(conn, key: sorted_set, argv: Time.now.to_f.to_s)
+              while !@done && job_args
+                push_job(conn, job_args)
+                job_args = zpopbyscore(conn, key: sorted_set, argv: Time.now.to_f.to_s)
+              end
             end
           end
         end

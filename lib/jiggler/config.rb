@@ -106,8 +106,8 @@ module Jiggler
         )
         if Jiggler.server?
           opts[:concurrency] += 2 # safity margin
-          opts[:concurrency] += 2 if @options[:poller_enabled] # poller uses 2 fibers
-          opts[:concurrency] += 1 if @options[:stats_enabled]
+          # opts[:concurrency] += 2 if @options[:poller_enabled] # poller uses 2 fibers
+          # opts[:concurrency] += 1 if @options[:stats_enabled]
           opts[:redis_mode] = :async
         end
         opts
@@ -116,6 +116,14 @@ module Jiggler
 
     def redis_pool
       @redis_pool ||= Jiggler::RedisStore.new(redis_options).pool
+    end
+
+    def redis_pool_poller
+      @poller_pool ||= Jiggler::RedisStore.new(redis_options.merge(concurrency: 2)).pool
+    end
+
+    def redis_pool_monitor
+      @monitor_pool ||= Jiggler::RedisStore.new(redis_options.merge(concurrency: 1)).pool
     end
 
     def cleaner

@@ -15,8 +15,16 @@ module Jiggler
     def start
       set_process_data
       manager.start
+    end
+
+    def start_poller_and_monitor
       poller.start if config[:poller_enabled]
       monitor.start if config[:stats_enabled]
+    end
+
+    def wait
+      poller.wait_for_result
+      monitor.wait_for_result
     end
 
     def quite

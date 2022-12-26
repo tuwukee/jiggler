@@ -14,14 +14,13 @@ module Jiggler
         @config = config
         @collection = collection
         @done = false
-        @condition = Async::Condition.new
         @data_key = "#{config.stats_prefix}#{collection.uuid}"
         @exp = config[:stats_interval] * 2
         @rss_path = "/proc/#{Process.pid}/status"
       end
 
       def start
-        @job = safe_async('Monitor') do
+        @job = safe_async_thread('Monitor') do
           @tid = tid
           wait # initial wait
           until @done
@@ -35,9 +34,14 @@ module Jiggler
       end
 
       def terminate
-        @condition.signal
         @done = true
         cleanup
+        puts 'monitor: waiting for the job to finish'
+        # @job&.join
+      end
+
+      def wait_for_result
+        @job&.value
       end
 
       def load_data_into_redis
@@ -53,15 +57,17 @@ module Jiggler
         failed_jobs = collection.data[:failures]
         collection.data[:processed] -= processed_jobs
         collection.data[:failures] -= failed_jobs
-
-        config.with_sync_redis do |conn|
-          result = conn.pipelined do |pipeline|
-            pipeline.call('SET', MONITOR_FLAG, '1', ex: exp)
-            pipeline.call('SET', data_key, process_data, ex: exp)
-            pipeline.call('INCRBY', PROCESSED_COUNTER, processed_jobs)
-            pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
+        
+        Sync do
+          config.redis_pool_monitor.acquire do |conn|
+            result = conn.pipelined do |pipeline|
+              pipeline.call('SET', MONITOR_FLAG, '1', ex: exp)
+              pipeline.call('SET', data_key, process_data, ex: exp)
+              pipeline.call('INCRBY', PROCESSED_COUNTER, processed_jobs)
+              pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
+            end
+            # logger.warn('Monitor') { result + [data_key] }
           end
-          # logger.warn('Monitor') { result + [data_key] }
         end
 
         config.cleaner.prune_outdated_processes_data
@@ -86,15 +92,14 @@ module Jiggler
       end
 
       def cleanup
-        config.with_async_redis { |conn| conn.call('DEL', data_key) }
+        Async do
+          config.redis_pool_monitor.acquire { |conn| conn.call('DEL', data_key) }
+        end
       end
 
       def wait
-        Async(transient: true) do
-          sleep(config[:stats_interval])
-          @condition.signal
-        end
-        @condition.wait
+        puts 'waiting for: ' + config[:stats_interval].to_s
+        sleep(config[:stats_interval])
       rescue => ex
         handle_exception(
           ex, { context: '\'Error while waiting for stats\'', tid: @tid }

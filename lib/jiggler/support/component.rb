@@ -20,6 +20,23 @@ module Jiggler
           watchdog(name, &block)
         end
       end
+
+      def safe_async_thread(name, &block)
+        Thread.new do
+          Thread.current.name = name
+          Thread.handle_interrupt(Async::Stop => :never) do
+            Async(annotation: name) do
+              begin
+                yield
+              rescue Async::Stop => e
+                puts 'caught exception'
+              rescue Exception => ex
+                handle_exception(ex, { context: last_words, tid: tid }, raise_ex: true)
+              end
+            end
+          end
+        end
+      end
   
       def logger
         config.logger

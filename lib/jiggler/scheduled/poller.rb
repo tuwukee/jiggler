@@ -15,21 +15,20 @@ module Jiggler
         @done = false
         @job = nil
         @count_calls = 0
-        @condition = Async::Condition.new
       end
 
       def terminate
         @done = true
         @enqueuer.terminate
+        puts 'poller: waiting for the job to finish'
+      end
 
-        Async do
-          @condition.signal
-          @job&.wait
-        end
+      def wait_for_result
+        @job&.value
       end
 
       def start
-        @job = safe_async('Poller') do
+        @job = safe_async_thread('Poller') do
           @tid = tid
           initial_wait
           until @done
@@ -50,11 +49,8 @@ module Jiggler
       private
 
       def wait
-        Async(transient: true) do
-          sleep(random_poll_interval)
-          @condition.signal
-        end
-        @condition.wait
+        puts 'waiting for regular: ' + random_poll_interval.to_s
+        sleep(random_poll_interval)
       rescue => ex
         handle_exception(
           ex, { context: '\'Error while waiting for scheduled jobs\'', tid: @tid }
@@ -73,7 +69,12 @@ module Jiggler
       end
 
       def process_count
-        pcount = config.with_sync_redis { |conn| conn.call('HLEN', config.processes_hash) }
+        # pcount = config.with_sync_redis { |conn| conn.call('HLEN', config.processes_hash) }
+        pcount = Sync do
+          config.redis_pool_poller.acquire do |conn|
+            conn.call('HLEN', config.processes_hash)
+          end
+        end
         pcount = 1 if pcount == 0
         pcount
       end
@@ -81,11 +82,9 @@ module Jiggler
       def initial_wait
         total = INITIAL_WAIT + (5 * rand)
 
-        Async(transient: true) do
-          sleep(total)
-          @condition.signal
-        end
-        @condition.wait
+        puts 'waiting for initial poller: ' + total.to_s
+
+        sleep(total)
       end
     end
   end

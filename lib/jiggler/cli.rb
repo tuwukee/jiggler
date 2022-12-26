@@ -43,12 +43,16 @@ module Jiggler
     end
 
     def start
+      load_app
+      @launcher = Launcher.new(config)
+      @launcher.start_poller_and_monitor
       Async do
-        load_app
-        @launcher = Launcher.new(config)
         setup_signal_handlers
         @launcher.start
       end
+      puts 'finished async loop'
+      @launcher.wait
+      puts 'finished poller/manager'
       @launcher&.cleanup
     end
 

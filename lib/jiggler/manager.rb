@@ -49,6 +49,8 @@ module Jiggler
         next if @workers.empty?
 
         hard_shutdown
+      rescue Async::Stop
+        nil
       end
     end
 
