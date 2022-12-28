@@ -18,19 +18,17 @@ module Jiggler
     end
 
     def run
+      reason = nil
       @runner = safe_async('Worker') do
         @tid = tid
         loop do
           break @callback.call(self) if @done
           process_job
         rescue Async::Stop
-          # binding.break
-          @callback.call(self) # should it handle stop errors raised by callback?
-          break
-        rescue => ex
+          break @callback.call(self)
+        rescue => err
           increase_failures_counter
-          @callback.call(self, ex)
-          break
+          break @callback.call(self, err)     
         end
       end
     end
@@ -58,6 +56,7 @@ module Jiggler
     end
 
     def fetch_one
+      # retries for the case of recoverable redis connection errors
       retries ||= 0
       queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) } if queue.nil?
       if queue
@@ -68,11 +67,11 @@ module Jiggler
           CurrentJob.new(queue: queue, args: args)
         end
       end
-    rescue Async::Stop => e
-      raise e
-    rescue => ex
+    rescue Async::Stop => err
+      raise err
+    rescue => err
       retry unless (retries += 1) > 2
-      handle_fetch_error(ex)
+      handle_fetch_error(err)
     end
     
     def execute_job

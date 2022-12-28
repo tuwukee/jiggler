@@ -31,6 +31,7 @@ RSpec.describe Jiggler::Summary do
     end
 
     it 'gets latest data' do
+      config.cleaner.prune_all
       task = Async do
         launcher = Jiggler::Launcher.new(config)
         uuid = launcher.instance_variable_get(:@uuid)

@@ -27,11 +27,8 @@ module Jiggler
           @tid = tid
           wait # initial wait
           until @done
-            # start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
             load_data_into_redis
             wait unless @done
-            # finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            # logger.warn "elapsed time for the monitor: #{finish - start}"
           end
         end
       end
@@ -43,7 +40,6 @@ module Jiggler
       end
 
       def load_data_into_redis
-        logger.warn('Monitor') { "load_data_into_redis" }
         process_data = JSON.generate({
           uuid: collection.uuid,
           heartbeat: Time.now.to_f,
