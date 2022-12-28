@@ -3,9 +3,8 @@
 RSpec.describe Jiggler::Scheduled::Enqueuer do
   let(:config) do 
     Jiggler::Config.new(
-      concurrency: 1, 
-      timeout: 1, 
-      verbose: true,
+      concurrency: 1,
+      timeout: 1,
       queues: ['default', 'mine'],
       redis_mode: :async
     )

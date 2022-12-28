@@ -21,7 +21,6 @@ module Jiggler
       concurrency: 10,
       timeout: 25,
       max_dead_jobs: 10_000,
-      stats_enabled: true,
       stats_interval: 10,
       poller_enabled: true,
       poll_interval: 5,
@@ -105,9 +104,8 @@ module Jiggler
           :redis_mode
         )
         if Jiggler.server?
-          opts[:concurrency] += 2 # safity margin
+          opts[:concurrency] += 3 # monitor (1) + safity margin (2)
           opts[:concurrency] += 2 if @options[:poller_enabled] # poller uses 2 fibers
-          opts[:concurrency] += 1 if @options[:stats_enabled]
           opts[:redis_mode] = :async
         end
         opts
@@ -133,7 +131,7 @@ module Jiggler
     def handle_exception(ex, ctx = {}, raise_ex: false)
       err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(' ')
       logger.error("error_message='#{ex.message}' #{err_context}")
-      logger.error(ex.backtrace.first(10).join("\n")) unless ex.backtrace.nil?
+      logger.error(ex.backtrace.first(12).join("\n")) unless ex.backtrace.nil?
       raise ex if raise_ex
     end
     

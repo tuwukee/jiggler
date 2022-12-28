@@ -3,11 +3,9 @@
 RSpec.describe Jiggler::Cleaner do
   let(:config) do
     Jiggler::Config.new(
-      concurrency: 1, 
-      timeout: 1, 
-      verbose: true,
+      concurrency: 1,
+      timeout: 1,
       poller_enabled: false,
-      stats_enabled: false,
       redis_mode: :async
     )
   end
@@ -45,7 +43,7 @@ RSpec.describe Jiggler::Cleaner do
           'HSET', 
           config.processes_hash, 
           'uuid-cleaner-test-0', 
-          { 'stats_enabled' => true }.to_json
+          '{}'
         )
       end
       cleaner.prune_all_processes
@@ -62,7 +60,7 @@ RSpec.describe Jiggler::Cleaner do
           'HSET', 
           config.processes_hash, 
           'uuid-cleaner-test-1', 
-          { 'stats_enabled' => true }.to_json
+          '{}'
         )
       end
       cleaner.prune_process('uuid-cleaner-test-1')
@@ -139,10 +137,10 @@ RSpec.describe Jiggler::Cleaner do
   describe '#prune_outdated_processes_data' do
     let(:processes_data) do
       [
-        'uuid1-cleaner', { 'stats_enabled' => true }.to_json,
-        'uuid2-cleaner', { 'stats_enabled' => false }.to_json,
-        'uuid3-cleaner', { 'stats_enabled' => true }.to_json,
-        'uuid4-cleaner', { 'stats_enabled' => true }.to_json
+        'uuid1-cleaner', '{}',
+        'uuid2-cleaner', '{}',
+        'uuid3-cleaner', '{}',
+        'uuid4-cleaner', '{}'
       ]
     end
     let(:stats_keys) { ['#{config.stats_prefix}uuid3'] }
@@ -157,8 +155,7 @@ RSpec.describe Jiggler::Cleaner do
         expect(
           conn.call('HGETALL', config.processes_hash)
         ).to eq({ 
-          'uuid1-cleaner'=> '{"stats_enabled":true}', 
-          'uuid2-cleaner'=> '{"stats_enabled":false}' 
+          'uuid1-cleaner'=> '{}'
         })
       end
     end
@@ -166,7 +163,7 @@ RSpec.describe Jiggler::Cleaner do
 
   describe '#unforsed_prune_outdated_processes_data' do
     it 'sets cleaner flag to prevent multiple prunes from concurrent processes' do
-      cleaner.unforsed_prune_outdated_processes_data
+      cleaner.unforced_prune_outdated_processes_data
       config.with_sync_redis do |conn|
         expect(conn.call('GET', 'jiggler:flag:cleanup')).to eq('1')
       end

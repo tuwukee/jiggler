@@ -3,9 +3,8 @@
 RSpec.describe Jiggler::Launcher do
   let(:config) do
     Jiggler::Config.new(
-      concurrency: 1, 
-      timeout: 1, 
-      verbose: true,
+      concurrency: 1,
+      timeout: 1,
       redis_mode: :async
     )
     end
@@ -20,7 +19,6 @@ RSpec.describe Jiggler::Launcher do
         concurrency: 1,
         timeout: 1,
         queues: 'default',
-        stats_enabled: true,
         poller_enabled: true
       })
     end

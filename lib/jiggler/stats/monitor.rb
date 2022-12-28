@@ -4,7 +4,6 @@ module Jiggler
   module Stats
     class Monitor
       include Support::Component
-      MONITOR_FLAG = 'jiggler:flag:monitor'
       PROCESSED_COUNTER = 'jiggler:stats:processed_counter'
       FAILURES_COUNTER = 'jiggler:stats:failures_counter'
 
@@ -16,7 +15,10 @@ module Jiggler
         @done = false
         @condition = Async::Condition.new
         @data_key = "#{config.stats_prefix}#{collection.uuid}"
-        @exp = config[:stats_interval] * 2
+        # expire the key after 6 intervals
+        # this is to avoid the case where the monitor is blocked
+        # by long running workers and the key is not updated
+        @exp = config[:stats_interval] * 6
         @rss_path = "/proc/#{Process.pid}/status"
       end
 
@@ -25,11 +27,8 @@ module Jiggler
           @tid = tid
           wait # initial wait
           until @done
-            # start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
             load_data_into_redis
             wait unless @done
-            # finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-            # logger.warn "elapsed time for the monitor: #{finish - start}"
           end
         end
       end
@@ -55,13 +54,11 @@ module Jiggler
         collection.data[:failures] -= failed_jobs
 
         config.with_sync_redis do |conn|
-          result = conn.pipelined do |pipeline|
-            pipeline.call('SET', MONITOR_FLAG, '1', ex: exp)
+          conn.pipelined do |pipeline|
             pipeline.call('SET', data_key, process_data, ex: exp)
             pipeline.call('INCRBY', PROCESSED_COUNTER, processed_jobs)
             pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
           end
-          # logger.warn('Monitor') { result + [data_key] }
         end
 
         config.cleaner.prune_outdated_processes_data

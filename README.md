@@ -36,7 +36,7 @@ The configuration can be skipped if you're using the default values.
 
 ```ruby
 Jiggler.configure_client do |config|
-  config[:concurrency] = 10               # Should equal to the number of threads/fibers in the client app. Defaults to 10
+  config[:concurrency] = 12               # Should equal to the number of threads/fibers in the client app. Defaults to 10
   config[:environment] = "myenv"          # On default fetches the value ENV["APP_ENV"] and fallbacks to "development"
   config[:redis_mode]  = :sync            # Can be :sync or :async. Defaults to :sync
   config[:redis_pool]  = nil              # Custom redis connections pool compatible with Async::Pool
@@ -47,7 +47,6 @@ Jiggler.configure_server do |config|
   config[:concurrency] = 12               # Defaults to 10
   config[:timeout]     = 12               # Seconds Jiggler wait for jobs to finish before shotdown. Defaults to 25
   config[:require]     = "./jobs.rb"      # Path to file with jobs/app initializer
-  config[:redis_pool]  = nil              # Custom redis connections pool compatible with Async::Pool
   config[:redis_url]   = ENV["REDIS_URL"] # On default fetches the value from ENV["REDIS_URL"]
   config[:queues]      = ["shippers"]     # An array of queue names the server is going to listen to
   config[:config_file] = "./jiggler.yml"  # .yml file with Jiggler settings
@@ -58,14 +57,13 @@ Internally Jiggler server consists of 3 parts: Manager, Poller, Monitor. \
 Manager is responsible for workers. \
 Poller picks up data for retries and scheduled jobs. \
 Monitor periodically loads stats data into redis. \
-Manager is mandatory, while Poller and Monitor can be disabled in case there's no need in these services.
+Manager and Monitor are is mandatory, while Poller can be disabled in case there's no need retries/scheduled jobs.
 
 ```ruby
 Jiggler.configure_server do |config|
-  config[:stats_enabled]  = true # Defaults to true
-  config[:stats_interval] = 15   # Defaults to 10
+  config[:stats_interval] = 12   # Defaults to 10
   config[:poller_enabled] = true # Defaults to true
-  config[:poll_interval]  = 10   # Defaults to 5
+  config[:poll_interval]  = 12   # Defaults to 5
 end
 ```
 
@@ -133,7 +131,7 @@ AnotherJob.with_options(async: true).enqueue_bulk(arr)
 For the cases when you want to enqueue jobs with a delay or at a specific time run:
 ```ruby
 seconds = 100
-AnotherJob.enqueue_at(seconds, [num1, num2])
+AnotherJob.enqueue_in(seconds, [num1, num2])
 ```
 
 To cleanup the data from Redis you can run one of these:

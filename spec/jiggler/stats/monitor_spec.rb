@@ -3,8 +3,7 @@
 RSpec.describe Jiggler::Stats::Monitor do
   let(:config) do 
     Jiggler::Config.new(
-      timeout: 1, 
-      verbose: true, 
+      timeout: 1,
       stats_interval: 1,
       redis_mode: :async
     )
