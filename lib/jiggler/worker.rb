@@ -18,19 +18,18 @@ module Jiggler
     end
 
     def run
+      reason = nil
       @runner = safe_async('Worker') do
         @tid = tid
         loop do
           break @callback.call(self) if @done
           process_job
+          Async::Task.current.yield
         rescue Async::Stop
-          logger.debug('Worker') { "Worker #{@tid} stopped" }
-          @callback.call(self) # should it handle stop errors raised by callback?
-          break
-        rescue => ex
+          break @callback.call(self)
+        rescue => err
           increase_failures_counter
-          @callback.call(self, ex)
-          break
+          break @callback.call(self, err)     
         end
       end
     end
@@ -58,8 +57,8 @@ module Jiggler
     end
 
     def fetch_one
-      retries ||= 0
-      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) } if queue.nil?
+      # retries for the case of recoverable redis connection errors
+      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) }
       if queue
         if @done
           requeue(queue, args)
@@ -68,11 +67,10 @@ module Jiggler
           CurrentJob.new(queue: queue, args: args)
         end
       end
-    rescue Async::Stop => e
-      raise e
-    rescue => ex
-      retry unless (retries += 1) > 2
-      handle_fetch_error(ex)
+    rescue Async::Stop => err
+      raise err
+    rescue => err
+      handle_fetch_error(err)
     end
     
     def execute_job
@@ -142,7 +140,6 @@ module Jiggler
     end
 
     def add_current_job_to_collection(parsed_job, queue)
-      return unless config[:stats_enabled]
       collection.data[:current_jobs][@tid] = {
         job_args: parsed_job,
         queue: queue,
@@ -151,17 +148,14 @@ module Jiggler
     end
 
     def remove_current_job_from_collection
-      return unless config[:stats_enabled]
       collection.data[:current_jobs].delete(@tid)
     end
 
     def increase_processed_counter
-      return unless config[:stats_enabled]
       collection.data[:processed] += 1
     end
 
     def increase_failures_counter
-      return unless config[:stats_enabled]
       collection.data[:failures] += 1
     end
 

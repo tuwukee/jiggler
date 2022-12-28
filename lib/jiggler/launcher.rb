@@ -15,7 +15,7 @@ module Jiggler
     def start
       set_process_data
       poller.start if config[:poller_enabled]
-      monitor.start if config[:stats_enabled]
+      monitor.start
       manager.start
     end
 
@@ -26,7 +26,7 @@ module Jiggler
       manager.quite
 
       poller.terminate if config[:poller_enabled]
-      monitor.terminate if config[:stats_enabled]
+      monitor.terminate
       cleanup
     end
 
@@ -47,7 +47,6 @@ module Jiggler
         timeout: config[:timeout],
         queues: config[:queues].join(', '),
         started_at: Time.now.to_f,
-        stats_enabled: config[:stats_enabled],
         poller_enabled: config[:poller_enabled]
       }.to_json
     end
@@ -56,7 +55,7 @@ module Jiggler
       config.with_async_redis { |conn| conn.call('HDEL', config.processes_hash, @uuid) }
     end
 
-    # using a sync call to throw an error an early exit if redis is down
+    # using a sync call to throw an error and early exit if redis is down
     def set_process_data
       config.with_sync_redis { |conn| conn.call('HSET', config.processes_hash, @uuid, process_data) }
     end

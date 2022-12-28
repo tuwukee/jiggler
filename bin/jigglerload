@@ -53,8 +53,13 @@ class LoadJob
   job_options retries: 1, async: true
 
   def perform(idx, ts = nil)
-    # sleep(0.02)
     # puts('job is performing') if rand(1000).zero?
+    # start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    # while true
+    #   finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    #   break if finish - start > 5.0
+    # end
+
     puts("#{Time.now.to_f - ts}\n") if !ts.nil?
   end
 end
@@ -63,7 +68,7 @@ Jiggler.config.cleaner.prune_all
 
 cli = Jiggler::CLI.instance
 
-iter = 40
+iter = 30
 count = 10_000
 Jiggler.logger.warn "Uploading #{count * iter} jobs..."
 iter.times do |i|
@@ -89,7 +94,7 @@ Monitoring = Thread.new do
   loop do
     sleep 2.0
     total = jobs_count
-    Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
+    # Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
     if total == 0
       Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
       Jiggler.logger.warn("Done, #{iter * count} jobs in #{Time.now - start} sec")

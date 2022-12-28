@@ -3,9 +3,8 @@
 RSpec.describe Jiggler::Manager do
   let(:config) do 
     Jiggler::Config.new(
-      concurrency: 4, 
-      timeout: 3, 
-      verbose: true,
+      concurrency: 4,
+      timeout: 3,
       redis_mode: :async
     )
   end
