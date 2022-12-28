@@ -45,10 +45,12 @@ module Jiggler
     def start
       Async do
         load_app
-        @launcher = Launcher.new(config)
         setup_signal_handlers
+        patch_scheduler
+        @launcher = Launcher.new(config)
         @launcher.start
       end
+      @switcher&.exit
       @launcher&.cleanup
     end
 
@@ -63,6 +65,49 @@ module Jiggler
     end
 
     private
+
+    def patch_scheduler
+      @switcher = Thread.new(Fiber.scheduler, 0.1) do |scheduler, threshold|
+        loop do
+          sleep(threshold) # 0.5s per fiber to execute
+          switch = scheduler.context_switch
+          next if switch.nil?
+          next if Process.clock_gettime(Process::CLOCK_MONOTONIC) - switch < threshold
+
+          Process.kill('URG', Process.pid)
+        end
+      end
+
+      Signal.trap('URG') do
+        next Fiber.scheduler.context_switch!(nil) unless Async::Task.current?
+        Async::Task.current.yield
+      end
+
+      Fiber.scheduler.instance_eval do
+        def context_switch
+          @context_switch
+        end
+
+        def context_switch!(value = Process.clock_gettime(Process::CLOCK_MONOTONIC))
+          @context_switch = value
+        end
+
+        def block(...)
+          context_switch!(nil)
+          super
+        end
+
+        def kernel_sleep(...)
+          context_switch!(nil)
+          super
+        end
+
+        def resume(fiber, *args)
+          context_switch!
+          super
+        end
+      end
+    end
 
     def setup_signal_handlers
       SIGNAL_HANDLERS.map do |signal, handler|
