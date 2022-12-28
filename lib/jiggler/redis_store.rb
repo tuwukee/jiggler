@@ -7,7 +7,7 @@ module Jiggler
   class RedisStore
     def initialize(options = {})
       @options = options
-      @redis_config = RedisClient.config(url: options[:redis_url])
+      @redis_config = RedisClient.config(url: options[:redis_url], timeout: nil)
     end
 
     def pool
@@ -28,7 +28,7 @@ module Jiggler
 
     def sync_pool
       # use connection_pool from redis-store dependency
-      pool = ConnectionPool.new(size: @options[:concurrency], timeout: 2.0) do 
+      pool = ConnectionPool.new(size: @options[:concurrency]) do 
         @redis_config.new_client
       end
       def pool.acquire(&block)
