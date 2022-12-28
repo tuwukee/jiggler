@@ -1,8 +1,5 @@
 # frozen_string_literal: true
 
-require 'async'
-require 'json'
-
 module Jiggler
   module Job
     module ClassMethods
@@ -46,6 +43,7 @@ module Jiggler
         @async = async
       end
     end
+
     class Enqueuer
       def initialize(klass, options)
         @options = options

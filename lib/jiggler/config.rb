@@ -104,7 +104,7 @@ module Jiggler
           :redis_mode
         )
         if Jiggler.server?
-          opts[:concurrency] += 2 # monitor (1) + safety margin (1)
+          opts[:concurrency] += 2 # monitor + safety margin
           opts[:concurrency] += 1 if @options[:poller_enabled]
           opts[:redis_mode] = :async
         end

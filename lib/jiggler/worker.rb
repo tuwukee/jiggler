@@ -24,6 +24,7 @@ module Jiggler
         loop do
           break @callback.call(self) if @done
           process_job
+          # pass control to other fibers
           Async::Task.current.yield
         rescue Async::Stop
           break @callback.call(self)
@@ -57,7 +58,6 @@ module Jiggler
     end
 
     def fetch_one
-      # retries for the case of recoverable redis connection errors
       queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) }
       if queue
         if @done

@@ -57,7 +57,7 @@ Internally Jiggler server consists of 3 parts: Manager, Poller, Monitor. \
 Manager is responsible for workers. \
 Poller picks up data for retries and scheduled jobs. \
 Monitor periodically loads stats data into redis. \
-Manager and Monitor are is mandatory, while Poller can be disabled in case there's no need retries/scheduled jobs.
+Manager and Monitor are mandatory, while Poller can be disabled in case there's no need for retries/scheduled jobs.
 
 ```ruby
 Jiggler.configure_server do |config|

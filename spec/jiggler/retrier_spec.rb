@@ -17,7 +17,7 @@ RSpec.describe Jiggler::Retrier do
       let(:job) { MyFailedJob.new }
 
       it 'increments attempt if mex retries are not reached' do
-        msg = { 'jid' => '1' }
+        msg = { 'jid' => '1', 'retries' => 1 }
         config.cleaner.prune_failures_counter
         expect(config.logger).to receive(:error).twice
         retrier.wrapped(job, msg, 'test') do

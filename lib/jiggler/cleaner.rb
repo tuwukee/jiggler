@@ -87,7 +87,6 @@ module Jiggler
       prune_outdated_processes_data
     end
 
-    # todo: revisit this method
     def prune_outdated_processes_data
       to_prune = []
       config.with_sync_redis do |conn|
@@ -102,8 +101,7 @@ module Jiggler
         end
 
         unless to_prune.empty?
-          # todo: use debug level
-          config.logger.warn('Pruned outdated processes') { to_prune }
+          config.logger.debug('Pruned outdated processes') { to_prune }
           conn.call('HDEL', config.processes_hash, *to_prune)
         end
 

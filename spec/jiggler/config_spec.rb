@@ -36,7 +36,7 @@ RSpec.describe Jiggler::Config do
 
     it 'gets redis options' do
       expect(config.redis_options).to eq(
-        concurrency: 6, 
+        concurrency: 4, 
         redis_url: ENV['REDIS_URL'], 
         redis_pool: nil, 
         redis_mode: :async
