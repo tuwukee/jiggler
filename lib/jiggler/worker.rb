@@ -24,6 +24,7 @@ module Jiggler
         loop do
           break @callback.call(self) if @done
           process_job
+          Async::Task.current.yield
         rescue Async::Stop
           break @callback.call(self)
         rescue => err
@@ -57,8 +58,7 @@ module Jiggler
 
     def fetch_one
       # retries for the case of recoverable redis connection errors
-      retries ||= 0
-      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) } if queue.nil?
+      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) }
       if queue
         if @done
           requeue(queue, args)
@@ -70,7 +70,6 @@ module Jiggler
     rescue Async::Stop => err
       raise err
     rescue => err
-      retry unless (retries += 1) > 2
       handle_fetch_error(err)
     end
     
