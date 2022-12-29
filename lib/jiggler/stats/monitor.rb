@@ -14,18 +14,25 @@ module Jiggler
         @collection = collection
         @done = false
         @condition = Async::Condition.new
-        @data_key = "#{config.stats_prefix}#{collection.uuid}"
-        # expire the key after 6 intervals
-        # this is to avoid the case where the monitor is blocked
+        # the key expiration should be greater than the stats interval
+        # to avoid cases where the monitor is blocked
         # by long running workers and the key is not updated
-        @exp = config[:stats_interval] * 6
+        @exp = 300 # 5 minutes
         @rss_path = "/proc/#{Process.pid}/status"
+
+        @constant_process_data = {
+          pid: Process.pid,
+          hostname: ENV['DYNO'] || Socket.gethostname,
+          concurrency: config[:concurrency],
+          timeout: config[:timeout],
+          queues: config[:queues].join(', '),
+          poller_enabled: config[:poller_enabled]          
+        }.freeze
       end
 
       def start
         @job = safe_async('Monitor') do
           @tid = tid
-          wait # initial wait
           until @done
             load_data_into_redis
             wait unless @done
@@ -38,31 +45,33 @@ module Jiggler
         @done = true
         cleanup
       end
+  
+      def process_data
+        JSON.generate(
+          @constant_process_data.merge({
+            heartbeat: Time.now.to_f,
+            rss: process_rss,
+            current_jobs: collection.data[:current_jobs],
+          })
+        )       
+      end
 
       def load_data_into_redis
-        process_data = JSON.generate({
-          uuid: collection.uuid,
-          heartbeat: Time.now.to_f,
-          rss: process_rss,
-          current_jobs: collection.data[:current_jobs],
-        })
-        # logger.debug('Monitor') { process_data }
-
         processed_jobs = collection.data[:processed]
         failed_jobs = collection.data[:failures]
         collection.data[:processed] -= processed_jobs
         collection.data[:failures] -= failed_jobs
 
-        config.with_sync_redis do |conn|
+        config.with_async_redis do |conn|
           conn.pipelined do |pipeline|
-            pipeline.call('SET', data_key, process_data, ex: exp)
+            pipeline.call('SET', collection.uuid, process_data, ex: exp)
             pipeline.call('INCRBY', PROCESSED_COUNTER, processed_jobs)
             pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
           end
         end
-        # logger.warn result
-
-        Async { config.cleaner.unforced_prune_outdated_processes_data }
+        # logger.debug('Monitor') do
+        #   "process_data: #{process_data}, result: #{result}"
+        # end
       rescue => ex
         handle_exception(
           ex, { context: '\'Error while loading stats into redis\'', tid: @tid }
@@ -84,7 +93,7 @@ module Jiggler
       end
 
       def cleanup
-        config.with_async_redis { |conn| conn.call('DEL', data_key) }
+        config.with_async_redis { |conn| conn.call('DEL', collection.uuid) }
       end
 
       def wait

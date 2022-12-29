@@ -67,7 +67,7 @@
                 <span><%= format_memory(data['rss']) %></span>
               </td>
               <td colspan='2' title='Started' class='right'>
-                <span><%= format_datetime(data['started_at']) %></span>
+                <span><%= process_started_at(uuid) %></span>
               </td>
             </tr>
           <% end %>
@@ -98,67 +98,65 @@
           <% end %>
         </tbody>
       </table>
-      
-      <% if @summary['monitor_enabled'] %>
-        <h3>Busy Jobs</h3>
-        <table class='main-table jobs'>
-          <thead>
-            <tr>
-              <th colspan='2' title='Process'>
-                <span>Process</span>
-              </th>
-              <th colspan='2' title='Job'>
-                <span>Job</span>
-              </th>
-              <th colspan='1' title='JID'>
-                <span>JID</span>
-              </th>
-              <th colspan='1' title='TID'>
-                <span>TID</span>
-              </th>
-              <th colspan='2' title='Queue'>
-                <span>Queue</span>
-              </th>
-              <th colspan='2' title='Arguments'>
-                <span>Arguments</span>
-              </th>
-              <th colspan='2' title='Started'>
-                <span>Started</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <% @summary['processes'].each do |uuid, process_data| %>
-              <% process_data['current_jobs'].each do |tid, job_data| %>
-                <tr>
-                  <td colspan='2' title='Process'>
-                    <span><%= "#{uuid}:#{process_data['hostname']}" %></span></br>
-                  </td>
-                  <td colspan='2' title='Job'>
-                    <span><%= job_data['job_args']['name'] %></span>
-                  </td>
-                  <td colspan='1' title='JID'>
-                    <span><%= job_data['jid'] %></span>
-                  </td>
-                  <td colspan='1' title='TID'>
-                    <span><%= tid %></span>
-                  </td>
-                  <td colspan='2' title='Queue'>
-                    <span><%= job_data['queue'] %></span>
-                  </td>
-                  <td colspan='2' title='Arguments'>
-                    <span><%= job_data['job_args']['args'] %></span>
-                  </td>
-                  <td colspan='2' title='Started'>
-                    <span><%= format_datetime(job_data['started_at']) %></span>
-                  </td>     
-                </tr>           
-              <% end %>
+
+      <h3>Busy Jobs</h3>
+      <table class='main-table jobs'>
+        <thead>
+          <tr>
+            <th colspan='2' title='Process'>
+              <span>Process</span>
+            </th>
+            <th colspan='2' title='Job'>
+              <span>Job</span>
+            </th>
+            <th colspan='1' title='JID'>
+              <span>JID</span>
+            </th>
+            <th colspan='1' title='TID'>
+              <span>TID</span>
+            </th>
+            <th colspan='2' title='Queue'>
+              <span>Queue</span>
+            </th>
+            <th colspan='2' title='Arguments'>
+              <span>Arguments</span>
+            </th>
+            <th colspan='2' title='Started'>
+              <span>Started</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @summary['processes'].each do |uuid, process_data| %>
+            <% process_data['current_jobs'].each do |tid, job_data| %>
+              <tr>
+                <td colspan='2' title='Process'>
+                  <span><%= "#{uuid} - #{process_data['hostname']}" %></span></br>
+                </td>
+                <td colspan='2' title='Job'>
+                  <span><%= job_data['job_args']['name'] %></span>
+                </td>
+                <td colspan='1' title='JID'>
+                  <span><%= job_data['jid'] %></span>
+                </td>
+                <td colspan='1' title='TID'>
+                  <span><%= tid %></span>
+                </td>
+                <td colspan='2' title='Queue'>
+                  <span><%= job_data['queue'] %></span>
+                </td>
+                <td colspan='2' title='Arguments'>
+                  <span><%= job_data['job_args']['args'] %></span>
+                </td>
+                <td colspan='2' title='Started'>
+                  <span><%= format_datetime(job_data['started_at']) %></span>
+                </td>     
+              </tr>           
             <% end %>
-          </tbody>
-        </table>
-      <% end %>
-      
+          <% end %>
+        </tbody>
+      </table>
+
       <% if @summary['retry_jobs_count'] > 0 %>
         <h3>Last 5 Jobs to Retry</h3>
         <table class='main-table retry_jobs'>

@@ -39,15 +39,15 @@ RSpec.describe Jiggler::Cleaner do
     it 'prunes all processes' do
       config.redis_pool.acquire do |conn|
         conn.call(
-          'HSET', 
-          config.processes_hash, 
+          'SET',
           'uuid-cleaner-test-0', 
-          '{}'
+          '{}',
+          ex: 10
         )
       end
       cleaner.prune_all_processes
       config.redis_pool.acquire do |conn|
-        expect(conn.call('HGETALL', config.processes_hash)).to be_empty
+        expect(conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last).to be_empty
       end
     end
   end
@@ -56,17 +56,17 @@ RSpec.describe Jiggler::Cleaner do
     it 'prunes a process by its uuid' do
       config.redis_pool.acquire do |conn|
         conn.call(
-          'HSET', 
-          config.processes_hash, 
+          'SET',
           'uuid-cleaner-test-1', 
-          '{}'
+          '{}',
+          ex: 10
         )
       end
       cleaner.prune_process('uuid-cleaner-test-1')
       config.redis_pool.acquire do |conn|
         expect(
-          conn.call('HGETALL', config.processes_hash).keys
-        ).to_not include('uuid-cleaner-test-1')
+          conn.call('GET', 'uuid-cleaner-test-1')
+        ).to be nil
       end
     end
   end
@@ -133,47 +133,11 @@ RSpec.describe Jiggler::Cleaner do
     end
   end
 
-  describe '#prune_outdated_processes_data' do
-    let(:processes_data) do
-      [
-        'uuid1-cleaner', '{}',
-        'uuid2-cleaner', '{}',
-        'uuid3-cleaner', '{}',
-        'uuid4-cleaner', '{}'
-      ]
-    end
-    let(:stats_keys) { ['#{config.stats_prefix}uuid3'] }
-
-    it 'prunes processes data without uptodate stats' do
-      config.redis_pool.acquire do |conn|
-        conn.call('HSET', config.processes_hash, *processes_data)
-        conn.call('SET', "#{config.stats_prefix}uuid1-cleaner", '{}')
-      end
-      cleaner.prune_outdated_processes_data
-      config.redis_pool.acquire do |conn|
-        expect(
-          conn.call('HGETALL', config.processes_hash)
-        ).to eq({ 
-          'uuid1-cleaner'=> '{}'
-        })
-      end
-    end
-  end
-
-  describe '#unforsed_prune_outdated_processes_data' do
-    it 'sets cleaner flag to prevent multiple prunes from concurrent processes' do
-      cleaner.unforced_prune_outdated_processes_data
-      config.redis_pool.acquire do |conn|
-        expect(conn.call('GET', 'jiggler:flag:cleanup')).to eq('1')
-      end
-    end
-  end
-
   describe '#prune_all' do
     it 'prunes all data' do
       cleaner.prune_all
       config.redis_pool.acquire do |conn|
-        expect(conn.call('HGETALL', config.processes_hash)).to be_empty
+        expect(conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last).to be_empty
         expect(conn.call('SMEMBERS', config.dead_set)).to be_empty
         expect(conn.call('SMEMBERS', config.retries_set)).to be_empty
         expect(conn.call('SMEMBERS', config.scheduled_set)).to be_empty

@@ -5,7 +5,7 @@
 require "sidekiq"
 
 x = Sidekiq.configure_embed do |config|
-  config.concurrency = 20
+  config.concurrency = 15
   config.queues = %w[default]
   config.logger.level = Logger::ERROR
   config.average_scheduled_poll_interval = 2
@@ -14,9 +14,6 @@ end
 class LoadJob
   include Sidekiq::Job
   sidekiq_options retry: 1
-  # sidekiq_retry_in do |x|
-  #   1
-  # end
 
   def fib(n)
     if n <= 1
@@ -27,17 +24,14 @@ class LoadJob
   end
 
   def perform(idx, ts = nil)
-    # puts('job is performing') if rand(1000).zero?
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    # puts "started task\n"
-    sleep 0.01
-    fib(33)
-    sleep 0.01
-    fib(20)
-    sleep 0.01
-    # puts "ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
-
-    puts("#{Time.now.to_f - ts}\n") if !ts.nil?
+    # start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    # # puts "started task\n"
+    # sleep rand(100)/100.0
+    # fib(33)
+    # sleep 0.5
+    # fib(20)
+    # sleep 0.01
+    # puts "#{idx} ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
   end
 end
 
@@ -80,8 +74,8 @@ def Process.rss
   `ps -o rss= -p #{Process.pid}`.chomp.to_i
 end
 
-iter = 1
-count = 300
+iter = 100
+count = 10_000
 Sidekiq.logger.error "Uploading #{count * iter} jobs..."
 iter.times do
   arr = Array.new(count) { |idx| [idx] }
@@ -107,11 +101,6 @@ Monitoring = Thread.new do
     if total == 0
       Sidekiq.logger.error("RSS: #{Process.rss} Pending: #{total}")
       Sidekiq.logger.error("Done, #{iter * count} jobs in #{Time.now - start} sec")
-      # Sidekiq.logger.error("Latency for three jobs")
-
-      # LoadJob.perform_async(1, Time.now.to_f)
-      # LoadJob.perform_async(2, Time.now.to_f)
-      # LoadJob.perform_async(3, Time.now.to_f)
 
       sleep 0.2
       exit(0)
@@ -126,18 +115,10 @@ begin
     signal = readable_io.first[0].gets.strip
     handle_signal(x, signal)
   end
-rescue SystemExit
-  # Sidekiq.logger.error("Profiling...")
-  # result = RubyProf.stop
-  # printer = RubyProf::GraphHtmlPrinter.new(result)
-  # printer.print(File.new("output.html", "w"), min_percent: 1)
-  # normal
 rescue => e
-  raise e if $DEBUG
   warn e.message
   warn e.backtrace.join("\n")
   exit 1
 ensure
   x.stop
 end
-

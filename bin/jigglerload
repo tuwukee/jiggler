@@ -13,6 +13,7 @@
 # require 'jiggler/cli'
 
 # require 'ruby-prof'
+
 # require 'heap-profiler'
 
 require_relative '../lib/jiggler/support/component'
@@ -36,21 +37,19 @@ require_relative '../lib/jiggler/version'
 require_relative '../lib/jiggler/core'
 require_relative '../lib/jiggler/cli'
 
+Jiggler.config[:server_mode] = true
+
 Jiggler.configure_server do |config|
   config[:poll_interval] = 2
-  config[:concurrency] = 20
+  config[:concurrency] = 15
   # config[:poller_enabled] = false
-  # config[:stats_enabled] = false
   config.logger.level = Logger::WARN
 end
-
-Jiggler.configure_client do |config|
-  config[:redis_mode] = :async
-end
+Jiggler.run_configuration
 
 class LoadJob
   include Jiggler::Job
-  job_options retries: 1, async: true
+  job_options retries: 1
 
   def fib(n)
     if n <= 1
@@ -61,30 +60,29 @@ class LoadJob
   end
 
   def perform(idx, ts = nil)
-    # puts('job is performing') if rand(1000).zero?
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    # puts "started task\n"
-    sleep 0.01
-    fib(33)
-    sleep 0.01
-    fib(20)
-    sleep 0.01
-    # puts "ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
-
-    puts("#{Time.now.to_f - ts}\n") if !ts.nil?
+    # start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    # # puts "started task\n"
+    # sleep 0.01
+    # fib(33)
+    # sleep 0.5
+    # fib(20)
+    # sleep 0.01
+    # puts "#{idx} ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
   end
 end
 
-Jiggler.config.cleaner.prune_all
+Sync { Jiggler.config.cleaner.prune_all }
 
 cli = Jiggler::CLI.instance
 
-iter = 1
-count = 300
+iter = 100
+count = 10_000
 Jiggler.logger.warn "Uploading #{count * iter} jobs..."
-iter.times do |i|
-  arr = Array.new(count) { |idx| [idx] }
-  LoadJob.enqueue_bulk(arr)
+Sync do
+  iter.times do |i|
+    arr = Array.new(count) { |idx| [idx] }
+    LoadJob.enqueue_bulk(arr)
+  end
 end
 Jiggler.logger.warn "Created #{count * iter} jobs"
 
@@ -93,8 +91,10 @@ def Process.rss
 end
 
 def jobs_count
-  Jiggler.config.redis_pool.acquire do |conn|
-    conn.call 'LLEN', 'jiggler:list:default'
+  Sync do
+    Jiggler.config.redis_pool.acquire do |conn|
+      conn.call 'LLEN', 'jiggler:list:default'
+    end
   end
 end
 
@@ -106,14 +106,10 @@ Monitoring = Thread.new do
     sleep 2.0
     total = jobs_count
     # Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
+    # Sync { Jiggler.logger.warn(Jiggler.summary) }
     if total == 0
       Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
       Jiggler.logger.warn("Done, #{iter * count} jobs in #{Time.now - start} sec")
-      # Jiggler.logger.warn("Latency for three jobs")
-
-      # LoadJob.enqueue(1, Time.now.to_f)
-      # LoadJob.enqueue(2, Time.now.to_f)
-      # LoadJob.enqueue(3, Time.now.to_f)
 
       sleep 0.2
       break
@@ -132,24 +128,10 @@ def start_jiggler(cli)
   rescue => e
     warn e.message
     warn e.backtrace.join("\n")
-    # exit 1
   end
 end
 
 start_jiggler(cli)
-
-# async loop: 79624 (23:06:45) -> 79900 (23:07:46) -> 80116 (23:11:45)
-# poller (poll int 5): 
-# 80088 (23:12:48) -> 80376 (1min 23:13:13) -> 83592 (5min 23:17:43)
-# poller (poll int 5) & manager (concurrency 2): 
-# 82384 (23:19:35) -> 90388 (1min 23:20:37) -> 92016 (5min 23:24:16)
-#
-# Async do
-#  loop do
-#    sleep(2)
-#    Jiggler.logger.warn("looping...")
-#  end
-# end
 
 # -> RubyProf
 # RubyProf.exclude_threads = [Monitoring]

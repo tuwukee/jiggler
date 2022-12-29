@@ -10,6 +10,7 @@ require 'yaml'
 module Jiggler
   class CLI
     include Singleton
+    CONTEXT_SWITCHER_THRESHOLD = 0.5
 
     attr_reader :logger, :config, :environment
     
@@ -52,7 +53,6 @@ module Jiggler
         @launcher.start
       end
       @switcher&.exit
-      @launcher&.cleanup
     end
 
     def stop
@@ -67,13 +67,14 @@ module Jiggler
 
     private
 
+    # forces scheduler to switch fibers if they take more than threshold to execute
     def patch_scheduler
-      @switcher = Thread.new(Fiber.scheduler, 0.1) do |scheduler, threshold|
+      @switcher = Thread.new(Fiber.scheduler) do |scheduler|
         loop do
-          sleep(threshold) # 0.1s per fiber to execute
+          sleep(CONTEXT_SWITCHER_THRESHOLD)
           switch = scheduler.context_switch
           next if switch.nil?
-          next if Process.clock_gettime(Process::CLOCK_MONOTONIC) - switch < threshold
+          next if Process.clock_gettime(Process::CLOCK_MONOTONIC) - switch < CONTEXT_SWITCHER_THRESHOLD
 
           Process.kill('URG', Process.pid)
         end

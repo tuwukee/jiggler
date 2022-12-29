@@ -61,26 +61,16 @@ module Jiggler
     private
 
     def fetch_and_format_processes(conn)
-      processes = conn.call('HGETALL', config.processes_hash)
-      processes_data = {}
-
-      collected_data = conn.pipelined do |pipeline|
-        processes.each do |uuid, process_data|
-          processes_data[uuid] = JSON.parse(process_data)
-          pipeline.call('GET', "#{config.stats_prefix}#{uuid}")
-        end
+      conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last.reduce({}) do |acc, uuid|
+        process_data = conn.call('GET', uuid)
+        process_data = JSON.parse(process_data)
+        acc[uuid] = process_data
+        acc
       end
-      
-      processes.each do |uuid, _|
-        stats_data = collected_data.shift
-        processes_data[uuid].merge!(JSON.parse(stats_data)) if stats_data
-        processes_data[uuid]['current_jobs'] ||= []
-      end
-      processes_data
     end
 
     def fetch_and_format_queues(conn)
-      lists = conn.call('SCAN', '0', 'MATCH', "#{config.queue_prefix}*").last
+      lists = conn.call('SCAN', '0', 'MATCH', config.queue_scan_key).last
       lists_data = {}
 
       collected_data = conn.pipelined do |pipeline|

@@ -9,8 +9,7 @@ module Jiggler
 
     DEFAULT_QUEUE = 'default'
     QUEUE_PREFIX = 'jiggler:list:'
-    PROCESSES_HASH = 'jiggler:hash:processes'
-    STATS_PREFIX = 'jiggler:stats:'
+    SERVER_PREFIX = 'jiggler:server:'
     RETRIES_SET = 'jiggler:set:retries'
     SCHEDULED_SET = 'jiggler:set:scheduled'
     DEAD_SET = 'jiggler:set:dead'
@@ -40,10 +39,6 @@ module Jiggler
       QUEUE_PREFIX
     end
 
-    def processes_hash
-      PROCESSES_HASH
-    end
-
     def retries_set
       RETRIES_SET
     end
@@ -56,12 +51,20 @@ module Jiggler
       DEAD_SET
     end
 
-    def stats_prefix
-      STATS_PREFIX
-    end
-
     def default_queue
       DEFAULT_QUEUE
+    end
+
+    def server_prefix
+      SERVER_PREFIX
+    end
+
+    def process_scan_key
+      @process_scan_key ||= "#{server_prefix}*"
+    end
+
+    def queue_scan_key
+      @queue_scan_key ||= "#{queue_prefix}*"
     end
 
     def prefixed_queues

@@ -10,7 +10,8 @@ RSpec.describe Jiggler::Config do
       queues: ['test', 'test2'],
       require: 'test.rb',
       max_dead_jobs: 100,
-      dead_timeout: 100
+      dead_timeout: 100,
+      redis_url: 'redis://localhost:6379'
     ) 
   end
 
@@ -39,7 +40,8 @@ RSpec.describe Jiggler::Config do
       expect(config.redis_options).to eq(
         concurrency: 4,
         redis_pool: nil,
-        async: true
+        async: true,
+        redis_url: 'redis://localhost:6379'
       )
     end
 
@@ -47,7 +49,8 @@ RSpec.describe Jiggler::Config do
       config[:server_mode] = false
       expect(config.redis_options).to eq(
         concurrency: 1,
-        redis_pool: nil
+        redis_pool: nil,
+        redis_url: 'redis://localhost:6379'
       )
     end
   end

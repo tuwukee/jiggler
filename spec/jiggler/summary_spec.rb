@@ -63,7 +63,7 @@ RSpec.describe Jiggler::Summary do
           'concurrency' => 1,
           'timeout' => 1,
           'poller_enabled' => false,
-          'current_jobs' => []
+          'current_jobs' => {}
         })
       end
       task.wait

@@ -83,7 +83,7 @@ module Jiggler
       end
 
       def job_args(raw_args)
-        { name: @klass.name, args: raw_args, **job_options }.to_json
+        JSON.generate({ name: @klass.name, args: raw_args, **job_options })
       end
 
       def job_options

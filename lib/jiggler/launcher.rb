@@ -9,11 +9,10 @@ module Jiggler
     def initialize(config)
       @done = false
       @config = config
-      @uuid = "jiggler-#{SecureRandom.hex(6)}"
+      @uuid = "#{config.server_prefix}#{Time.now.to_i}:#{SecureRandom.hex(4)}"
     end
 
     def start
-      set_process_data
       poller.start if config[:poller_enabled]
       monitor.start
       manager.start
@@ -27,37 +26,11 @@ module Jiggler
 
       poller.terminate if config[:poller_enabled]
       monitor.terminate
-      cleanup
     end
 
     def stop
       quite
       manager.terminate
-    end
-
-    def hostname
-      ENV['DYNO'] || Socket.gethostname
-    end
-
-    def process_data
-      {
-        pid: Process.pid,
-        hostname: hostname,
-        concurrency: config[:concurrency],
-        timeout: config[:timeout],
-        queues: config[:queues].join(', '),
-        started_at: Time.now.to_f,
-        poller_enabled: config[:poller_enabled]
-      }.to_json
-    end
-
-    def cleanup
-      config.with_async_redis { |conn| conn.call('HDEL', config.processes_hash, @uuid) }
-    end
-
-    # using a sync call to throw an error and early exit if redis is down
-    def set_process_data
-      config.with_sync_redis { |conn| conn.call('HSET', config.processes_hash, @uuid, process_data) }
     end
 
     private

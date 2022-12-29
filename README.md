@@ -151,11 +151,12 @@ In case the client is being used in async app (f.e. with Falcon web server, or i
 The pool should be compatible with `Async::Pool` - support `acquire` method.
 
 ```ruby
+# use Jiggler's RedisStore
 my_async_redis_pool = Jiggler::RedisStore.new(
   url: ENV['REDIS_URL'],
   concurrency: 5
 ).async_pool
-# or
+# or Async::Pool::Controller wrapper
 my_async_redis_pool = Async::Pool::Controller.wrap(limit: 5) do
   RedisClient.config(url: url).new_client
 end
@@ -169,8 +170,10 @@ end
 
 Then, the client methods could be called with:
 ```ruby
-Async { MyJob.enqueue }
-Async { Jiggler.config.cleaner.prune_all }
+Async do
+  Jiggler.config.cleaner.prune_all
+  MyJob.enqueue
+end
 ```
 
 ### Local development
