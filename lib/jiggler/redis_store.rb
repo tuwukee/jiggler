@@ -10,14 +10,8 @@ module Jiggler
       @redis_config = RedisClient.config(url: options[:redis_url])
     end
 
-    def pool
-      return @options[:redis_pool] if @options[:redis_pool]
-      
-      if @options[:redis_mode] == :async
-        async_pool
-      else
-        sync_pool
-      end
+    def pool      
+      @options[:async] ? async_pool : sync_pool
     end
 
     def async_pool

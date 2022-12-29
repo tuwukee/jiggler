@@ -4,11 +4,11 @@ module Jiggler
   module Job
     module ClassMethods
       def enqueue(*args)
-        Enqueuer.new(self, { async: async }).enqueue(*args)
+        Enqueuer.new(self).enqueue(*args)
       end
 
       def enqueue_in(seconds, *args)
-        Enqueuer.new(self, { async: async }).enqueue_in(seconds, *args)
+        Enqueuer.new(self).enqueue_in(seconds, *args)
       end
 
       # MyJob.with_options(queue: 'custom', retries: 3).enqueue(*args)
@@ -17,7 +17,7 @@ module Jiggler
       end
 
       def enqueue_bulk(args_arr)
-        Enqueuer.new(self, { async: async }).enqueue_bulk(args_arr)
+        Enqueuer.new(self).enqueue_bulk(args_arr)
       end
 
       def queue
@@ -32,20 +32,15 @@ module Jiggler
         @retries || 0
       end
 
-      def async
-        @async || false
-      end
-
-      def job_options(queue: Jiggler::Config::DEFAULT_QUEUE, retries: 0, retry_queue: nil, async: false)
-        @queue = queue
-        @retries = retries
+      def job_options(queue: nil, retries: nil, retry_queue: nil)
+        @queue = queue || Jiggler::Config::DEFAULT_QUEUE
+        @retries = retries || 0
         @retry_queue = retry_queue || queue
-        @async = async
       end
     end
 
     class Enqueuer
-      def initialize(klass, options)
+      def initialize(klass, options = {})
         @options = options
         @klass = klass
       end
@@ -56,13 +51,13 @@ module Jiggler
       end
 
       def enqueue(*args)
-        config.with_redis(async: @options.fetch(:async, false)) do |conn|
+        Jiggler.config.redis_pool.acquire do |conn|
           conn.call('LPUSH', list_name, job_args(args))
         end
       end
 
       def enqueue_bulk(args_arr)
-        config.with_redis(async: @options.fetch(:async, false)) do |conn|
+        Jiggler.config.redis_pool.acquire do |conn|
           conn.pipelined do |pipeline|
             args_arr.each do |args|
               pipeline.call('LPUSH', list_name, job_args(args))
@@ -73,18 +68,18 @@ module Jiggler
 
       def enqueue_in(seconds, *args)
         timestamp = Time.now.to_f + seconds
-        config.with_redis(async: @options.fetch(:async, false)) do |conn| 
+        Jiggler.config.redis_pool.acquire do |conn|
           conn.call(
             'ZADD',
             config.scheduled_set, 
             timestamp, 
             job_args(args)
-          ) 
+          )
         end
       end
 
       def list_name
-        "#{config.queue_prefix}#{@options[:queue] || @klass.queue}"
+        "#{config.queue_prefix}#{@options.fetch(:queue, @klass.queue)}"
       end
 
       def job_args(raw_args)
@@ -107,11 +102,11 @@ module Jiggler
     end
 
     def enqueue(*args)
-      Enqueuer.new(self.class, {}).enqueue(*args)
+      Enqueuer.new(self.class).enqueue(*args)
     end
 
     def enqueue_in(seconds, *args)
-      Enqueuer.new(self.class, {}).enqueue_in(seconds, *args)
+      Enqueuer.new(self.class).enqueue_in(seconds, *args)
     end
 
     def perform(**args)

@@ -100,20 +100,21 @@ module Jiggler
         opts = @options.slice(
           :concurrency,
           :redis_url,
-          :redis_pool,
-          :redis_mode
+          :redis_pool
         )
         if Jiggler.server?
           opts[:concurrency] += 2 # monitor + safety margin
           opts[:concurrency] += 1 if @options[:poller_enabled]
-          opts[:redis_mode] = :async
+          opts[:async] = true
         end
         opts
       end
     end
 
     def redis_pool
-      @redis_pool ||= Jiggler::RedisStore.new(redis_options).pool
+      @redis_pool ||= begin
+        @options[:redis_pool] || Jiggler::RedisStore.new(redis_options).pool
+      end
     end
 
     def cleaner
