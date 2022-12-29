@@ -53,15 +53,16 @@ module Jiggler
         collection.data[:processed] -= processed_jobs
         collection.data[:failures] -= failed_jobs
 
-        config.with_sync_redis do |conn|
+        result = config.with_sync_redis do |conn|
           conn.pipelined do |pipeline|
             pipeline.call('SET', data_key, process_data, ex: exp)
             pipeline.call('INCRBY', PROCESSED_COUNTER, processed_jobs)
             pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
           end
         end
+        logger.warn result
 
-        config.cleaner.prune_outdated_processes_data
+        config.cleaner.unforced_prune_outdated_processes_data
       rescue => ex
         handle_exception(
           ex, { context: '\'Error while loading stats into redis\'', tid: @tid }

@@ -38,7 +38,7 @@ require_relative '../lib/jiggler/cli'
 
 Jiggler.configure_server do |config|
   config[:poll_interval] = 2
-  # config[:concurrency] = 15
+  config[:concurrency] = 20
   # config[:poller_enabled] = false
   # config[:stats_enabled] = false
   config.logger.level = Logger::WARN
@@ -52,13 +52,24 @@ class LoadJob
   include Jiggler::Job
   job_options retries: 1, async: true
 
+  def fib(n)
+    if n <= 1
+      1
+    else
+      (fib(n-1) + fib(n-2))
+    end
+  end
+
   def perform(idx, ts = nil)
     # puts('job is performing') if rand(1000).zero?
-    # start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    # while true
-    #   finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    #   break if finish - start > 5.0
-    # end
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    # puts "started task\n"
+    sleep 0.01
+    fib(33)
+    sleep 0.01
+    fib(20)
+    sleep 0.01
+    # puts "ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
 
     puts("#{Time.now.to_f - ts}\n") if !ts.nil?
   end
@@ -68,8 +79,8 @@ Jiggler.config.cleaner.prune_all
 
 cli = Jiggler::CLI.instance
 
-iter = 30
-count = 10_000
+iter = 1
+count = 300
 Jiggler.logger.warn "Uploading #{count * iter} jobs..."
 iter.times do |i|
   arr = Array.new(count) { |idx| [idx] }
@@ -98,11 +109,11 @@ Monitoring = Thread.new do
     if total == 0
       Jiggler.logger.warn("RSS: #{Process.rss} Pending: #{total}")
       Jiggler.logger.warn("Done, #{iter * count} jobs in #{Time.now - start} sec")
-      Jiggler.logger.warn("Latency for three jobs")
+      # Jiggler.logger.warn("Latency for three jobs")
 
-      LoadJob.enqueue(1, Time.now.to_f)
-      LoadJob.enqueue(2, Time.now.to_f)
-      LoadJob.enqueue(3, Time.now.to_f)
+      # LoadJob.enqueue(1, Time.now.to_f)
+      # LoadJob.enqueue(2, Time.now.to_f)
+      # LoadJob.enqueue(3, Time.now.to_f)
 
       sleep 0.2
       break

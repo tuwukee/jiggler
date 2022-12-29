@@ -5,7 +5,7 @@
 require "sidekiq"
 
 x = Sidekiq.configure_embed do |config|
-  config.concurrency = 10
+  config.concurrency = 20
   config.queues = %w[default]
   config.logger.level = Logger::ERROR
   config.average_scheduled_poll_interval = 2
@@ -18,9 +18,26 @@ class LoadJob
   #   1
   # end
 
+  def fib(n)
+    if n <= 1
+      1
+    else
+      (fib(n-1) + fib(n-2))
+    end
+  end
+
   def perform(idx, ts = nil)
-    puts(Time.now.to_f - ts) if !ts.nil?
-    # raise idx.to_s if idx % 100 == 1
+    # puts('job is performing') if rand(1000).zero?
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    # puts "started task\n"
+    sleep 0.01
+    fib(33)
+    sleep 0.01
+    fib(20)
+    sleep 0.01
+    # puts "ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
+
+    puts("#{Time.now.to_f - ts}\n") if !ts.nil?
   end
 end
 
@@ -63,8 +80,8 @@ def Process.rss
   `ps -o rss= -p #{Process.pid}`.chomp.to_i
 end
 
-iter = 50
-count = 10_000
+iter = 1
+count = 300
 Sidekiq.logger.error "Uploading #{count * iter} jobs..."
 iter.times do
   arr = Array.new(count) { |idx| [idx] }
@@ -90,11 +107,11 @@ Monitoring = Thread.new do
     if total == 0
       Sidekiq.logger.error("RSS: #{Process.rss} Pending: #{total}")
       Sidekiq.logger.error("Done, #{iter * count} jobs in #{Time.now - start} sec")
-      Sidekiq.logger.error("Latency for three jobs")
+      # Sidekiq.logger.error("Latency for three jobs")
 
-      LoadJob.perform_async(1, Time.now.to_f)
-      LoadJob.perform_async(2, Time.now.to_f)
-      LoadJob.perform_async(3, Time.now.to_f)
+      # LoadJob.perform_async(1, Time.now.to_f)
+      # LoadJob.perform_async(2, Time.now.to_f)
+      # LoadJob.perform_async(3, Time.now.to_f)
 
       sleep 0.2
       exit(0)
