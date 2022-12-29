@@ -6,7 +6,7 @@ RSpec.describe Jiggler::Scheduled::Enqueuer do
       concurrency: 1,
       timeout: 1,
       queues: ['default', 'mine'],
-      redis_mode: :async
+      server_mode: true
     )
   end
   let(:enqueuer) { described_class.new(config) }

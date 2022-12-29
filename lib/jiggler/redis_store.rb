@@ -23,10 +23,9 @@ module Jiggler
     end
 
     def sync_pool
-      # use connection_pool from redis-store dependency
       @sync_pool ||= begin
         config = RedisClient.config(url: @options[:redis_url])
-        pool = config.new_pool(size: @options[:conrurrency])
+        pool = config.new_pool(size: @options[:concurrency])
         def pool.acquire(&block)
           with(&block)
         end

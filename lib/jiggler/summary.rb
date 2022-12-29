@@ -18,13 +18,9 @@ module Jiggler
       @config = config
     end
 
-    def self.all(config = Jiggler.config)
-      new(config).all
-    end
-
     def all
       summary = {}
-      collected_data = config.with_sync_redis do |conn|
+      collected_data = config.redis_pool.acquire do |conn|
         data = conn.pipelined do |pipeline|
           pipeline.call('ZCARD', config.retries_set)
           pipeline.call('ZCARD', config.dead_set)
@@ -43,13 +39,13 @@ module Jiggler
     end
 
     def last_retry_jobs(num)
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.retries_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num)
       end.map { |job| JSON.parse(job) }
     end
 
     def last_scheduled_jobs(num)
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.scheduled_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num, 'WITHSCORES')
       end.map do |(job, score)|
         JSON.parse(job).merge('scheduled_at' => score)
@@ -57,7 +53,7 @@ module Jiggler
     end
 
     def last_dead_jobs(num)
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.dead_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num)
       end.map { |job| JSON.parse(job) }
     end

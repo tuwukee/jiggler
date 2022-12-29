@@ -10,8 +10,7 @@ RSpec.describe Jiggler::Config do
       queues: ['test', 'test2'],
       require: 'test.rb',
       max_dead_jobs: 100,
-      dead_timeout: 100,
-      redis_mode: :async
+      dead_timeout: 100
     ) 
   end
 
@@ -28,18 +27,27 @@ RSpec.describe Jiggler::Config do
       expect(config[:stats_interval]).to be 10
       expect(config[:poller_enabled]).to be true
       expect(config[:poll_interval]).to be 5
+      expect(config[:server_mode]).to be false
     end
 
     it 'generates prefixed queues' do
       expect(config.prefixed_queues).to eq ['jiggler:list:test', 'jiggler:list:test2']
     end
 
-    it 'gets redis options' do
+    it 'gets redis options for server' do
+      config[:server_mode] = true
       expect(config.redis_options).to eq(
-        concurrency: 4, 
-        redis_url: ENV['REDIS_URL'], 
-        redis_pool: nil, 
-        redis_mode: :async
+        concurrency: 4,
+        redis_pool: nil,
+        async: true
+      )
+    end
+
+    it 'gets redis options for client' do
+      config[:server_mode] = false
+      expect(config.redis_options).to eq(
+        concurrency: 1,
+        redis_pool: nil
       )
     end
   end

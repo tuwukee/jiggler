@@ -26,7 +26,7 @@ module Jiggler
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
       redis_pool: nil,
-      redis_mode: :sync # :async or :sync. :sync is used on default for client connections
+      server_mode: false
     }
 
     def initialize(options = {})
@@ -86,15 +86,6 @@ module Jiggler
       end
     end
 
-    def with_redis(async: true)
-      wrapper = async ? :Async : :Sync
-      Kernel.public_send(wrapper) do
-        redis_pool.acquire do |conn|
-          yield conn
-        end 
-      end
-    end
-
     def redis_options
       @redis_options ||= begin
         opts = @options.slice(
@@ -102,7 +93,8 @@ module Jiggler
           :redis_url,
           :redis_pool
         )
-        if Jiggler.server?
+
+        if @options[:server_mode]
           opts[:concurrency] += 2 # monitor + safety margin
           opts[:concurrency] += 1 if @options[:poller_enabled]
           opts[:async] = true
@@ -119,6 +111,10 @@ module Jiggler
 
     def cleaner
       @cleaner ||= Jiggler::Cleaner.new(self)
+    end
+
+    def summary
+      @summary ||= Jiggler::Summary.new(self)
     end
 
     def logger=(new_logger)

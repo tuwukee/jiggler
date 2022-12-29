@@ -37,7 +37,6 @@ The configuration can be skipped if you're using the default values.
 ```ruby
 Jiggler.configure_client do |config|
   config[:concurrency] = 12               # Should equal to the number of threads/fibers in the client app. Defaults to 10
-  config[:redis_pool]  = nil              # Custom redis connections pool compatible with Async::Pool
   config[:redis_url]   = ENV["REDIS_URL"] # On default fetches the value from ENV["REDIS_URL"]
 end
 
@@ -50,6 +49,8 @@ Jiggler.configure_server do |config|
   config[:queues]      = ["shippers"]     # An array of queue names the server is going to listen to
   config[:config_file] = "./jiggler.yml"  # .yml file with Jiggler settings
 end
+
+Jiggler.run_configuration
 ```
 
 Internally Jiggler server consists of 3 parts: Manager, Poller, Monitor. \
@@ -146,16 +147,30 @@ Jiggler.config.cleaner.prune_all
 ```
 
 On default Jiggler client uses synchronous connections. 
-In case the client is being used in async app (f.e. with Falcon web server, or in Polyphony, etc.), then it's possible to set a custom redis pool capable of sending async requests into redis. It should be compatible with `Async::Pool` - support `acquire` method.
+In case the client is being used in async app (f.e. with Falcon web server, or in Polyphony, etc.), then it's possible to set a custom redis pool capable of sending async requests into redis.
+The pool should be compatible with `Async::Pool` - support `acquire` method.
 
 ```ruby
-my_async_pool = Async::Pool::Controller.wrap(limit: @options[:concurrency]) do
-  @redis_config.new_client
+my_async_redis_pool = Jiggler::RedisStore.new(
+  url: ENV['REDIS_URL'],
+  concurrency: 5
+).async_pool
+# or
+my_async_redis_pool = Async::Pool::Controller.wrap(limit: 5) do
+  RedisClient.config(url: url).new_client
 end
+# or
+# other implementation
 
 Jiggler.configure_client do |config|
-  config[:redis_pool] = 
+  config[:redis_pool] = my_async_redis_pool
 end
+```
+
+Then, the client methods could be called with:
+```ruby
+Async { MyJob.enqueue }
+Async { Jiggler.config.cleaner.prune_all }
 ```
 
 ### Local development

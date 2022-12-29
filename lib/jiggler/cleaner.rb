@@ -10,7 +10,7 @@ module Jiggler
     end
 
     def prune_all
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         conn.pipelined do |pipeline|
           prn_retries_set(pipeline)
           prn_scheduled_set(pipeline)
@@ -26,61 +26,61 @@ module Jiggler
     end
 
     def prune_failures_counter
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         prn_failures_counter(conn)
       end
     end
 
     def prune_processed_counter
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         prn_processed_counter(conn)
       end
     end
 
     def prune_all_processes
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         prn_all_processes(conn)
       end
     end
 
     def prune_process(uuid)
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         conn.call('HDEL', config.processes_hash, uuid)
       end
     end
 
     def prune_dead_set
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         prn_dead_set(conn)
       end
     end
 
     def prune_retries_set
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         prn_retries_set(conn)
       end
     end
 
     def prune_scheduled_set
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         prn_scheduled_set(conn)
       end
     end
 
     def prune_all_queues
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         prn_all_queues(conn)
       end
     end
 
     def prune_queue(queue_name)
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         conn.call('DEL', "#{config.queue_prefix}#{queue_name}")
       end
     end
 
     def unforced_prune_outdated_processes_data
-      return unless config.with_sync_redis do |conn| 
+      return unless config.redis_pool.acquire do |conn| 
         conn.call('GET', CLEANUP_FLAG)
       end.nil?
 
@@ -89,7 +89,7 @@ module Jiggler
 
     def prune_outdated_processes_data
       to_prune = []
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         processes_hash = conn.call('HGETALL', config.processes_hash)
         stats_keys = conn.call('SCAN', '0', 'MATCH', "#{config.stats_prefix}*").last
 
@@ -101,7 +101,7 @@ module Jiggler
         end
 
         unless to_prune.empty?
-          config.logger.debug('Pruned outdated processes') { to_prune }
+          config.logger.warn('Pruned outdated processes') { to_prune }
           conn.call('HDEL', config.processes_hash, *to_prune)
         end
 

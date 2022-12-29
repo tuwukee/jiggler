@@ -5,7 +5,7 @@ RSpec.describe Jiggler::Launcher do
     Jiggler::Config.new(
       concurrency: 1,
       timeout: 1,
-      redis_mode: :async
+      server_mode: true
     )
     end
   let(:launcher) { described_class.new(config) }

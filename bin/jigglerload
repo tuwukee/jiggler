@@ -93,7 +93,7 @@ def Process.rss
 end
 
 def jobs_count
-  Jiggler.redis do |conn|
+  Jiggler.config.redis_pool.acquire do |conn|
     conn.call 'LLEN', 'jiggler:list:default'
   end
 end

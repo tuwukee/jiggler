@@ -38,6 +38,7 @@ module Jiggler
       @config ||= Jiggler.config
 
       setup_options(args)
+      Jiggler.run_configuration
       initialize_logger
       validate!
     end
@@ -198,6 +199,7 @@ module Jiggler
 
       opts = parse_config(opts[:config_file]).merge(opts) if opts[:config_file]
       opts[:queues] = [Jiggler::Config::DEFAULT_QUEUE] if opts[:queues].nil?
+      opts[:server_mode] = true # cli starts only in server mode
       config.merge!(opts)
     end
 

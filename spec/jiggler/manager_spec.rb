@@ -4,8 +4,8 @@ RSpec.describe Jiggler::Manager do
   let(:config) do 
     Jiggler::Config.new(
       concurrency: 4,
-      timeout: 3,
-      redis_mode: :async
+      timeout: 1,
+      server_mode: true
     )
   end
   let(:collection) { Jiggler::Stats::Collection.new(config) }
@@ -43,6 +43,7 @@ RSpec.describe Jiggler::Manager do
         Async { manager.start }
         sleep(0.5)
         manager.terminate
+        sleep(2) # wait for timeout
         expect(manager.instance_variable_get(:@done)).to be true
       end
       task.wait
