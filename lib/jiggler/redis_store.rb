@@ -7,7 +7,7 @@ module Jiggler
   class RedisStore
     def initialize(options = {})
       @options = options
-      @redis_config = RedisClient.config(url: options[:redis_url])
+      @redis_config = RedisClient.config(url: options[:redis_url], timeout: nil)
     end
 
     def pool      

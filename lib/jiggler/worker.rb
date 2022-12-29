@@ -3,7 +3,7 @@
 module Jiggler
   class Worker
     include Support::Component
-    TIMEOUT = 5 # timeout for brpop
+    TIMEOUT = 2 # timeout for brpop
 
     CurrentJob = Struct.new(:queue, :args, keyword_init: true)
 

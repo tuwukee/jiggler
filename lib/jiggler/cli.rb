@@ -69,7 +69,7 @@ module Jiggler
     def patch_scheduler
       @switcher = Thread.new(Fiber.scheduler, 0.1) do |scheduler, threshold|
         loop do
-          sleep(threshold) # 0.5s per fiber to execute
+          sleep(threshold) # 0.1s per fiber to execute
           switch = scheduler.context_switch
           next if switch.nil?
           next if Process.clock_gettime(Process::CLOCK_MONOTONIC) - switch < threshold
