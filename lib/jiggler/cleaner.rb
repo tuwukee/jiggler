@@ -40,9 +40,19 @@ module Jiggler
       end
     end
 
-    def prune_process(uuid)
+    def prune_process(name)
+      hex = name.split(':').last
       config.redis_pool.acquire do |conn|
-        conn.call('DEL', uuid)
+        processes = conn.call('SCAN', '0', 'MATCH', "#{config.server_prefix}#{hex}*").last
+        count = processes.count
+        if count == 0
+          config.logger.error("No process found for #{name}")
+          return
+        elsif count > 1
+          config.logger.error("Multiple processes found for #{name}, not pruning #{processes}")
+          return
+        end
+        conn.call('DEL', processes.first)
       end
     end
 
@@ -106,11 +116,6 @@ module Jiggler
 
     def prn_processed_counter(conn)
       conn.call('DEL', Jiggler::Stats::Monitor::PROCESSED_COUNTER)
-    end
-
-    def prn_stats(conn)
-      stats_keys = conn.call('SCAN', '0', 'MATCH', "#{config.stats_prefix}*").last
-      conn.call('DEL', *stats_keys) unless stats_keys.empty?
     end
   end
 end

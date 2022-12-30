@@ -17,17 +17,8 @@ module Jiggler
         # the key expiration should be greater than the stats interval
         # to avoid cases where the monitor is blocked
         # by long running workers and the key is not updated
-        @exp = 300 # 5 minutes
+        @exp = config[:stats_interval] + 300 # interval + 5 minutes
         @rss_path = "/proc/#{Process.pid}/status"
-
-        @constant_process_data = {
-          pid: Process.pid,
-          hostname: ENV['DYNO'] || Socket.gethostname,
-          concurrency: config[:concurrency],
-          timeout: config[:timeout],
-          queues: config[:queues].join(', '),
-          poller_enabled: config[:poller_enabled]          
-        }.freeze
       end
 
       def start
@@ -47,13 +38,11 @@ module Jiggler
       end
   
       def process_data
-        JSON.generate(
-          @constant_process_data.merge({
-            heartbeat: Time.now.to_f,
-            rss: process_rss,
-            current_jobs: collection.data[:current_jobs],
-          })
-        )       
+        JSON.generate({
+          heartbeat: Time.now.to_f,
+          rss: process_rss,
+          current_jobs: collection.data[:current_jobs],
+        })
       end
 
       def load_data_into_redis

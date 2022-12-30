@@ -64,7 +64,17 @@ module Jiggler
       conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last.reduce({}) do |acc, uuid|
         process_data = conn.call('GET', uuid)
         process_data = JSON.parse(process_data)
-        acc[uuid] = process_data
+        values = uuid.split(':')
+        acc[uuid] = process_data.merge({
+          'name' => "jiggler:#{values[2]}",
+          'hostname' => values[3],
+          'concurrency' => values[4],
+          'timeout' => values[5],
+          'queues' => values[6],
+          'poller_enabled' => values[7] == '1',
+          'started_at' => values[8],
+          'pid' => values[9]
+        })
         acc
       end
     end

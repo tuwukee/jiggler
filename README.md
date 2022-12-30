@@ -139,9 +139,6 @@ Jiggler.config.cleaner.prune_queue(queue_name)
 # prune all queues data
 Jiggler.config.cleaner.prune_all_queues
 
-# prune specific process data from Redis. It's not going to kill to process, only data removal 
-Jiggler.config.cleaner.prune_process(process_uuid)
-
 # prune all Jiggler data from Redis including all enqued jobs, stats, etc.
 Jiggler.config.cleaner.prune_all
 ```

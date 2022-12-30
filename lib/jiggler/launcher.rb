@@ -9,7 +9,6 @@ module Jiggler
     def initialize(config)
       @done = false
       @config = config
-      @uuid = "#{config.server_prefix}#{Time.now.to_i}:#{SecureRandom.hex(4)}"
     end
 
     def start
@@ -35,8 +34,24 @@ module Jiggler
 
     private
 
+    def uuid
+      @uuid ||= begin
+        data_str = [
+          SecureRandom.hex(6),
+          ENV['DYNO'] || Socket.gethostname,
+          config[:concurrency],
+          config[:timeout],
+          config[:queues].join(','),
+          config[:poller_enabled] ? '1' : '0',
+          Time.now.to_i,
+          Process.pid
+        ].join(':')
+        "#{config.server_prefix}#{data_str}"
+      end
+    end
+
     def collection
-      @collection ||= Stats::Collection.new(@uuid)
+      @collection ||= Stats::Collection.new(uuid)
     end
 
     def manager

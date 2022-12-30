@@ -40,7 +40,7 @@ RSpec.describe Jiggler::Cleaner do
       config.redis_pool.acquire do |conn|
         conn.call(
           'SET',
-          'uuid-cleaner-test-0', 
+          'jiggler:svr:uuid-cleaner-test-0:process', 
           '{}',
           ex: 10
         )
@@ -57,7 +57,7 @@ RSpec.describe Jiggler::Cleaner do
       config.redis_pool.acquire do |conn|
         conn.call(
           'SET',
-          'uuid-cleaner-test-1', 
+          'jiggler:svr:uuid-cleaner-test-1:process',
           '{}',
           ex: 10
         )

@@ -9,7 +9,7 @@ module Jiggler
 
     DEFAULT_QUEUE = 'default'
     QUEUE_PREFIX = 'jiggler:list:'
-    SERVER_PREFIX = 'jiggler:server:'
+    SERVER_PREFIX = 'jiggler:svr:'
     RETRIES_SET = 'jiggler:set:retries'
     SCHEDULED_SET = 'jiggler:set:scheduled'
     DEAD_SET = 'jiggler:set:dead'

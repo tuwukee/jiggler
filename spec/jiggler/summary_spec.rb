@@ -33,7 +33,7 @@ RSpec.describe Jiggler::Summary do
       Sync { config.cleaner.prune_all }
       task = Async do
         launcher = Jiggler::Launcher.new(config)
-        uuid = launcher.instance_variable_get(:@uuid)
+        uuid = launcher.send(:uuid)
         MyJob.with_options(queue: 'queue1').enqueue
         
         first_summary = Sync { summary.all }
@@ -57,11 +57,11 @@ RSpec.describe Jiggler::Summary do
         })
         expect(second_summary['processes'].keys).to include(uuid)
         expect(second_summary['processes'][uuid]).to include({
-          'queues' => queues.join(', '),
+          'queues' => queues.join(','),
           'hostname' => Socket.gethostname,
-          'pid' => Process.pid,
-          'concurrency' => 1,
-          'timeout' => 1,
+          'pid' => Process.pid.to_s,
+          'concurrency' => '1',
+          'timeout' => '1',
           'poller_enabled' => false,
           'current_jobs' => {}
         })

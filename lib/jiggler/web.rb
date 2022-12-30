@@ -16,10 +16,6 @@ module Jiggler
       [200, {}, [compiled_template]]
     end
 
-    def process_started_at(uuid)
-      Time.at(uuid.split(":")[2].to_i).to_datetime
-    end
-
     def last_5_dead_jobs
       @summary_instance.last_dead_jobs(5)
     end
