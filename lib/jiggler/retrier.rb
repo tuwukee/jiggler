@@ -26,7 +26,7 @@ module Jiggler
       raise Async::Stop if exception_caused_by_shutdown?(err)
 
       process_retry(instance, parsed_job, queue, err)
-      increase_failures_counter
+      collection.incr_failures
       
       handle_exception(
         err,
@@ -110,10 +110,6 @@ module Jiggler
 
       e.cause.instance_of?(Async::Stop) ||
         exception_caused_by_shutdown?(e.cause, checked_causes)
-    end
-
-    def increase_failures_counter
-      collection.data[:failures] += 1
     end
 
     def exception_message(exception)

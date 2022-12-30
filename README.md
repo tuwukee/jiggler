@@ -37,27 +37,27 @@ The configuration can be skipped if you're using the default values.
 ```ruby
 Jiggler.configure_client do |config|
   config[:concurrency] = 12               # Should equal to the number of threads/fibers in the client app. Defaults to 10
-  config[:environment] = "myenv"          # On default fetches the value ENV["APP_ENV"] and fallbacks to "development"
-  config[:redis_mode]  = :sync            # Can be :sync or :async. Defaults to :sync
-  config[:redis_pool]  = nil              # Custom redis connections pool compatible with Async::Pool
   config[:redis_url]   = ENV["REDIS_URL"] # On default fetches the value from ENV["REDIS_URL"]
 end
 
 Jiggler.configure_server do |config|
-  config[:concurrency] = 12               # Defaults to 10
+  config[:concurrency] = 12               # The number of running fibers. Defaults to 10
   config[:timeout]     = 12               # Seconds Jiggler wait for jobs to finish before shotdown. Defaults to 25
+  config[:environment] = "myenv"          # On default fetches the value ENV["APP_ENV"] and fallbacks to "development"
   config[:require]     = "./jobs.rb"      # Path to file with jobs/app initializer
   config[:redis_url]   = ENV["REDIS_URL"] # On default fetches the value from ENV["REDIS_URL"]
   config[:queues]      = ["shippers"]     # An array of queue names the server is going to listen to
   config[:config_file] = "./jiggler.yml"  # .yml file with Jiggler settings
 end
+
+Jiggler.run_configuration
 ```
 
 Internally Jiggler server consists of 3 parts: Manager, Poller, Monitor. \
 Manager is responsible for workers. \
 Poller picks up data for retries and scheduled jobs. \
 Monitor periodically loads stats data into redis. \
-Manager and Monitor are is mandatory, while Poller can be disabled in case there's no need retries/scheduled jobs.
+Manager and Monitor are mandatory, while Poller can be disabled in case there's no need for retries/scheduled jobs.
 
 ```ruby
 Jiggler.configure_server do |config|
@@ -106,7 +106,7 @@ Specify custom job options:
 ```ruby
 class AnotherJob
   include Jiggler::Job
-  job_options queue: "custom", retries: 10
+  job_options queue: "custom", retries: 10, retry_queue: "custom_retries"
 
   def perform(num1, num2)
     puts num1 + num2
@@ -123,9 +123,6 @@ It's possible to enqueue multiple jobs at once with:
 ```ruby
 arr = [[num1, num2], [num3, num4], [num5, num6]]
 AnotherJob.enqueue_bulk(arr)
-
-# if jiggler client supports async redis mode, then you might want to run in async manner
-AnotherJob.with_options(async: true).enqueue_bulk(arr)
 ```
 
 For the cases when you want to enqueue jobs with a delay or at a specific time run:
@@ -142,11 +139,38 @@ Jiggler.config.cleaner.prune_queue(queue_name)
 # prune all queues data
 Jiggler.config.cleaner.prune_all_queues
 
-# prune specific process data from Redis. It's not going to kill to process, only data removal 
-Jiggler.config.cleaner.prune_process(process_uuid)
-
 # prune all Jiggler data from Redis including all enqued jobs, stats, etc.
 Jiggler.config.cleaner.prune_all
+```
+
+On default Jiggler client uses synchronous connections. 
+In case the client is being used in async app (f.e. with Falcon web server, or in Polyphony, etc.), then it's possible to set a custom redis pool capable of sending async requests into redis.
+The pool should be compatible with `Async::Pool` - support `acquire` method.
+
+```ruby
+# use Jiggler's RedisStore
+my_async_redis_pool = Jiggler::RedisStore.new(
+  url: ENV['REDIS_URL'],
+  concurrency: 5
+).async_pool
+# or Async::Pool::Controller wrapper
+my_async_redis_pool = Async::Pool::Controller.wrap(limit: 5) do
+  RedisClient.config(url: url).new_client
+end
+# or
+# other implementation
+
+Jiggler.configure_client do |config|
+  config[:redis_pool] = my_async_redis_pool
+end
+```
+
+Then, the client methods could be called with:
+```ruby
+Async do
+  Jiggler.config.cleaner.prune_all
+  MyJob.enqueue
+end
 ```
 
 ### Local development

@@ -6,7 +6,7 @@ RSpec.describe Jiggler::Worker do
       concurrency: 1,
       timeout: 1,
       queues: ['default', 'test'],
-      redis_mode: :async
+      server_mode: true
     ) 
   end
   let(:collection) { Jiggler::Stats::Collection.new(config) }
@@ -45,7 +45,7 @@ RSpec.describe Jiggler::Worker do
         end
         task.wait 
       end.to_not change { 
-        config.with_redis(async: false) { |conn| conn.call('ZCARD', config.retries_set) }
+        config.with_sync_redis { |conn| conn.call('ZCARD', config.retries_set) }
       }
     end
 
@@ -63,9 +63,9 @@ RSpec.describe Jiggler::Worker do
         end
         task.wait
       end.to change { 
-        config.with_redis(async: false) { |conn| conn.call('ZCARD', config.retries_set) }
+        config.with_sync_redis { |conn| conn.call('ZCARD', config.retries_set) }
       }.by(1)
-      config.with_redis(async: false) { |conn| conn.call('DEL', 'jiggler:set:retries') }
+      config.with_sync_redis { |conn| conn.call('DEL', 'jiggler:set:retries') }
     end
   end
 

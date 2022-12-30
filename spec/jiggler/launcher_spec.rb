@@ -5,7 +5,7 @@ RSpec.describe Jiggler::Launcher do
     Jiggler::Config.new(
       concurrency: 1,
       timeout: 1,
-      redis_mode: :async
+      server_mode: true
     )
     end
   let(:launcher) { described_class.new(config) }
@@ -13,14 +13,6 @@ RSpec.describe Jiggler::Launcher do
   describe '#initialize' do
     it 'sets correct attrs' do
       expect(launcher.config).to eq config
-      expect(JSON.parse(launcher.process_data).transform_keys(&:to_sym)).to include({
-        pid: Process.pid,
-        hostname: Socket.gethostname,
-        concurrency: 1,
-        timeout: 1,
-        queues: 'default',
-        poller_enabled: true
-      })
     end
   end
 

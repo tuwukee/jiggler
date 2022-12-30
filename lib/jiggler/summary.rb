@@ -18,13 +18,9 @@ module Jiggler
       @config = config
     end
 
-    def self.all(config = Jiggler.config)
-      new(config).all
-    end
-
     def all
       summary = {}
-      collected_data = config.with_sync_redis do |conn|
+      collected_data = config.redis_pool.acquire do |conn|
         data = conn.pipelined do |pipeline|
           pipeline.call('ZCARD', config.retries_set)
           pipeline.call('ZCARD', config.dead_set)
@@ -43,13 +39,13 @@ module Jiggler
     end
 
     def last_retry_jobs(num)
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.retries_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num)
       end.map { |job| JSON.parse(job) }
     end
 
     def last_scheduled_jobs(num)
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.scheduled_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num, 'WITHSCORES')
       end.map do |(job, score)|
         JSON.parse(job).merge('scheduled_at' => score)
@@ -57,7 +53,7 @@ module Jiggler
     end
 
     def last_dead_jobs(num)
-      config.with_sync_redis do |conn|
+      config.redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.dead_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num)
       end.map { |job| JSON.parse(job) }
     end
@@ -65,26 +61,26 @@ module Jiggler
     private
 
     def fetch_and_format_processes(conn)
-      processes = conn.call('HGETALL', config.processes_hash)
-      processes_data = {}
-
-      collected_data = conn.pipelined do |pipeline|
-        processes.each do |uuid, process_data|
-          processes_data[uuid] = JSON.parse(process_data)
-          pipeline.call('GET', "#{config.stats_prefix}#{uuid}")
-        end
+      conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last.reduce({}) do |acc, uuid|
+        process_data = conn.call('GET', uuid)
+        process_data = JSON.parse(process_data)
+        values = uuid.split(':')
+        acc[uuid] = process_data.merge({
+          'name' => "jiggler:#{values[2]}",
+          'hostname' => values[3],
+          'concurrency' => values[4],
+          'timeout' => values[5],
+          'queues' => values[6],
+          'poller_enabled' => values[7] == '1',
+          'started_at' => values[8],
+          'pid' => values[9]
+        })
+        acc
       end
-      
-      processes.each do |uuid, _|
-        stats_data = collected_data.shift
-        processes_data[uuid].merge!(JSON.parse(stats_data)) if stats_data
-        processes_data[uuid]['current_jobs'] ||= []
-      end
-      processes_data
     end
 
     def fetch_and_format_queues(conn)
-      lists = conn.call('SCAN', '0', 'MATCH', "#{config.queue_prefix}*").last
+      lists = conn.call('SCAN', '0', 'MATCH', config.queue_scan_key).last
       lists_data = {}
 
       collected_data = conn.pipelined do |pipeline|

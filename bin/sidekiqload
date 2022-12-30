@@ -4,19 +4,11 @@
 
 require "sidekiq"
 
-x = Sidekiq.configure_embed do |config|
-  config.concurrency = 20
-  config.queues = %w[default]
-  config.logger.level = Logger::ERROR
-  config.average_scheduled_poll_interval = 2
-end
+Sidekiq.redis { |c| c.flushall }
 
 class LoadJob
   include Sidekiq::Job
   sidekiq_options retry: 1
-  # sidekiq_retry_in do |x|
-  #   1
-  # end
 
   def fib(n)
     if n <= 1
@@ -27,61 +19,21 @@ class LoadJob
   end
 
   def perform(idx, ts = nil)
-    # puts('job is performing') if rand(1000).zero?
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    # puts "started task\n"
     sleep 0.01
     fib(33)
-    sleep 0.01
+    sleep 0.5
     fib(20)
-    sleep 0.01
-    # puts "ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
-
-    puts("#{Time.now.to_f - ts}\n") if !ts.nil?
+    puts "#{idx} ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
   end
 end
 
-self_read, self_write = IO.pipe
-%w[INT TERM TSTP TTIN].each do |sig|
-  trap sig do
-    self_write.puts(sig)
-  end
-rescue ArgumentError
-  puts "Signal #{sig} not supported"
-end
-
-Sidekiq.redis { |c| c.flushdb }
-def handle_signal(launcher, sig)
-  Sidekiq.logger.debug "Got #{sig} signal"
-  case sig
-  when "INT"
-    # Handle Ctrl-C in JRuby like MRI
-    # http://jira.codehaus.org/browse/JRUBY-4637
-    raise Interrupt
-  when "TERM"
-    # Heroku sends TERM and then waits 30 seconds for process to exit.
-    raise Interrupt
-  when "TSTP"
-    Sidekiq.logger.info "Received TSTP, no longer accepting new work"
-    launcher.quiet
-  when "TTIN"
-    Thread.list.each do |thread|
-      Sidekiq.logger.warn "Thread TID-#{(thread.object_id ^ ::Process.pid).to_s(36)} #{thread["label"]}"
-      if thread.backtrace
-        Sidekiq.logger.warn thread.backtrace.join("\n")
-      else
-        Sidekiq.logger.warn "<no backtrace available>"
-      end
-    end
-  end
-end
-
-def Process.rss
-  `ps -o rss= -p #{Process.pid}`.chomp.to_i
+def get_rss(pid)
+  `ps -o rss= -p #{pid}`.chomp.to_i
 end
 
 iter = 1
-count = 300
+count = 100
 Sidekiq.logger.error "Uploading #{count * iter} jobs..."
 iter.times do
   arr = Array.new(count) { |idx| [idx] }
@@ -89,55 +41,48 @@ iter.times do
 end
 Sidekiq.logger.error "Created #{count * iter} jobs"
 
+real_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+p2 = fork do
+  require "sidekiq/cli"
+
+  Sidekiq.configure_server do |config|
+    config.concurrency = 10
+    config.queues = %w[default]
+    config.logger.level = Logger::WARN
+    config.average_scheduled_poll_interval = 2
+  end
+
+  begin
+    cli = Sidekiq::CLI.instance
+    cli.parse ["-r", "tmp/temp.rb"]
+  
+    cli.run(boot_app: false)
+  rescue => e
+    Sidekiq.logger.error(e)
+    exit 1
+  end
+end
+
 def jobs_count
   Sidekiq.redis do |conn|
     conn.llen "queue:default"
   end
-end  
+end
 
 start = Time.now
 
-Monitoring = Thread.new do
+total = jobs_count
+Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
+loop do
+  sleep 2.0
   total = jobs_count
-  Sidekiq.logger.error("RSS: #{Process.rss} Pending: #{total}")
-  loop do
-    sleep 2.0
-    total = jobs_count
-    # Sidekiq.logger.error("RSS: #{Process.rss} Pending: #{total}")
-    if total == 0
-      Sidekiq.logger.error("RSS: #{Process.rss} Pending: #{total}")
-      Sidekiq.logger.error("Done, #{iter * count} jobs in #{Time.now - start} sec")
-      # Sidekiq.logger.error("Latency for three jobs")
-
-      # LoadJob.perform_async(1, Time.now.to_f)
-      # LoadJob.perform_async(2, Time.now.to_f)
-      # LoadJob.perform_async(3, Time.now.to_f)
-
-      sleep 0.2
-      exit(0)
-    end
+  Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
+  if total == 0
+    Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
+    Sidekiq.logger.error("Done, #{iter * count} jobs in #{Time.now - start} sec")
+    break
   end
 end
-
-begin
-  x.run
-
-  while (readable_io = IO.select([self_read]))
-    signal = readable_io.first[0].gets.strip
-    handle_signal(x, signal)
-  end
-rescue SystemExit
-  # Sidekiq.logger.error("Profiling...")
-  # result = RubyProf.stop
-  # printer = RubyProf::GraphHtmlPrinter.new(result)
-  # printer.print(File.new("output.html", "w"), min_percent: 1)
-  # normal
-rescue => e
-  raise e if $DEBUG
-  warn e.message
-  warn e.backtrace.join("\n")
-  exit 1
-ensure
-  x.stop
-end
-
+Process.kill("INT", p2)
+Process.wait(p2)
+Sidekiq.logger.error "real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}"

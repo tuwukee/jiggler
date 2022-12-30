@@ -2,7 +2,7 @@
 
 module Jiggler
   def self.server?
-    defined?(Jiggler::CLI)
+    config[:server_mode] == true
   end
   
   def self.config
@@ -13,19 +13,27 @@ module Jiggler
     config.logger
   end
 
-  def self.configure_server
-    yield config if server?
+  def self.configure_server(&block)
+    @server_blocks ||= []
+    @server_blocks << block
   end
 
-  def self.configure_client
-    yield config unless server?
+  def self.run_configuration
+    if server?
+      return if @server_blocks.nil?
+      @server_blocks.each { |block| block.call(config) }
+    else
+      return if @client_blocks.nil?
+      @client_blocks.each { |block| block.call(config) }
+    end
   end
 
-  def self.redis(async: false, &block)
-    config.with_redis(async:, &block)
+  def self.configure_client(&block)
+    @client_blocks ||= []
+    @client_blocks << block
   end
 
   def self.summary
-    Jiggler::Summary.all(self.config)
+    config.summary.all
   end
 end

@@ -13,6 +13,14 @@ module Jiggler
           current_jobs: {}
         }
       end
+
+      def incr_processed
+        @data[:processed] += 1
+      end
+
+      def incr_failures
+        @data[:failures] += 1
+      end
     end
   end
 end

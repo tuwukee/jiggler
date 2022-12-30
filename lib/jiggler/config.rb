@@ -9,8 +9,7 @@ module Jiggler
 
     DEFAULT_QUEUE = 'default'
     QUEUE_PREFIX = 'jiggler:list:'
-    PROCESSES_HASH = 'jiggler:hash:processes'
-    STATS_PREFIX = 'jiggler:stats:'
+    SERVER_PREFIX = 'jiggler:svr:'
     RETRIES_SET = 'jiggler:set:retries'
     SCHEDULED_SET = 'jiggler:set:scheduled'
     DEAD_SET = 'jiggler:set:dead'
@@ -26,7 +25,7 @@ module Jiggler
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
       redis_pool: nil,
-      redis_mode: :sync # :async or :sync. :sync is used on default for client connections
+      server_mode: false
     }
 
     def initialize(options = {})
@@ -38,10 +37,6 @@ module Jiggler
 
     def queue_prefix
       QUEUE_PREFIX
-    end
-
-    def processes_hash
-      PROCESSES_HASH
     end
 
     def retries_set
@@ -56,12 +51,20 @@ module Jiggler
       DEAD_SET
     end
 
-    def stats_prefix
-      STATS_PREFIX
-    end
-
     def default_queue
       DEFAULT_QUEUE
+    end
+
+    def server_prefix
+      SERVER_PREFIX
+    end
+
+    def process_scan_key
+      @process_scan_key ||= "#{server_prefix}*"
+    end
+
+    def queue_scan_key
+      @queue_scan_key ||= "#{queue_prefix}*"
     end
 
     def prefixed_queues
@@ -86,38 +89,35 @@ module Jiggler
       end
     end
 
-    def with_redis(async: true)
-      wrapper = async ? :Async : :Sync
-      Kernel.public_send(wrapper) do
-        redis_pool.acquire do |conn|
-          yield conn
-        end 
-      end
-    end
-
     def redis_options
       @redis_options ||= begin
         opts = @options.slice(
           :concurrency,
           :redis_url,
-          :redis_pool,
-          :redis_mode
+          :redis_pool
         )
-        if Jiggler.server?
-          opts[:concurrency] += 2 # monitor (1) + safety margin (1)
+
+        if @options[:server_mode]
+          opts[:concurrency] += 2 # monitor + safety margin
           opts[:concurrency] += 1 if @options[:poller_enabled]
-          opts[:redis_mode] = :async
+          opts[:async] = true
         end
         opts
       end
     end
 
     def redis_pool
-      @redis_pool ||= Jiggler::RedisStore.new(redis_options).pool
+      @redis_pool ||= begin
+        @options[:redis_pool] || Jiggler::RedisStore.new(redis_options).pool
+      end
     end
 
     def cleaner
       @cleaner ||= Jiggler::Cleaner.new(self)
+    end
+
+    def summary
+      @summary ||= Jiggler::Summary.new(self)
     end
 
     def logger=(new_logger)

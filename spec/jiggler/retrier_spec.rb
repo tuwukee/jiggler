@@ -6,7 +6,7 @@ RSpec.describe Jiggler::Retrier do
       concurrency: 1,
       timeout: 1,
       queues: ['test'],
-      redis_mode: :async
+      server_mode: true
     ) 
   end
   let(:collection) { Jiggler::Stats::Collection.new('test-retrier-uuid') }
@@ -17,8 +17,8 @@ RSpec.describe Jiggler::Retrier do
       let(:job) { MyFailedJob.new }
 
       it 'increments attempt if mex retries are not reached' do
-        msg = { 'jid' => '1' }
-        config.cleaner.prune_failures_counter
+        msg = { 'jid' => '1', 'retries' => 1 }
+        Sync { config.cleaner.prune_failures_counter }
         expect(config.logger).to receive(:error).twice
         retrier.wrapped(job, msg, 'test') do
           job.perform
@@ -31,7 +31,7 @@ RSpec.describe Jiggler::Retrier do
 
       it 'does not increment attempt if max retries are reached' do
         msg = { 'attempt' => 3, 'jid' => '123', 'name' => 'MyFailedJob' }
-        config.cleaner.prune_failures_counter
+        Sync { config.cleaner.prune_failures_counter }
         expect(config.logger).to receive(:error).twice
         retrier.wrapped(job, msg, 'test') do
           job.perform

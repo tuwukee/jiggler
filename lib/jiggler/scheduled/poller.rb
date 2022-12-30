@@ -73,7 +73,9 @@ module Jiggler
       end
 
       def process_count
-        pcount = config.with_sync_redis { |conn| conn.call('HLEN', config.processes_hash) }
+        pcount = config.with_sync_redis do |conn| 
+          conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last.size
+        end
         pcount = 1 if pcount == 0
         pcount
       end

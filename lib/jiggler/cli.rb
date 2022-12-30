@@ -10,6 +10,7 @@ require 'yaml'
 module Jiggler
   class CLI
     include Singleton
+    CONTEXT_SWITCHER_THRESHOLD = 0.5
 
     attr_reader :logger, :config, :environment
     
@@ -38,6 +39,7 @@ module Jiggler
       @config ||= Jiggler.config
 
       setup_options(args)
+      Jiggler.run_configuration
       initialize_logger
       validate!
     end
@@ -51,7 +53,6 @@ module Jiggler
         @launcher.start
       end
       @switcher&.exit
-      @launcher&.cleanup
     end
 
     def stop
@@ -66,13 +67,14 @@ module Jiggler
 
     private
 
+    # forces scheduler to switch fibers if they take more than threshold to execute
     def patch_scheduler
-      @switcher = Thread.new(Fiber.scheduler, 0.1) do |scheduler, threshold|
+      @switcher = Thread.new(Fiber.scheduler) do |scheduler|
         loop do
-          sleep(threshold) # 0.1s per fiber to execute
+          sleep(CONTEXT_SWITCHER_THRESHOLD)
           switch = scheduler.context_switch
           next if switch.nil?
-          next if Process.clock_gettime(Process::CLOCK_MONOTONIC) - switch < threshold
+          next if Process.clock_gettime(Process::CLOCK_MONOTONIC) - switch < CONTEXT_SWITCHER_THRESHOLD
 
           Process.kill('URG', Process.pid)
         end
@@ -198,6 +200,7 @@ module Jiggler
 
       opts = parse_config(opts[:config_file]).merge(opts) if opts[:config_file]
       opts[:queues] = [Jiggler::Config::DEFAULT_QUEUE] if opts[:queues].nil?
+      opts[:server_mode] = true # cli starts only in server mode
       config.merge!(opts)
     end
 

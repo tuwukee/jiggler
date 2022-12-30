@@ -24,11 +24,12 @@ module Jiggler
         loop do
           break @callback.call(self) if @done
           process_job
+          # pass control to other fibers
           Async::Task.current.yield
         rescue Async::Stop
           break @callback.call(self)
         rescue => err
-          increase_failures_counter
+          collection.incr_failures
           break @callback.call(self, err)     
         end
       end
@@ -57,7 +58,6 @@ module Jiggler
     end
 
     def fetch_one
-      # retries for the case of recoverable redis connection errors
       queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) }
       if queue
         if @done
@@ -70,6 +70,8 @@ module Jiggler
     rescue Async::Stop => err
       raise err
     rescue => err
+      # error_message='undefined method `zero?' for nil:NilClass' context='Fetch error' tid=1tpj
+      # sometimes happens in async-pool-0.3.12/lib/async/pool/controller.rb:213:in `reuse'
       handle_fetch_error(err)
     end
     
@@ -77,7 +79,7 @@ module Jiggler
       parsed_args = JSON.parse(current_job.args)
       begin
         execute(parsed_args, current_job.queue)
-        increase_processed_counter
+        collection.incr_processed
       rescue Async::Stop => err
         raise err
       rescue UnknownJobError => err
@@ -102,7 +104,7 @@ module Jiggler
         )
       end
     rescue JSON::ParserError => err
-      increase_failures_counter
+      collection.incr_failures
       logger.error('Worker') { "Failed to parse job: #{current_job.args}" }
     end
 
@@ -149,14 +151,6 @@ module Jiggler
 
     def remove_current_job_from_collection
       collection.data[:current_jobs].delete(@tid)
-    end
-
-    def increase_processed_counter
-      collection.data[:processed] += 1
-    end
-
-    def increase_failures_counter
-      collection.data[:failures] += 1
     end
 
     def queues
