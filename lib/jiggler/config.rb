@@ -25,7 +25,8 @@ module Jiggler
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
       redis_pool: nil,
-      server_mode: false
+      server_mode: false,
+      async: false
     }
 
     def initialize(options = {})

@@ -16,7 +16,7 @@ module Jiggler
         @condition = Async::Condition.new
         # the key expiration should be greater than the stats interval
         # to avoid cases where the monitor is blocked
-        # by long running workers and the key is not updated
+        # by long running workers and the key is not updated in time
         @exp = config[:stats_interval] + 300 # interval + 5 minutes
         @rss_path = "/proc/#{Process.pid}/status"
       end
@@ -58,9 +58,6 @@ module Jiggler
             pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
           end
         end
-        # logger.debug('Monitor') do
-        #   "process_data: #{process_data}, result: #{result}"
-        # end
       rescue => ex
         handle_exception(
           ex, { context: '\'Error while loading stats into redis\'', tid: @tid }

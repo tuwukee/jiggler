@@ -40,7 +40,7 @@ require_relative '../lib/jiggler/cli'
 Jiggler.config[:server_mode] = true
 
 Jiggler.configure_server do |config|
-  config[:poll_interval] = 2
+  config[:poll_interval] = 5
   config[:concurrency] = 10
   config.logger.level = Logger::WARN
 end
@@ -60,13 +60,13 @@ class LoadJob
     end
   end
 
-  def perform(idx, ts = nil)
+  def perform(idx)
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    sleep 0.01
-    fib(33)
+    sleep 0.1
+    fib(10)
     sleep 0.5
-    fib(20)
-    puts "#{idx} ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
+    fib(25)
+    puts "#{idx} ended #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
   end
 end
 

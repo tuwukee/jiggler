@@ -18,13 +18,13 @@ class LoadJob
     end
   end
 
-  def perform(idx, ts = nil)
+  def perform(idx)
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    sleep 0.01
-    fib(33)
+    sleep 0.1
+    fib(10)
     sleep 0.5
-    fib(20)
-    puts "#{idx} ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
+    fib(25)
+    puts "#{idx} ended #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
   end
 end
 
@@ -49,7 +49,7 @@ p2 = fork do
     config.concurrency = 10
     config.queues = %w[default]
     config.logger.level = Logger::WARN
-    config.average_scheduled_poll_interval = 2
+    config.average_scheduled_poll_interval = 5
   end
 
   begin

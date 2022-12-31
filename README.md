@@ -1,8 +1,8 @@
 # jiggler
 Background job processor based on Socketry Async
 
-Jiggler is a Sidekiq-inspired background job processor based on Socketry Async.
-It uses fibers to processes jobs, making context switching lightweight and more efficient. Requires Ruby 3+.
+Jiggler is a [Sidekiq](https://github.com/mperham/sidekiq)-inspired background job processor using [Socketry Async](https://github.com/socketry/async).
+It uses fibers to processes jobs, making context switching lightweight and efficient. Requires Ruby 3+, Redis 6+.
 
 ### Installation
 
@@ -22,16 +22,89 @@ Run `jiggler --help` to see the list of command line arguments.
 
 ### Performance
 
-TODO
+The tests were run on local (OSX 12.3, Chip M1 Pro) within a (Docker Desktop 4.6.1) container (`ruby:latest` 5.10.104-linuxkit) with `redis:6.2.6-alpine`. \
+On the other configurations depending on internal threads context switching management the results may differ significantly.
+
+Ruby 3.2.0 \
+Concurrency 10 \
+Poller interval 5s \
+Monitoring interval 10s \
+Logging level `WARN`
+
+```ruby
+def perform(_idx)
+  # just an empty job doing nothing
+end
+```
+
+| Job Processor    | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS    |
+|------------------|----------------|---------------------------|--------------|---------------|
+| Sidekiq 7.0.2    | 1_000_000      | 496.55 sec                | 227_548 bytes| 232_680 bytes |
+| Jiggler 0.1.0rc1 | 1_000_000      | 255.30 sec                | 151_204 bytes| 124_776 bytes (GC hit) |
+
+```ruby
+def fib(n)
+  if n <= 1
+    1
+  else
+    (fib(n-1) + fib(n-2))
+  end
+end
+
+# the idea is to simulate a somehow real job
+# most of the time it's doing I/O operations (puts/sleep)
+# and a bit of time - CPU-tasks (fib)
+# a single job takes 0.62s to perform
+def perform(idx)
+  start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  sleep 0.1
+  fib(10)
+  sleep 0.5
+  fib(25)
+  puts "#{idx} ended #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
+end
+```
+
+| Job Processor    | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS   |
+|------------------|----------------|---------------------------|--------------|--------------|
+| Sidekiq 7.0.2    | 100            | 20.29 sec                 | 57_056 bytes | 75_028 bytes |
+| Jiggler 0.1.0rc1 | 100            | 13.70 sec                 | 70_736 bytes | 72_024 bytes |
+| -                |                |                           |              |              |
+| Sidekiq 7.0.2    | 1000           | 175.42 sec                | 58_300 bytes | 76_656 bytes |
+| Jiggler 0.1.0rc1 | 1000           | 115.29 sec                | 71_976 bytes | 75_808 bytes |
+
+
+Jiggler is effective for tasks with a lot of IO. \
+With CPU-heavy jobs it has poor performance.
+
+```ruby
+def fib(n)
+  if n <= 1
+    1
+  else
+    (fib(n-1) + fib(n-2))
+  end
+end
+
+# a single job takes 0.35s to perform
+def perform(_idx)
+  fib(33)
+end
+```
+
+| Job Processor    | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS   |
+|------------------|----------------|---------------------------|--------------|--------------|
+| Sidekiq 7.0.2    | 100            | 268.12 sec                | 56_956 bytes | 75_456 bytes |
+| Jiggler 0.1.0rc1 | 100            | 269.57 sec                | 70_624 bytes | 72_664 bytes |
 
 ### Getting Started
 
-Conceptually Jiggler consists of two parts: the client and the server. \
-The client is responsible for pushing jobs to Redis and allows to read stats, while the server reads jobs from Redis, processes them, and writes stats.
+Conceptually Jiggler consists of two parts: the `client` and the `server`. \
+The `client` is responsible for pushing jobs to `Redis` and allows to read stats, while the `server` reads jobs from `Redis`, processes them, and writes stats.
 
-Both the server and the client can be configured in the same initializer file. \
-The server uses async connections. \
-The client on default uses synchronous Redis connections. If your app code supports fibers (f.e. you're using Falcon web server), you can configure client to be async as well. \
+Both the `server` and the `client` can be configured in the same initializer file. \
+The `server` uses async `Redis` connections. \
+The `client` uses sync `Redis` connections. It's possible to configure it to be async as well. More info below. \
 The configuration can be skipped if you're using the default values.
 
 ```ruby
@@ -50,14 +123,15 @@ Jiggler.configure_server do |config|
   config[:config_file] = "./jiggler.yml"  # .yml file with Jiggler settings
 end
 
+# this call applies the settings
 Jiggler.run_configuration
 ```
 
-Internally Jiggler server consists of 3 parts: Manager, Poller, Monitor. \
-Manager is responsible for workers. \
-Poller picks up data for retries and scheduled jobs. \
-Monitor periodically loads stats data into redis. \
-Manager and Monitor are mandatory, while Poller can be disabled in case there's no need for retries/scheduled jobs.
+Internally Jiggler server consists of 3 parts: `Manager`, `Poller`, `Monitor`. \
+`Manager` is responsible for workers. \
+`Poller` fetches data for retries and scheduled jobs. \
+`Monitor` periodically loads stats data into redis. \
+`Manager` and `Monitor` are mandatory, while `Poller` can be disabled in case there's no need for retries/scheduled jobs.
 
 ```ruby
 Jiggler.configure_server do |config|
@@ -143,25 +217,18 @@ Jiggler.config.cleaner.prune_all_queues
 Jiggler.config.cleaner.prune_all
 ```
 
-On default Jiggler client uses synchronous connections. 
-In case the client is being used in async app (f.e. with Falcon web server, or in Polyphony, etc.), then it's possible to set a custom redis pool capable of sending async requests into redis.
+On default `client` uses synchronous `Redis` connections.  \
+In case the client is being used in async app (f.e. with [Falcon](https://github.com/socketry/falcon) web server, or in Polyphony, etc.), then it's possible to set a custom redis pool capable of sending async requests into redis. \
 The pool should be compatible with `Async::Pool` - support `acquire` method.
 
 ```ruby
-# use Jiggler's RedisStore
-my_async_redis_pool = Jiggler::RedisStore.new(
-  url: ENV['REDIS_URL'],
-  concurrency: 5
-).async_pool
-# or Async::Pool::Controller wrapper
-my_async_redis_pool = Async::Pool::Controller.wrap(limit: 5) do
-  RedisClient.config(url: url).new_client
-end
-# or
-# other implementation
-
 Jiggler.configure_client do |config|
   config[:redis_pool] = my_async_redis_pool
+end
+
+# or use build-in async pool with
+Jiggler.configure_client do |config|
+  config[:async] = true
 end
 ```
 
