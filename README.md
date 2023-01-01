@@ -122,7 +122,7 @@ Jiggler.configure_server do |config|
   config[:environment] = "myenv"          # On default fetches the value ENV["APP_ENV"] and fallbacks to "development"
   config[:require]     = "./jobs.rb"      # Path to file with jobs/app initializer
   config[:redis_url]   = ENV["REDIS_URL"] # On default fetches the value from ENV["REDIS_URL"]
-  config[:queues]      = ["shippers"]     # An array of queue names the server is going to listen to
+  config[:queues]      = ["shippers"]     # An array of queue names the server is going to listen to. On default uses ["default"]
   config[:config_file] = "./jiggler.yml"  # .yml file with Jiggler settings
 end
 

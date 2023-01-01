@@ -35,18 +35,17 @@ module Jiggler
     SIGNAL_HANDLERS.default = UNHANDLED_SIGNAL_HANDLER
     SIGNAL_HANDLERS.freeze
     
-    def parse(args = ARGV.dup)
+    def parse_and_init(args = ARGV.dup)
       @config ||= Jiggler.config
 
       setup_options(args)
-      Jiggler.run_configuration
       initialize_logger
       validate!
+      load_app
     end
 
     def start
       Async do
-        load_app
         setup_signal_handlers
         patch_scheduler
         @launcher = Launcher.new(config)
@@ -238,9 +237,13 @@ module Jiggler
     def load_app
       if config[:require].nil? || config[:require].empty?
         logger.warn('No require option specified. Please specify a Ruby file to require with --require')
-        # exit(1)
+        # allow to start empty server
+        Jiggler.run_configuration
         return
       end
+      # the code required by this file is expected to run Jiggler.run_configuration command
+      # thus it'll be executed in the context of the current process
+      # and apply the configuration for the server
       require config[:require]
     rescue LoadError => e
       logger.fatal("Could not load jobs: #{e.message}")

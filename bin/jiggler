@@ -5,7 +5,7 @@ require 'jiggler/cli'
 
 begin
   cli = Jiggler::CLI.instance
-  cli.parse
+  cli.parse_and_init
   
   cli.config.logger.info("Jiggler is starting in #{Jiggler.config[:environment].upcase} ✯⸜(*❛‿❛)⸝✯")
   cli.config.logger.info("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config[:queues].join(',')}")

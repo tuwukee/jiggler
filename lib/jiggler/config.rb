@@ -113,6 +113,10 @@ module Jiggler
       end
     end
 
+    def redis_pool=(new_pool)
+      @redis_pool = new_pool
+    end
+
     def cleaner
       @cleaner ||= Jiggler::Cleaner.new(self)
     end
