@@ -24,8 +24,12 @@ module Jiggler
         loop do
           break @callback.call(self) if @done
           process_job
+
           # pass control to other fibers
-          Async::Task.current.yield
+          sleep(0)
+          # sleep(0) appears to work slower than
+          # Async::Task.current.yield
+          # but it's more reliable
         rescue Async::Stop
           break @callback.call(self)
         rescue => err
@@ -109,7 +113,7 @@ module Jiggler
     end
 
     def execute(parsed_job, queue)
-      klass = constantize(parsed_job['name'])
+      klass = collection.fetch_job_class(parsed_job['name'])
       instance = klass.new
 
       add_current_job_to_collection(parsed_job, klass.queue)
@@ -155,19 +159,6 @@ module Jiggler
 
     def queues
       @queues ||= config.prefixed_queues
-    end
-
-    def constantize(str)
-      return Object.const_get(str) unless str.include?('::')
-
-      names = str.split('::')
-      names.shift if names.empty? || names.first.empty?
-
-      names.inject(Object) do |constant, name|
-        constant.const_get(name, false)
-      end
-    rescue => err
-      raise UnknownJobError, 'Cannot initialize job'
     end
   end
 end

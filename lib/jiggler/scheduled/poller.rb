@@ -40,6 +40,7 @@ module Jiggler
       end
 
       def enqueue
+        # logger.warn("Poller runs")
         @enqueuer.enqueue_jobs
       rescue => ex
         handle_exception(

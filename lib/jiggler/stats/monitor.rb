@@ -46,6 +46,7 @@ module Jiggler
       end
 
       def load_data_into_redis
+        # logger.warn("Monitor runs")
         processed_jobs = collection.data[:processed]
         failed_jobs = collection.data[:failures]
         collection.data[:processed] -= processed_jobs

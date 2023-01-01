@@ -22,7 +22,7 @@ Run `jiggler --help` to see the list of command line arguments.
 
 ### Performance
 
-The tests were run on local (OSX 12.3, Chip M1 Pro) within a (Docker Desktop 4.6.1) container (`ruby:latest` 5.10.104-linuxkit) with `redis:6.2.6-alpine`. \
+The tests were run on local (OSX 12.3, Chip M1 Pro 2021) within a (Docker Desktop 4.6.1) container (`ruby:latest` 5.10.104-linuxkit) with `redis:6.2.6-alpine`. \
 On the other configurations depending on internal threads context switching management the results may differ significantly.
 
 Ruby 3.2.0 \
@@ -39,8 +39,11 @@ end
 
 | Job Processor    | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS    |
 |------------------|----------------|---------------------------|--------------|---------------|
-| Sidekiq 7.0.2    | 1_000_000      | 496.55 sec                | 227_548 bytes| 232_680 bytes |
-| Jiggler 0.1.0rc1 | 1_000_000      | 255.30 sec                | 151_204 bytes| 124_776 bytes (GC hit) |
+| Sidekiq 7.0.2    | 100_000        | 48.70 sec                 | 160_296 bytes| 124_516 bytes (GC hit) |
+| Jiggler 0.1.0rc1 | 100_000        | 32.17 sec                 | 133_784 bytes| 94_080 bytes (GC hit) |
+| -                |                |                           |              |              |
+| Sidekiq 7.0.2    | 1_000_000 (enqueue 100k batches x10) | 496.55 sec                | 227_548 bytes| 232_680 bytes |
+| Jiggler 0.1.0rc1 | 1_000_000 (enqueue 100k batches x10) | 303.27 sec                | 152_412 bytes| 125_896 bytes (GC hit) |
 
 ```ruby
 def fib(n)
@@ -68,10 +71,10 @@ end
 | Job Processor    | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS   |
 |------------------|----------------|---------------------------|--------------|--------------|
 | Sidekiq 7.0.2    | 100            | 20.29 sec                 | 57_056 bytes | 75_028 bytes |
-| Jiggler 0.1.0rc1 | 100            | 13.70 sec                 | 70_736 bytes | 72_024 bytes |
+| Jiggler 0.1.0rc1 | 100            | 14.61 sec                 | 71_044 bytes | 71_904 bytes |
 | -                |                |                           |              |              |
 | Sidekiq 7.0.2    | 1000           | 175.42 sec                | 58_300 bytes | 76_656 bytes |
-| Jiggler 0.1.0rc1 | 1000           | 115.29 sec                | 71_976 bytes | 75_808 bytes |
+| Jiggler 0.1.0rc1 | 1000           | 122.24 sec                | 71_848 bytes | 75_872 bytes |
 
 
 Jiggler is effective for tasks with a lot of IO. \

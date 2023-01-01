@@ -19,12 +19,6 @@ class LoadJob
   end
 
   def perform(idx)
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    sleep 0.1
-    fib(10)
-    sleep 0.5
-    fib(25)
-    puts "#{idx} ended #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
   end
 end
 
@@ -32,14 +26,18 @@ def get_rss(pid)
   `ps -o rss= -p #{pid}`.chomp.to_i
 end
 
-iter = 1
-count = 100
-Sidekiq.logger.error "Uploading #{count * iter} jobs..."
-iter.times do
-  arr = Array.new(count) { |idx| [idx] }
+# when trying to upload 1_000_000 at once
+# ruby_connection/buffered_io.rb:140:in `block in fill_buffer': RedisClient::ReadTimeoutError (RedisClient::ReadTimeoutError)
+iter = 10
+pre_count = 100_000
+count = iter * pre_count
+
+Sidekiq.logger.error "Uploading #{count} jobs..."
+iter.times do |i|
+  arr = Array.new(pre_count) { |idx| [idx] }
   Sidekiq::Client.push_bulk("class" => LoadJob, "args" => arr)
 end
-Sidekiq.logger.error "Created #{count * iter} jobs"
+Sidekiq.logger.error "Created #{count} jobs"
 
 real_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 p2 = fork do
@@ -54,7 +52,7 @@ p2 = fork do
 
   begin
     cli = Sidekiq::CLI.instance
-    cli.parse ["-r", "tmp/temp.rb"]
+    cli.parse ["-r", "tmp/temp.rb"] # require an empty file to pass validation
   
     cli.run(boot_app: false)
   rescue => e
@@ -79,10 +77,10 @@ loop do
   Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
   if total == 0
     Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
-    Sidekiq.logger.error("Done, #{iter * count} jobs in #{Time.now - start} sec")
+    Sidekiq.logger.error("Done, #{count} jobs in #{Time.now - start} sec")
     break
   end
 end
 Process.kill("INT", p2)
 Process.wait(p2)
-Sidekiq.logger.error "real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}"
+Sidekiq.logger.error("Real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}")

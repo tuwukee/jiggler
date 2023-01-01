@@ -46,6 +46,7 @@ Jiggler.configure_server do |config|
 end
 Jiggler.run_configuration
 
+# this call inits pool
 Sync { Jiggler.config.cleaner.prune_all }
 
 class LoadJob
@@ -61,27 +62,24 @@ class LoadJob
   end
 
   def perform(idx)
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    sleep 0.1
-    fib(10)
-    sleep 0.5
-    fib(25)
-    puts "#{idx} ended #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
+    fib(33)
   end
 end
 
 cli = Jiggler::CLI.instance
 
 iter = 1
-count = 100
-Jiggler.logger.warn "Uploading #{count * iter} jobs..."
+pre_count = 100
+count = iter * pre_count
+
+Jiggler.logger.warn "Uploading #{count} jobs..."
 Sync do
   iter.times do |i|
-    arr = Array.new(count) { |idx| [idx] }
+    arr = Array.new(pre_count) { |idx| [idx] }
     LoadJob.enqueue_bulk(arr)
   end
 end
-Jiggler.logger.warn "Created #{count * iter} jobs"
+Jiggler.logger.warn "Created #{count} jobs"
 
 def get_rss(pid)
   `ps -o rss= -p #{pid}`.chomp.to_i
@@ -125,13 +123,13 @@ loop do
   # Sync { Jiggler.logger.warn(Jiggler.summary) }
   if total == 0
     Jiggler.logger.warn("RSS: #{get_rss(p2)} Pending: #{total}")
-    Jiggler.logger.warn("Done, #{iter * count} jobs in #{Time.now - start} sec")
+    Jiggler.logger.warn("Done, #{count} jobs in #{Time.now - start} sec")
     break
   end
 end
 Process.kill("INT", p2)
 Process.wait(p2)
-Jiggler.logger.warn "real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}"
+Jiggler.logger.warn("Real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}")
 
 # -> RubyProf
 # RubyProf.exclude_threads = [Monitoring]

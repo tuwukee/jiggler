@@ -43,7 +43,10 @@
             <th colspan='2' title='RSS'>
               <span>RSS</span>
             </th>
-            <th colspan='2' title='Started'>
+            <th colspan='1' title='Last Heartbeat'>
+              <span>Heartbeat</span>
+            </th>
+            <th colspan='1' title='Started'>
               <span>Started</span>
             </th>
           </tr>
@@ -66,7 +69,10 @@
               <td colspan='2' title='RSS' class='right'>
                 <span><%= format_memory(data['rss']) %></span>
               </td>
-              <td colspan='2' title='Started' class='right'>
+              <td colspan='1' title='Heartbeat' class='right'>
+                <span><%= format_datetime(data['heartbeat']) %></span>
+              </td>
+              <td colspan='1' title='Started' class='right'>
                 <span><%= format_datetime(data['started_at']) %></span>
               </td>
             </tr>
