@@ -45,23 +45,28 @@ module Jiggler
     end
 
     def start
+      @cond = Async::Condition.new
       Async do
         setup_signal_handlers
         patch_scheduler
         @launcher = Launcher.new(config)
         @launcher.start
+        Async do
+          @cond.wait
+        end
       end
       @switcher&.exit
     end
 
     def stop
-      logger.info('Stopping Jiggler, bye!')
       @launcher.stop
+      logger.info('Jiggler is stopped, bye!')
+      @cond.signal
     end
 
     def quite
-      logger.debug('Quietly shutting down Jiggler')
       @launcher.quite
+      logger.info('Jiggler is quite')
     end
 
     private
@@ -111,7 +116,7 @@ module Jiggler
     end
 
     def setup_signal_handlers
-      SIGNAL_HANDLERS.map do |signal, handler|
+      SIGNAL_HANDLERS.each do |signal, handler|
         trap = Async::IO::Trap.new(signal)
         trap.install!
         Async(transient: true) do
