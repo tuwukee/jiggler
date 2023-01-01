@@ -66,6 +66,14 @@ RSpec.describe Jiggler::Job do
         end
       }.by(1)
     end
+
+    it 'supports multiple args' do
+      expect { MyJobWithArgs.with_options(queue: 'mine').enqueue_in(1, '1', 1, 1.0, true, [1], { '1' => 1 }) }.to change { 
+        Jiggler.config.redis_pool.acquire do |conn| 
+          conn.call('ZCARD', Jiggler.config.scheduled_set) 
+        end
+      }.by(1)
+    end
   end
 
   describe '#enqueue_bulk' do

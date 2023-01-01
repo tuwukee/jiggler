@@ -14,6 +14,7 @@ module Jiggler
 
     attr_reader :logger, :config, :environment
     
+    # todo: add SIGHUP
     SIGNAL_HANDLERS = {
       :INT => ->(cli) {
         cli.logger.fatal('Received INT, shutting down')

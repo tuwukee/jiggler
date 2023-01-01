@@ -2,8 +2,10 @@
 
 # command: bundle exec bin/sidekiqload
 
-require "sidekiq"
+require 'uri'
+require 'net/http'
 
+require "sidekiq"
 Sidekiq.redis { |c| c.flushall }
 
 class LoadJob
@@ -18,47 +20,24 @@ class LoadJob
     end
   end
 
-  def perform(idx)
+  def sample_get_request
+    uri = URI("https://httpbin.org/ip")
+    res = Net::HTTP.get_response(uri)
+    puts "Request Error!!!" unless res.is_a?(Net::HTTPSuccess)
   end
-end
-
-def get_rss(pid)
-  `ps -o rss= -p #{pid}`.chomp.to_i
-end
-
-# when trying to upload 1_000_000 at once
-# ruby_connection/buffered_io.rb:140:in `block in fill_buffer': RedisClient::ReadTimeoutError (RedisClient::ReadTimeoutError)
-iter = 10
-pre_count = 100_000
-count = iter * pre_count
-
-Sidekiq.logger.error "Uploading #{count} jobs..."
-iter.times do |i|
-  arr = Array.new(pre_count) { |idx| [idx] }
-  Sidekiq::Client.push_bulk("class" => LoadJob, "args" => arr)
-end
-Sidekiq.logger.error "Created #{count} jobs"
-
-real_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-p2 = fork do
-  require "sidekiq/cli"
-
-  Sidekiq.configure_server do |config|
-    config.concurrency = 10
-    config.queues = %w[default]
-    config.logger.level = Logger::WARN
-    config.average_scheduled_poll_interval = 5
-  end
-
-  begin
-    cli = Sidekiq::CLI.instance
-    cli.parse ["-r", "tmp/temp.rb"] # require an empty file to pass validation
   
-    cli.run(boot_app: false)
-  rescue => e
-    Sidekiq.logger.error(e)
-    exit 1
+  def perform(idx)
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    sample_get_request # 0.91
+    fib(33) # 0.36 71% IO, 29% CPU
+    puts "#{idx} ended #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
   end
+end
+
+def get_rss_cpu(pid, cpus = nil)
+  data = `ps -o rss,%cpu= -p #{pid}`.split("\n").last.strip.split(" ")
+  cpus << data[1].to_f if cpus
+  "RSS: #{data[0]} %CPU: #{data[1]}"
 end
 
 def jobs_count
@@ -67,20 +46,63 @@ def jobs_count
   end
 end
 
+# when trying to upload 1_000_000 at once
+# ruby_connection/buffered_io.rb:140:in `block in fill_buffer': RedisClient::ReadTimeoutError (RedisClient::ReadTimeoutError)
+iter = 1
+pre_count = 200
+count = iter * pre_count
+
+Sidekiq.logger.error "Uploading #{count} jobs..."
+iter.times do |i|
+  arr = Array.new(pre_count) { |idx| [idx] }
+  Sidekiq::Client.push_bulk("class" => LoadJob, "args" => arr)
+end
+Sidekiq.logger.error "Created #{count} jobs"
+total = jobs_count
+Sidekiq.logger.error("--------->>> Main process before fork: #{get_rss_cpu(Process.pid)} Pending: #{total}")
+
+real_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+p2 = fork do
+  require "sidekiq/cli"
+  Sidekiq.configure_server do |config|
+    config.queues = %w[default]
+    config.logger.level = Logger::ERROR
+    config.average_scheduled_poll_interval = 5
+    config.redis = { url: "redis://jiggler_redis:6379" }
+  end
+  
+  begin
+    cli = Sidekiq::CLI.instance
+    cli.parse ["-r", "tmp/temp.rb", "-c", "10"] # require an empty file to pass validation
+    Sidekiq.logger.error "Concurrency: #{Sidekiq.default_configuration.concurrency}"
+  
+    cli.run(boot_app: false)
+  rescue => e
+    Sidekiq.logger.error(e)
+    exit 1
+  end
+end
+
 start = Time.now
 
 total = jobs_count
-Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
+cpus = []
+Sidekiq.logger.error("#{get_rss_cpu(p2, cpus)} Pending: #{total}")
 loop do
   sleep 2.0
   total = jobs_count
-  Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
+  Sidekiq.logger.error("#{get_rss_cpu(p2, cpus)} Pending: #{total}")
   if total == 0
-    Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
+    Sidekiq.logger.error("#{get_rss_cpu(p2, cpus)} Pending: #{total}")
     Sidekiq.logger.error("Done, #{count} jobs in #{Time.now - start} sec")
     break
   end
 end
 Process.kill("INT", p2)
+3.times do
+  sleep(2)
+  Sidekiq.logger.error("Finalizing... #{get_rss_cpu(p2)}")
+end
 Process.wait(p2)
 Sidekiq.logger.error("Real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}")
+Sidekiq.logger.error("Average CPU usage: #{cpus.sum / cpus.size}")

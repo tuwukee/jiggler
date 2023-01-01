@@ -27,9 +27,9 @@ module Jiggler
 
           # pass control to other fibers
           sleep(0)
-          # sleep(0) appears to work slower than
-          # Async::Task.current.yield
-          # but it's more reliable
+          # sleep(0) appears to work slower than Async::Task.current.yield
+          # but it seems to be more reliable - at least looks like
+          # Monitor & Poller are getting more runs with it in CPU-heavy load
         rescue Async::Stop
           break @callback.call(self)
         rescue => err
