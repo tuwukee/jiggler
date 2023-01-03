@@ -59,3 +59,4 @@ build-iPhoneSimulator/
 .vscode
 
 .DS_Store
+Gemfile.lock

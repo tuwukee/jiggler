@@ -41,21 +41,21 @@ module Jiggler
     def last_retry_jobs(num)
       config.redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.retries_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num)
-      end.map { |job| JSON.parse(job) }
+      end.map { |job| Oj.load(job, mode: :compat) }
     end
 
     def last_scheduled_jobs(num)
       config.redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.scheduled_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num, 'WITHSCORES')
       end.map do |(job, score)|
-        JSON.parse(job).merge('scheduled_at' => score)
+        Oj.load(job).merge('scheduled_at' => score)
       end
     end
 
     def last_dead_jobs(num)
       config.redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.dead_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num)
-      end.map { |job| JSON.parse(job) }
+      end.map { |job| Oj.load(job, mode: :compat) }
     end
 
     private
@@ -63,7 +63,7 @@ module Jiggler
     def fetch_and_format_processes(conn)
       conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last.reduce({}) do |acc, uuid|
         process_data = conn.call('GET', uuid)
-        process_data = JSON.parse(process_data)
+        process_data = Oj.load(process_data, mode: :compat)
         values = uuid.split(':')
         acc[uuid] = process_data.merge({
           'name' => "jiggler:#{values[2]}",

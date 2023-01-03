@@ -38,11 +38,11 @@ module Jiggler
       end
   
       def process_data
-        JSON.generate({
+        Oj.dump({
           heartbeat: Time.now.to_f,
           rss: process_rss,
           current_jobs: collection.data[:current_jobs],
-        })
+        }, mode: :compat)
       end
 
       def load_data_into_redis

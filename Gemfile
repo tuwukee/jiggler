@@ -7,6 +7,7 @@ gem 'async'
 gem 'async-io'
 gem 'async-pool'
 gem 'redis-client'
+gem 'oj'
 
 group :development, :test do
   gem 'debug', '~> 1.6'

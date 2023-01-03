@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'oj'
+
 module Jiggler
   def self.server?
     config[:server_mode] == true

@@ -36,7 +36,7 @@ module Jiggler
       end
 
       def push_job(conn, job_args)
-        name = JSON.parse(job_args)['queue'] || @config.default_queue
+        name = Oj.load(job_args, mode: :compat)['queue'] || @config.default_queue
         list_name = "#{@config.queue_prefix}#{name}"
         # logger.debug('Poller Enqueuer') { "Pushing #{job_args} to #{list_name}" }
         conn.call('LPUSH', list_name, job_args)

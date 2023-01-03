@@ -1,7 +1,7 @@
 # jiggler
 Background job processor based on Socketry Async
 
-Jiggler is a [Sidekiq](https://github.com/mperham/sidekiq)-inspired background job processor using [Socketry Async](https://github.com/socketry/async).
+Jiggler is a [Sidekiq](https://github.com/mperham/sidekiq)-inspired background job processor using [Socketry Async](https://github.com/socketry/async) and [Optimized JSON](https://github.com/ohler55/oj).
 It uses fibers to processes jobs, making context switching lightweight and efficient. Requires Ruby 3+, Redis 6+.
 
 NOTE: Altrough some performance results may look interesting, it's absolutly not recommended to switch to it from well-tested stable solutions. \
@@ -42,22 +42,22 @@ end
 
 | Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS    |
 |------------------|-------------|----------------|---------------------------|--------------|---------------|
-| Sidekiq 7.0.2    | 5           | 100_000        | 47.98 sec                 | 160_116 bytes | 125_076 bytes (GC hit) |
-| Jiggler 0.1.0rc1 | 5           | 100_000        | 32.53 sec                 | 133_412 bytes | 93_744 bytes (GC hit) |
+| Sidekiq 7.0.2    | 5-           | 100_000        | 47.98 sec                 | 160_116 bytes | 125_076 bytes (GC hit) |
+| Jiggler 0.1.0rc1 | 5           | 100_000        | 32.02 sec                 | 127_876 bytes | 129_792 bytes |
 | -                |             |                |                           |               |              |
-| Sidekiq 7.0.2    | 10          | 100_000        | 46.99 sec                 | 162_848 bytes | 131_824 bytes (GC hit) |
-| Jiggler 0.1.0rc1 | 10          | 100_000        | 32.17 sec                 | 133_784 bytes | 94_080 bytes (GC hit) |
+| Sidekiq 7.0.2    | 10-          | 100_000        | 46.99 sec                 | 162_848 bytes | 131_824 bytes (GC hit) |
+| Jiggler 0.1.0rc1 | 10          | 100_000        | 31.92 sec                 | 127_728 bytes | 129_628 bytes |
 | -                |             |                |                           |               |              |
-| Sidekiq 7.0.2    | 5           | 1_000_000 (enqueue 100k batches x10) | 496.55 sec | 227_548 bytes | 232_680 bytes |
-| Jiggler 0.1.0rc1 | 5           | 1_000_000 (enqueue 100k batches x10) | 297.27 sec | 152_904 bytes | 154_920 bytes |
+| Sidekiq 7.0.2    | 5-           | 1_000_000 (enqueue 100k batches x10) | 496.55 sec | 227_548 bytes | 232_680 bytes |
+| Jiggler 0.1.0rc1 | 5           | 1_000_000 (enqueue 100k batches x10) | 299.15 sec | 158_564 bytes | 161_368 bytes |
 | -                |             |                |                           |               |              |
-| Sidekiq 7.0.2    | 10          | 1_000_000 (enqueue 100k batches x10) | 450.51 sec | 196_980 bytes | 223_760 bytes |
-| Jiggler 0.1.0rc1 | 10          | 1_000_000 (enqueue 100k batches x10) | 296.23 sec | 152_412 bytes | 123_044 bytes (GC hit) |
+| Sidekiq 7.0.2    | 10-          | 1_000_000 (enqueue 100k batches x10) | 450.51 sec | 196_980 bytes | 223_760 bytes |
+| Jiggler 0.1.0rc1 | 10          | 1_000_000 (enqueue 100k batches x10) | 310.10 sec | 158_732 bytes | 126_148 bytes (GC hit) |
 
 
-The idea of the next tests is to simulate jobs with different IO/CPU bound ratio. \
-For IO `net/http` requests and `puts` are used. \ 
-For CPU load generation `fib` method is used:
+The idea of the next test is to simulate jobs with a realistic IO/CPU bound ratio. \
+IO: `sample_get_request` sends a GET request to `https://httpbin.org` using `net/http`, also there's `puts`. \ 
+CPU: recursive `fib` method.
 
 ```ruby
 require 'uri'
@@ -93,31 +93,29 @@ end
 ```
 
 It's not recommended to run sidekiq with high concurrency values, setting it for the sake of test. \
-Also even if for this specific payload the results show this kind of difference, depending on the task itself they may drastically vary.
-
 
 | Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS   | average %CPU |
 |------------------|-------------|----------------|---------------------------|--------------|--------------|--------------|
-| Sidekiq 7.0.2    | 5           | 10             | 28.82 sec                 | 58_260 bytes | 87_472 bytes | 83.13 |
-| Jiggler 0.1.0rc1 | 5           | 10             | 27.71 sec                 | 74_940 bytes | 83_304 bytes | 80.55 |
+| Sidekiq 7.0.2    | 5           | 10             | 29.2 sec                  | 58_348 bytes | 87_544 bytes | 85.01 |
+| Jiggler 0.1.0rc1 | 5           | 10             | 27.46 sec                 | 75_896 bytes | 84_484 bytes | 99.5 |
 | -                |             |                |                           |              |              |       |
-| Sidekiq 7.0.2    | 10          | 10             | 28.12 sec                 | 58_164 bytes | 91_316 bytes | 55.66 |
-| Jiggler 0.1.0rc1 | 10          | 10             | 27.44 sec                 | 70_632 bytes | 83_152 bytes | 59.56 |
+| Sidekiq 7.0.2    | 10          | 10             | 27.85 sec                 | 58_260 bytes | 91_380 bytes | 88.75 |
+| Jiggler 0.1.0rc1 | 10          | 10             | 26.94 sec                 | 75_788 bytes | 84_504 bytes | 48.19 |
 | -                |             |                |                           |              |              |       |
-| Sidekiq 7.0.2    | 5           | 200            | 539.69 sec                | 57_832 bytes | 90_900 bytes | 99.1  |
-| Jiggler 0.1.0rc1 | 5           | 200            | 552.33 sec                | 72_612 bytes | 91_552 bytes | 95.97 |
+| Sidekiq 7.0.2    | 5           | 100            | 276.47 sec                | 57_564 bytes | 90_508 bytes | 98.14 |
+| Jiggler 0.1.0rc1 | 5           | 100            | 278.39 sec                | 73_068 bytes | 92_064 bytes | 95.08 |
 | -                |             |                |                           |              |              |      |
-| Sidekiq 7.0.2    | 10          | 100/200            | 268.7 sec/536.64                 | 58_388/57_828 bytes | 95_660 bytes/96_248 bytes | 98.57/98.8 |
-| Jiggler 0.1.0rc1 | 10          | 100/200            | 272.35 sec/538.48                | 74_776 bytes / 72432 bytes | 90_536 bytes / 91_960 bytes | 97.6/97.86 |
+| Sidekiq 7.0.2    | 10          | 100            | 271.32 sec                | 57_628 bytes | 95_904 bytes | 97.9 |
+| Jiggler 0.1.0rc1 | 10          | 100            | 270.49 sec                | 72_876 bytes | 91_768 bytes | 97.7 |
 | -                |             |                |                           |              |              |      |
-| Sidekiq 7.0.2    | 15          | 100            | 267.44 sec                | 58_468 bytes | 101_076 bytes | 98.85 |
-| Jiggler 0.1.0rc1 | 15          | 100            | 267.7 sec                 | 73_140 bytes | 91_232 bytes | 98.43 |
+| Sidekiq 7.0.2    | 15          | 100            | 269.34 sec                | 57_572 bytes | 100_972 bytes | 99.19 |
+| Jiggler 0.1.0rc1 | 15          | 100            | 271.39 sec                | 72_696 bytes | 92_272 bytes | 97.95 |
 | -                |             |                |                           |              |              |      |
-| Sidekiq 7.0.2    | 20          | 100            | 247.61 sec                | 58_684 bytes | 104_676 bytes | 98.53 |
-| Jiggler 0.1.0rc1 | 20          | 100            | 262.22 sec                | 74_416 bytes | 91_540 bytes | 98.64 |
+| Sidekiq 7.0.2    | 20          | 100            | 267.86 sec                | 57_580 bytes | 105_372 bytes | 99.37 |
+| Jiggler 0.1.0rc1 | 20          | 100            | 270.52 sec                | 72_816 bytes | 92_420 bytes | 99.27 |
 
-NOTE: Jiggler has more dependencies, so with small load `start RSS` takes more than sidekiq's. \
-Jiggler is effective only for tasks with a lot of IO. As long as tasks are IO bound - you may increase concurrency and gain effectiveness. \
+NOTE: Jiggler has more dependencies, so with small load `start RSS` takes more space. \
+Jiggler is effective only for tasks with a lot of IO. For IO bound tasks increasing concurrency may gain effectiveness. \
 You must test the concurrency setting with your jobs to find out what configuration works best for your payload. \
 With CPU-heavy jobs Jiggler has poor performance.
 
@@ -276,7 +274,7 @@ Jiggler.configure_client do |config|
 end
 ```
 
-Then, the client methods could be called with:
+Then, the client methods could be called with something like:
 ```ruby
 Async do
   Jiggler.config.cleaner.prune_all

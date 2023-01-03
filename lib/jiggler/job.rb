@@ -83,7 +83,7 @@ module Jiggler
       end
 
       def job_args(raw_args)
-        JSON.generate({ name: @klass.name, args: raw_args, **job_options })
+        Oj.dump({ name: @klass.name, args: raw_args, **job_options }, mode: :compat)
       end
 
       def job_options
