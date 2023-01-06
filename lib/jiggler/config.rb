@@ -74,21 +74,21 @@ module Jiggler
       end
     end
 
-    def with_async_redis
-      Async do
-        redis_pool.acquire do |conn|
-          yield conn
-        end
-      end
-    end
-
-    def with_sync_redis
-      Sync do
-        redis_pool.acquire do |conn|
-          yield conn
-        end
-      end
-    end
+#    def with_async_redis
+#      Async do
+#        redis_pool.acquire do |conn|
+#          yield conn
+#        end
+#      end
+#    end
+#
+#    def with_sync_redis
+#      Sync do
+#        redis_pool.acquire do |conn|
+#          yield conn
+#        end
+#      end
+#    end
 
     def redis_options
       @redis_options ||= begin
@@ -98,12 +98,21 @@ module Jiggler
           :redis_pool
         )
 
-        if @options[:server_mode]
-          opts[:concurrency] += 2 # monitor + safety margin
-          opts[:concurrency] += 1 if @options[:poller_enabled]
-          opts[:async] = true
-        end
+        opts[:concurrency] += 2 # monitor + safety margin
+        opts[:concurrency] += 1 if @options[:poller_enabled]
+        opts[:async] = true
+
         opts
+      end
+    end
+
+    def client_redis_options
+      @client_redis_options ||= begin
+        @options.slice(
+          :concurrency,
+          :redis_url,
+          :redis_pool
+        )
       end
     end
 
@@ -115,6 +124,16 @@ module Jiggler
 
     def redis_pool=(new_pool)
       @redis_pool = new_pool
+    end
+
+    def client_redis_pool
+      @client_redis_pool ||= begin
+        @options[:client_redis_pool] || Jiggler::RedisStore.new(client_redis_options).pool
+      end
+    end
+
+    def client_redis_pool=(new_pool)
+      @client_redis_pool = new_pool
     end
 
     def cleaner

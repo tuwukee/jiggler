@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'redis_client'
-require 'async/pool'
 
 module Jiggler
   class RedisStore
@@ -25,11 +24,7 @@ module Jiggler
     def sync_pool
       @sync_pool ||= begin
         config = RedisClient.config(url: @options[:redis_url])
-        pool = config.new_pool(size: @options[:concurrency])
-        def pool.acquire(&block)
-          with(&block)
-        end
-        pool
+        config.new_pool(size: @options[:concurrency])
       end
     end
   end

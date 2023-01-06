@@ -3,6 +3,7 @@
 require 'debug'
 
 require 'jiggler'
+require 'jiggler/job'
 require_relative './fixtures/jobs'
 
 RSpec.configure do |config|

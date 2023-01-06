@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'async'
 require 'securerandom'
 
 module Jiggler

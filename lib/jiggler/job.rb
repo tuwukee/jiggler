@@ -51,13 +51,13 @@ module Jiggler
       end
 
       def enqueue(*args)
-        Jiggler.config.redis_pool.acquire do |conn|
+        Jiggler.config.client_redis_pool.with do |conn|
           conn.call('LPUSH', list_name, job_args(args))
         end
       end
 
       def enqueue_bulk(args_arr)
-        Jiggler.config.redis_pool.acquire do |conn|
+        Jiggler.config.client_redis_pool.with do |conn|
           conn.pipelined do |pipeline|
             args_arr.each do |args|
               pipeline.call('LPUSH', list_name, job_args(args))
@@ -68,7 +68,7 @@ module Jiggler
 
       def enqueue_in(seconds, *args)
         timestamp = Time.now.to_f + seconds
-        Jiggler.config.redis_pool.acquire do |conn|
+        Jiggler.config.client_redis_pool.with do |conn|
           conn.call(
             'ZADD',
             config.scheduled_set, 

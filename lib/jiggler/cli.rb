@@ -2,10 +2,10 @@
 
 require 'singleton'
 require 'optparse'
-require 'async/io/trap'
 require 'erb'
 require 'debug'
 require 'yaml'
+require 'polyphony'
 
 module Jiggler
   class CLI
