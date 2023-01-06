@@ -13,8 +13,7 @@ module Jiggler
     CONTEXT_SWITCHER_THRESHOLD = 0.5
 
     attr_reader :logger, :config, :environment
-    
-    # todo: add SIGHUP
+
     SIGNAL_HANDLERS = {
       :INT => ->(cli) {
         cli.logger.fatal('Received INT, shutting down')
@@ -30,6 +29,10 @@ module Jiggler
       },
       :TTIN => ->(cli) {
         # log running tasks here (+ backtrace)
+      },
+      :SIGHUP => ->(cli) {
+        cli.logger.info('Received SIGHUP, no longer accepting new work')
+        cli.quite        
       }
     }
     UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info('No signal handler registered, ignoring') }
@@ -49,7 +52,7 @@ module Jiggler
       @cond = Async::Condition.new
       Async do
         setup_signal_handlers
-        patch_scheduler
+        # patch_scheduler
         @launcher = Launcher.new(config)
         @launcher.start
         Async do

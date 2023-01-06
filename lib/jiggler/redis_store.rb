@@ -15,7 +15,7 @@ module Jiggler
     def async_pool
       @async_pool ||= begin
         config = RedisClient.config(url: @options[:redis_url], timeout: nil)
-        Async::Pool::Controller.wrap(limit: @options[:concurrency]) do
+        Polyphony::ResourcePool.new(limit: @options[:concurrency]) do
           config.new_client
         end
       end
@@ -26,26 +26,6 @@ module Jiggler
         config = RedisClient.config(url: @options[:redis_url])
         config.new_pool(size: @options[:concurrency])
       end
-    end
-  end
-end
-
-module Jiggler
-  class RedisClient < ::RedisClient
-    def concurrency
-      1
-    end
-
-    def viable?
-      connected?
-    end
-
-    def closed?
-      @raw_connection.nil?
-    end
-
-    def reusable?
-      !@raw_connection.nil?
     end
   end
 end

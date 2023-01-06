@@ -18,13 +18,14 @@ module Jiggler
       require: nil,
       environment: 'development',
       concurrency: 10,
+      client_concurrency: 5,
       timeout: 25,
       max_dead_jobs: 10_000,
       stats_interval: 10,
       poller_enabled: true,
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
-      redis_pool: nil,
+      client_redis_pool: nil,
       server_mode: false,
       async: false
     }
@@ -94,8 +95,7 @@ module Jiggler
       @redis_options ||= begin
         opts = @options.slice(
           :concurrency,
-          :redis_url,
-          :redis_pool
+          :redis_url
         )
 
         opts[:concurrency] += 2 # monitor + safety margin
@@ -108,22 +108,18 @@ module Jiggler
 
     def client_redis_options
       @client_redis_options ||= begin
-        @options.slice(
-          :concurrency,
+        opts = @options.slice(
           :redis_url,
-          :redis_pool
+          :client_redis_pool
         )
+
+        opts[:concurrency] = @options[:client_concurrency]
+        opts
       end
     end
 
     def redis_pool
-      @redis_pool ||= begin
-        @options[:redis_pool] || Jiggler::RedisStore.new(redis_options).pool
-      end
-    end
-
-    def redis_pool=(new_pool)
-      @redis_pool = new_pool
+      @redis_pool ||= Jiggler::RedisStore.new(redis_options).pool
     end
 
     def client_redis_pool
