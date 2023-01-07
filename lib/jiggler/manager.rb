@@ -19,9 +19,11 @@ module Jiggler
 
     def start
       @workers.each(&:run)
+      # wait_for_workers
     end
 
     def quite
+      puts 'Stopping manager'
       return if @done
 
       @done = true
@@ -30,21 +32,21 @@ module Jiggler
 
     def terminate
       quite
-      schedule_shutdown
-      wait_for_workers
+      # schedule_shutdown
+      # wait_for_workers
     end
 
     private
 
     def wait_for_workers
-      logger.warn('Waiting for workers to finish...')
-      @workers.each(&:wait)
+      logger.info('Waiting for workers to finish...')
+      @workers.each(&:await)
       @shutdown_task.stop
-      logger.warn('All workers finished')
+      logger.info('All workers finished')
     end
 
     def schedule_shutdown
-      @shutdown_task = Async do
+      @shutdown_task = spin do
         sleep(@timeout)
 
         next if @workers.empty?

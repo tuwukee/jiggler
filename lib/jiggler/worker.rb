@@ -30,12 +30,12 @@ module Jiggler
           process_job
 
           # pass control to other fibers
-          sleep(0)
+          # sleep(0)
           # sleep(0) seems to be more reliable than Async::Task.current.yield
           # at least looks like Monitor & Poller are getting more runs with it in CPU-heavy load
-        rescue Async::Stop
-          @runner = nil
-          break @callback.call(self)
+        # rescue Async::Stop
+        #  @runner = nil
+        #  break @callback.call(self)
         rescue => err
           collection.incr_failures
           @runner = nil
@@ -45,17 +45,19 @@ module Jiggler
     end
 
     def terminate
+      puts "received terminate in worker"
       @done = true
       @runner&.stop
     end
 
     def quite
+      puts "received quite in worker"
       @done = true
     end
 
     def wait
       # logger.warn("worker #{@tid} is waiting...")
-      @runner&.wait
+      @runner&.await
       # logger.warn("worker #{@tid} done")
     end
 

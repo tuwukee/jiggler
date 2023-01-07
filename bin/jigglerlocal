@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require 'polyphony'
+
 require_relative '../lib/jiggler/support/component'
 require_relative '../lib/jiggler/scheduled/enqueuer'
 require_relative '../lib/jiggler/scheduled/poller'

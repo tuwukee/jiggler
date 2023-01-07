@@ -5,7 +5,6 @@ require 'optparse'
 require 'erb'
 require 'debug'
 require 'yaml'
-require 'polyphony'
 
 module Jiggler
   class CLI
@@ -27,10 +26,7 @@ module Jiggler
         cli.logger.info('Received TSTP, no longer accepting new work')
         cli.quite
       },
-      :TTIN => ->(cli) {
-        # log running tasks here (+ backtrace)
-      },
-      :SIGHUP => ->(cli) {
+      :HUP => ->(cli) {
         cli.logger.info('Received SIGHUP, no longer accepting new work')
         cli.quite        
       }
@@ -49,6 +45,16 @@ module Jiggler
     end
 
     def start
+      @launcher = Launcher.new(config)
+      setup_signal_handlers
+      supervise
+      task = spin do
+        @launcher.start
+      end
+      # task.await
+    end
+
+    def start_2
       @cond = Async::Condition.new
       Async do
         setup_signal_handlers
@@ -63,9 +69,11 @@ module Jiggler
     end
 
     def stop
+      logger.info('Stop...')
+      logger.info("#{@launcher.inspect}")
       @launcher.stop
       logger.info('Jiggler is stopped, bye!')
-      @cond.signal
+      # @cond.signal
     end
 
     def quite
@@ -120,19 +128,17 @@ module Jiggler
     end
 
     def setup_signal_handlers
-      SIGNAL_HANDLERS.each do |signal, handler|
-        trap = Async::IO::Trap.new(signal)
-        trap.install!
-        Async(transient: true) do
-          trap.wait
-          invoked_traps[signal] += 1
-          handler.call(self)
+      signal_receiver = spin do
+        signal = receive 
+        SIGNAL_HANDLERS[signal].call(self)
+      end
+
+      SIGNAL_HANDLERS.keys.each do |signal|
+        # logger doesn't work within trap, propagate signal to signal_receiver
+        trap(signal) do
+          signal_receiver.send(signal)
         end
       end
-    end
-
-    def invoked_traps
-      @invoked_traps ||= Hash.new { |h, k| h[k] = 0 }
     end
 
     def validate!
@@ -247,7 +253,6 @@ module Jiggler
       if config[:require].nil? || config[:require].empty?
         logger.warn('No require option specified. Please specify a Ruby file to require with --require')
         # allow to start empty server
-        Jiggler.run_configuration
         return
       end
       # the code required by this file is expected to run Jiggler.run_configuration command

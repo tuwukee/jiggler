@@ -12,8 +12,8 @@ module Jiggler
     end
 
     def start
-      poller.start if config[:poller_enabled]
-      monitor.start
+      # poller.start if config[:poller_enabled]
+      # monitor.start
       manager.start
     end
 
@@ -21,13 +21,15 @@ module Jiggler
       return if @done
 
       @done = true
+      puts 'quite launcher'
       manager.quite
 
-      poller.terminate if config[:poller_enabled]
-      monitor.terminate
+      # poller.terminate if config[:poller_enabled]
+      # monitor.terminate
     end
 
     def stop
+      puts 'stop launcher'
       quite
       manager.terminate
     end
