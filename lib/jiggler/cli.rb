@@ -2,10 +2,11 @@
 
 require 'singleton'
 require 'optparse'
-require 'erb'
-require 'debug'
+require 'debug' # remove
 require 'yaml'
-require 'polyphony'
+require 'async'
+require 'async/io/trap'
+require 'async/pool'
 
 module Jiggler
   class CLI
@@ -25,14 +26,14 @@ module Jiggler
       },
       :TSTP => ->(cli) {
         cli.logger.info('Received TSTP, no longer accepting new work')
-        cli.quite
+        cli.suspend
       },
       :TTIN => ->(cli) {
         # log running tasks here (+ backtrace)
       },
-      :SIGHUP => ->(cli) {
+      :HUP => ->(cli) {
         cli.logger.info('Received SIGHUP, no longer accepting new work')
-        cli.quite        
+        cli.suspend        
       }
     }
     UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info('No signal handler registered, ignoring') }
@@ -52,7 +53,7 @@ module Jiggler
       @cond = Async::Condition.new
       Async do
         setup_signal_handlers
-        # patch_scheduler
+        patch_scheduler
         @launcher = Launcher.new(config)
         @launcher.start
         Async do
@@ -68,9 +69,9 @@ module Jiggler
       @cond.signal
     end
 
-    def quite
-      @launcher.quite
-      logger.info('Jiggler is quite')
+    def suspend
+      @launcher.suspend
+      logger.info('Jiggler is suspended')
     end
 
     private
@@ -247,10 +248,9 @@ module Jiggler
       if config[:require].nil? || config[:require].empty?
         logger.warn('No require option specified. Please specify a Ruby file to require with --require')
         # allow to start empty server
-        Jiggler.run_configuration
         return
       end
-      # the code required by this file is expected to run Jiggler.run_configuration command
+      # the code required by this file is expected to call Jiggler.configure
       # thus it'll be executed in the context of the current process
       # and apply the configuration for the server
       require config[:require]

@@ -5,7 +5,9 @@ source 'https://rubygems.org'
 gem 'rack'
 gem 'redis-client'
 gem 'oj'
-gem 'polyphony'
+gem 'async'
+gem 'async-io'
+gem 'async-pool'
 
 group :development, :test do
   gem 'debug', '~> 1.6'

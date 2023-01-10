@@ -21,15 +21,15 @@ module Jiggler
       @workers.each(&:run)
     end
 
-    def quite
+    def suspend
       return if @done
 
       @done = true
-      @workers.each(&:quite)
+      @workers.each(&:suspend)
     end
 
     def terminate
-      quite
+      suspend
       schedule_shutdown
       wait_for_workers
     end

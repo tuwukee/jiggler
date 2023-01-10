@@ -17,18 +17,18 @@ module Jiggler
       manager.start
     end
 
-    def quite
+    def suspend
       return if @done
 
       @done = true
-      manager.quite
+      manager.suspend
 
       poller.terminate if config[:poller_enabled]
       monitor.terminate
     end
 
     def stop
-      quite
+      suspend
       manager.terminate
     end
 

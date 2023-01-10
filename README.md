@@ -144,19 +144,14 @@ end
 Conceptually Jiggler consists of two parts: the `client` and the `server`. \
 The `client` is responsible for pushing jobs to `Redis` and allows to read stats, while the `server` reads jobs from `Redis`, processes them, and writes stats.
 
-Both the `server` and the `client` can be configured in the same initializer file. \
+The `client` uses `client_concurrency`, `redis_url` (this one is reused by the `server`) and `async_client` settings. The rest of the settings are `server` specific. On default the `client` uses sync `Redis` connections. It's possible to configure it to be async as well via setting `async` to `true`. More info below. \
 The `server` uses async `Redis` connections. \
-The `client` uses sync `Redis` connections. It's possible to configure it to be async as well. More info below. \
 The configuration can be skipped if you're using the default values.
 
 ```ruby
-Jiggler.configure_client do |config|
-  config[:concurrency] = 12               # Should equal to the number of threads/fibers in the client app. Defaults to 10
-  config[:redis_url]   = ENV["REDIS_URL"] # On default fetches the value from ENV["REDIS_URL"]
-end
-
-Jiggler.configure_server do |config|
-  config[:concurrency] = 12               # The number of running fibers. Defaults to 10
+Jiggler.configure do |config|
+  config[:client_concurrency] = 12        # Should equal to the number of threads/fibers in the client app. Defaults to 10
+  config[:concurrency] = 12               # The number of running fibers on the server. Defaults to 10
   config[:timeout]     = 12               # Seconds Jiggler wait for jobs to finish before shotdown. Defaults to 25
   config[:environment] = "myenv"          # On default fetches the value ENV["APP_ENV"] and fallbacks to "development"
   config[:require]     = "./jobs.rb"      # Path to file with jobs/app initializer
@@ -164,9 +159,6 @@ Jiggler.configure_server do |config|
   config[:queues]      = ["shippers"]     # An array of queue names the server is going to listen to. On default uses ["default"]
   config[:config_file] = "./jiggler.yml"  # .yml file with Jiggler settings
 end
-
-# this call applies the settings
-Jiggler.run_configuration
 ```
 
 Internally Jiggler server consists of 3 parts: `Manager`, `Poller`, `Monitor`. \
@@ -176,7 +168,7 @@ Internally Jiggler server consists of 3 parts: `Manager`, `Poller`, `Monitor`. \
 `Manager` and `Monitor` are mandatory, while `Poller` can be disabled in case there's no need for retries/scheduled jobs.
 
 ```ruby
-Jiggler.configure_server do |config|
+Jiggler.configure do |config|
   config[:stats_interval] = 12   # Defaults to 10
   config[:poller_enabled] = true # Defaults to true
   config[:poll_interval]  = 12   # Defaults to 5
@@ -265,7 +257,7 @@ The pool should be compatible with `Async::Pool` - support `acquire` method.
 
 ```ruby
 Jiggler.configure_client do |config|
-  config[:redis_pool] = my_async_redis_pool
+  config[:client_redis_pool] = my_async_redis_pool
 end
 
 # or use build-in async pool with

@@ -49,7 +49,7 @@ module Jiggler
       @runner&.stop
     end
 
-    def quite
+    def suspend
       @done = true
     end
 
