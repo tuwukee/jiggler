@@ -100,8 +100,7 @@ module Jiggler
           error_class: err.class.name,
           job: parsed_args,
           tid: @tid
-        },
-        raise_ex: false
+        }
       )
     rescue JSON::ParserError => err
       collection.incr_failures
@@ -113,9 +112,9 @@ module Jiggler
           context: '\'Internal exception\'',
           tid: @tid,
           jid: parsed_args['jid']
-        },
-        raise_ex: true
+        }
       )
+      raise ex
     end
 
     def execute(parsed_job, queue)
@@ -148,9 +147,9 @@ module Jiggler
         {
           context: '\'Fetch error\'',
           tid: @tid
-        },
-        raise_ex: true
+        }
       )
+      raise ex
     end
 
     def add_current_job_to_collection(parsed_job, queue)

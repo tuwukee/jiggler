@@ -18,13 +18,14 @@ module Jiggler
       require: nil,
       environment: 'development',
       concurrency: 10,
-      client_concurrency: 10,
       timeout: 25,
       max_dead_jobs: 10_000,
       stats_interval: 10,
       poller_enabled: true,
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
+      # client settings
+      client_concurrency: 10,
       client_redis_pool: nil,
       client_async: false,
     }
@@ -148,11 +149,10 @@ module Jiggler
       @logger ||= ::Logger.new(STDOUT, level: :info)
     end
 
-    def handle_exception(ex, ctx = {}, raise_ex: false)
+    def handle_exception(ex, ctx = {})
       err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(' ')
       logger.error("error_message='#{ex.message}' #{err_context}")
       logger.error(ex.backtrace.first(12).join("\n")) unless ex.backtrace.nil?
-      raise ex if raise_ex
     end
     
     def_delegators :@options, :[], :[]=, :fetch, :key?, :has_key?, :merge!, :delete, :slice

@@ -24,7 +24,11 @@ module Jiggler
     def sync_pool
       @sync_pool ||= begin
         config = RedisClient.config(url: @options[:redis_url])
-        config.new_pool(size: @options[:concurrency])
+        pool = config.new_pool(size: @options[:concurrency])
+        def pool.acquire(&block)
+          with(&block)
+        end
+        pool
       end
     end
   end

@@ -9,7 +9,7 @@ module Jiggler
     end
 
     def prune_all(pool: config.client_redis_pool)
-      pool.with do |conn|
+      pool.acquire do |conn|
         conn.pipelined do |pipeline|
           prn_retries_set(pipeline)
           prn_scheduled_set(pipeline)
@@ -23,26 +23,26 @@ module Jiggler
     end
 
     def prune_failures_counter(pool: config.client_redis_pool)
-      pool.with do |conn|
+      pool.acquire do |conn|
         prn_failures_counter(conn)
       end
     end
 
     def prune_processed_counter(pool: config.client_redis_pool)
-      pool.with do |conn|
+      pool.acquire do |conn|
         prn_processed_counter(conn)
       end
     end
 
     def prune_all_processes(pool: config.client_redis_pool)
-      pool.with do |conn|
+      pool.acquire do |conn|
         prn_all_processes(conn)
       end
     end
 
     def prune_process(name:, pool: config.client_redis_pool)
       hex = name.split(':').last
-      pool.with do |conn|
+      pool.acquire do |conn|
         processes = conn.call('SCAN', '0', 'MATCH', "#{config.server_prefix}#{hex}*").last
         count = processes.count
         if count == 0
@@ -57,31 +57,31 @@ module Jiggler
     end
 
     def prune_dead_set(pool: config.client_redis_pool)
-      pool.with do |conn|
+      pool.acquire do |conn|
         prn_dead_set(conn)
       end
     end
 
     def prune_retries_set(pool: config.client_redis_pool)
-      pool.with do |conn|
+      pool.acquire do |conn|
         prn_retries_set(conn)
       end
     end
 
     def prune_scheduled_set(pool: config.client_redis_pool)
-      pool.with do |conn|
+      pool.acquire do |conn|
         prn_scheduled_set(conn)
       end
     end
 
     def prune_all_queues(pool: config.client_redis_pool)
-      pool.with do |conn|
+      pool.acquire do |conn|
         prn_all_queues(conn)
       end
     end
 
     def prune_queue(name:, pool: config.client_redis_pool)
-      pool.with do |conn|
+      pool.acquire do |conn|
         conn.call('DEL', "#{config.queue_prefix}#{name}")
       end
     end

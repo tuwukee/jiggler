@@ -4,6 +4,7 @@ RSpec.describe Jiggler::Config do
   let(:config) do
     Jiggler::Config.new(
       concurrency: 1, 
+      client_concurrency: 1,
       environment: 'test',
       timeout: 1, 
       verbose: true,
@@ -28,7 +29,7 @@ RSpec.describe Jiggler::Config do
       expect(config[:stats_interval]).to be 10
       expect(config[:poller_enabled]).to be true
       expect(config[:poll_interval]).to be 5
-      expect(config[:server_mode]).to be false
+      expect(config[:client_async]).to be false
     end
 
     it 'generates prefixed queues' do
@@ -36,20 +37,18 @@ RSpec.describe Jiggler::Config do
     end
 
     it 'gets redis options for server' do
-      config[:server_mode] = true
       expect(config.redis_options).to eq(
         concurrency: 4,
-        redis_pool: nil,
         async: true,
         redis_url: 'redis://localhost:6379'
       )
     end
 
     it 'gets redis options for client' do
-      config[:server_mode] = false
-      expect(config.redis_options).to eq(
+      expect(config.client_redis_options).to eq(
         concurrency: 1,
-        redis_pool: nil,
+        async: false,
+        client_redis_pool: nil,
         redis_url: 'redis://localhost:6379'
       )
     end

@@ -20,7 +20,7 @@ module Jiggler
 
     def all
       summary = {}
-      collected_data = config.client_redis_pool.with do |conn|
+      collected_data = config.client_redis_pool.acquire do |conn|
         data = conn.pipelined do |pipeline|
           pipeline.call('ZCARD', config.retries_set)
           pipeline.call('ZCARD', config.dead_set)
@@ -39,13 +39,13 @@ module Jiggler
     end
 
     def last_retry_jobs(num)
-      config.client_redis_pool.with do |conn|
+      config.client_redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.retries_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num)
       end.map { |job| Oj.load(job, mode: :compat) }
     end
 
     def last_scheduled_jobs(num)
-      config.client_redis_pool.with do |conn|
+      config.client_redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.scheduled_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num, 'WITHSCORES')
       end.map do |(job, score)|
         Oj.load(job).merge('scheduled_at' => score)
@@ -53,7 +53,7 @@ module Jiggler
     end
 
     def last_dead_jobs(num)
-      config.client_redis_pool.with do |conn|
+      config.client_redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.dead_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num)
       end.map { |job| Oj.load(job, mode: :compat) }
     end

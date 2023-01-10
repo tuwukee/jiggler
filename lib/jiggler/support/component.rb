@@ -5,19 +5,15 @@ module Jiggler
     module Component
       attr_reader :config
   
-      def handle_exception(ex, ctx = {}, raise_ex: false)
-        config.handle_exception(ex, ctx, raise_ex: raise_ex)
+      def handle_exception(ex, ctx = {})
+        config.handle_exception(ex, ctx)
       end
   
-      def watchdog(last_words)
-        yield
-      rescue Exception => ex
-        handle_exception(ex, { context: last_words, tid: tid }, raise_ex: true)
-      end
-  
-      def safe_async(name, &block)
-        Async(annotation: name) do
-          watchdog(name, &block)
+      def safe_async(name)
+        Async do
+          yield
+        rescue Exception => ex
+          handle_exception(ex, { context: name, tid: tid })        
         end
       end
   

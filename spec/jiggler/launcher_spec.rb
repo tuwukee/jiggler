@@ -32,17 +32,17 @@ RSpec.describe Jiggler::Launcher do
     end
   end
 
-  describe '#quite' do
-    it 'quites the launcher' do
+  describe '#suspend' do
+    it 'suspends the launcher' do
       task = Async do
         Async do
-          expect(launcher.send(:manager)).to receive(:quite).and_call_original
+          expect(launcher.send(:manager)).to receive(:suspend).and_call_original
           expect(launcher.send(:poller)).to receive(:terminate).and_call_original
           expect(launcher.send(:monitor)).to receive(:terminate).and_call_original
           launcher.start
         end
         sleep(1)
-        launcher.quite
+        launcher.suspend
       end
       task.wait
     end
