@@ -1,8 +1,10 @@
 # jiggler
 Background job processor based on Socketry Async
 
-Jiggler is a [Sidekiq](https://github.com/mperham/sidekiq)-inspired background job processor using [Socketry Async](https://github.com/socketry/async) and [Optimized JSON](https://github.com/ohler55/oj).
+Jiggler is a [Sidekiq](https://github.com/mperham/sidekiq)-inspired background job processor using [Socketry Async](https://github.com/socketry/async) and [Optimized JSON](https://github.com/ohler55/oj). \
 It uses fibers to processes jobs, making context switching lightweight and efficient. Requires Ruby 3+, Redis 6+.
+
+Jiggler is based on Sidekiq implementation, and re-uses some of its concepts and ideas.
 
 NOTE: Altrough some performance results may look interesting, it's absolutly not recommended to switch to it from well-tested stable solutions. \
 Jiggler has a meager set of features and a very basic monitoring. It's a small indie gem made purely for fun and to gain some hand-on experience with async and fibers. It isn't tested with production projects and is likely to explode as soon as it runs into real tasks. \
@@ -26,43 +28,141 @@ Run `jiggler --help` to see the list of command line arguments.
 
 ### Performance
 
-The tests were run on local (OSX 12.3, Chip M1 Pro 2021) within a (Docker Desktop 4.6.1) container (`ruby:latest` Debian 5.10.104-linuxkit) with `redis:6.2.6-alpine`. \
-On the other configurations depending on internal threads context switching management the results may differ significantly.
+The tests were run on local (Ubuntu 22.04, Intel(R) Core(TM) i7 6700HQ 2.60GHz). \
+On the other configurations depending on internal threads context switching management the results may differ significantly. \
+It doesn't really work well on Apple M1 chips. (TODO: WHY? ಠ_ಥ)
 
 Ruby 3.2.0 \
+Redis 7.0.7 \
 Poller interval 5s \
 Monitoring interval 10s \
 Logging level `WARN`
 
+#### Noop task measures
+
 ```ruby
-def perform(_idx)
+def perform
   # just an empty job doing nothing
 end
 ```
 
+The parent process enqueues the jobs, starts the monitoring, and then forks the child process, which holds the job processor. Thus, RSS value is affected by the number of jobs uploaded in the parent process. See `bin/jigglerload` to see the load test structure and measuring.
+
 | Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS    |
 |------------------|-------------|----------------|---------------------------|--------------|---------------|
-| Sidekiq 7.0.2    | 5-           | 100_000        | 47.98 sec                 | 160_116 bytes | 125_076 bytes (GC hit) |
-| Jiggler 0.1.0rc1 | 5           | 100_000        | 32.02 sec                 | 127_876 bytes | 129_792 bytes |
+| Sidekiq 7.0.2    | 5           | 100_000        | 24.55 sec                 | 128_524 bytes | 106_428 bytes (GC hit) |
+| Jiggler 0.1.0rc1 | 5           | 100_000        | 17.96 sec                 | 92_816 bytes | 94_984 bytes |
 | -                |             |                |                           |               |              |
-| Sidekiq 7.0.2    | 10-          | 100_000        | 46.99 sec                 | 162_848 bytes | 131_824 bytes (GC hit) |
-| Jiggler 0.1.0rc1 | 10          | 100_000        | 31.92 sec                 | 127_728 bytes | 129_628 bytes |
+| Sidekiq 7.0.2    | 10          | 100_000        | 20.70 sec                 | 128_440 bytes | 121_176 bytes (GC hit) |
+| Jiggler 0.1.0rc1 | 10          | 100_000        | 16.42 sec                 | 92_892 bytes | 95_012 bytes |
 | -                |             |                |                           |               |              |
-| Sidekiq 7.0.2    | 5-           | 1_000_000 (enqueue 100k batches x10) | 496.55 sec | 227_548 bytes | 232_680 bytes |
-| Jiggler 0.1.0rc1 | 5           | 1_000_000 (enqueue 100k batches x10) | 299.15 sec | 158_564 bytes | 161_368 bytes |
+| Sidekiq 7.0.2    | 5           | 1_000_000 (enqueue 100k batches x10) | 193.99 sec | 191_512 bytes | 165_884 bytes (GC hit) |
+| Jiggler 0.1.0rc1 | 5           | 1_000_000 (enqueue 100k batches x10) | 155.37 sec | 120_920 bytes | 122_980 bytes |
 | -                |             |                |                           |               |              |
-| Sidekiq 7.0.2    | 10-          | 1_000_000 (enqueue 100k batches x10) | 450.51 sec | 196_980 bytes | 223_760 bytes |
-| Jiggler 0.1.0rc1 | 10          | 1_000_000 (enqueue 100k batches x10) | 310.10 sec | 158_732 bytes | 126_148 bytes (GC hit) |
+| Sidekiq 7.0.2    | 10          | 1_000_000 (enqueue 100k batches x10) | 193.51 sec | 222_212 bytes | 336_560 bytes |
+| Jiggler 0.1.0rc1 | 10          | 1_000_000 (enqueue 100k batches x10) | 146.82 sec | 119_008 bytes | 121_784 bytes |
 
 
-The idea of the next test is to simulate jobs with a realistic IO/CPU bound ratio. \
-IO: `sample_get_request` sends a GET request to `https://httpbin.org` using `net/http`, also there's `puts`. \ 
-CPU: recursive `fib` method.
+#### IO tests
+
+The idea of the next tests is to simulate jobs with different kinds of IO tasks. \
+Ruby 3 has introduced fiber scheduler interface, which allows to implement hooks related to IO/blocking operations.\
+The context switching won't work well in case IO is performed by C-extentions which are not aware of Ruby scheduler. 
+
+##### NET/HTTP requests
+
+Spin-up a local sinatra server to exclude network issues while testing HTTP requests.
 
 ```ruby
-require 'uri'
-require 'net/http'
+require "sinatra"
 
+class MyApp < Sinatra::Base
+  get "/hello" do
+    sleep(0.1)
+    "Hello World!"
+  end
+end
+```
+
+Then, the code which is going to be performed within the workers should make a `net/http` request to the local endpoint.
+
+```ruby
+def perform
+  uri = URI("http://127.0.0.1:9292/hello")
+  res = Net::HTTP.get_response(uri)
+  puts "Request Error!!!" unless res.is_a?(Net::HTTPSuccess)
+end
+```
+
+It's not recommended to run sidekiq with high concurrency values, setting it for the sake of test. \
+Since fibers have relatively small memory foot-print and context switching is also relatively cheap, it's possible to set concurrency to higher values within Jiggler without too much trade-offs.
+
+| Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS   | average %CPU |
+|------------------|-------------|----------------|---------------------------|--------------|--------------|--------------|
+| Sidekiq 7.0.2    | 5           | 1_000          | 25.14 sec                 | 32_760 bytes | 48_224 bytes | 11.04 |
+| Jiggler 0.1.0rc1 | 5           | 1_000          | 24.88 sec                 | 41_376 bytes | 43_584 bytes | 7.27  |
+| -                |             |                |                           |              |              |       |
+| Sidekiq 7.0.2    | 10          | 1_000          | 13.74 sec                 | 32_716 bytes | 53_360 bytes | 19.01 |
+| Jiggler 0.1.0rc1 | 10          | 1_000          | 13.35 sec                 | 41_292 bytes | 44_128 bytes | 12.79 |
+| -                |             |                |                           |              |              |       |
+| Sidekiq 7.0.2    | 15          | 1_000          | 10.31 sec                 | 31_696 bytes | 58_676 bytes | 25.44 |
+| Jiggler 0.1.0rc1 | 15          | 1_000          | 9.6 sec                   | 43_132 bytes | 44_584 bytes | 17.3  |
+
+NOTE: Jiggler has more dependencies, so with small load `start RSS` takes more space.
+
+##### PostgreSQL connection/queries
+
+```ruby
+### global namespace
+require "pg"
+
+$pg_pool = ConnectionPool.new(size: CONCURRENCY) do
+  PG.connect({ dbname: "test", password: "test", user: "test" })
+end
+
+### worker context
+def perform
+  $pg_pool.with do |conn|
+    conn.exec("SELECT *, pg_sleep(0.1) FROM pg_stat_activity")
+  end
+end
+```
+
+| Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS   | average %CPU |
+|------------------|-------------|----------------|---------------------------|--------------|--------------|--------------|
+| Sidekiq 7.0.2    | 5           | 100            | 23.54 sec                 | 30_228 bytes | 48_872 bytes | 5.07  |
+| Jiggler 0.1.0rc1 | 5           | 100            | 22.27 sec                 | 40_968 bytes | 46_636 bytes | 1.49  |
+| -                |             |                |                           |              |              |       |
+| Sidekiq 7.0.2    | 10          | 100            | 18.11 sec                 | 30_548 bytes | 53_080 bytes | 10.2 |
+| Jiggler 0.1.0rc1 | 10          | 100            | 17.83 sec                 | 41_292 bytes | 47_412 bytes | 3.16 |
+| -                |             |                |                           |              |              |       |
+| Sidekiq 7.0.2    | 15          | 100            | 16.09 sec                 | 30_496 bytes | 58_444 bytes | 11.58 |
+| Jiggler 0.1.0rc1 | 15          | 100            | 14.23 sec                 | 41_720 bytes | 47_668 bytes | 5.31 |
+
+##### File IO
+
+```ruby
+def perform(file_name, id)
+  File.open(file_name, "a") { |f| f.write("#{id}\n") }
+end
+```
+
+| Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS   | average %CPU |
+|------------------|-------------|----------------|---------------------------|--------------|--------------|--------------|
+| Sidekiq 7.0.2    | 5           | 10_000         | 6.52 sec                  | 44_452 bytes | 55_004 bytes | 66.06  |
+| Jiggler 0.1.0rc1 | 5           | 10_000         | 4.74 sec                  | 48_304 bytes | 47_708 bytes (GC hit) | 39.23  |
+| -                |             |                |                           |              |              |       |
+| Sidekiq 7.0.2    | 10          | 10_000         | 5.62 sec                  | 44_516 bytes | 60_644 bytes | 87.1 |
+| Jiggler 0.1.0rc1 | 10          | 10_000         | 4.06 sec                  | 47_996 bytes | 48_036 bytes | 48.23 |
+
+
+Jiggler is effective only for tasks with a lot of IO. You must test the concurrency setting with your jobs to find out what configuration works best for your payload.
+
+#### Simulate CPU-only job
+
+With CPU-heavy jobs Jiggler has poor performance. Just to make sure it's generally able to work with CPU-only payloads:
+
+```ruby
 def fib(n)
   if n <= 1
     1
@@ -71,80 +171,32 @@ def fib(n)
   end
 end
 
-def sample_get_request
-  uri = URI("https://httpbin.org/ip")
-  res = Net::HTTP.get_response(uri)
-  puts "Request Error!!!" unless res.is_a?(Net::HTTPSuccess)
-end
-```
-
-#### Simulate a high I/O bound job
-
-```ruby
-# IO ~71%
-# CPU-tasks ~29%
-# a single job takes ~1.28s to perform
-def perform(idx)
-  start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-  sample_get_request # 0.91
-  fib(33) # 0.36 
-  puts "#{idx} ended #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
-end
-```
-
-It's not recommended to run sidekiq with high concurrency values, setting it for the sake of test. \
-
-| Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS   | average %CPU |
-|------------------|-------------|----------------|---------------------------|--------------|--------------|--------------|
-| Sidekiq 7.0.2    | 5           | 10             | 29.2 sec                  | 58_348 bytes | 87_544 bytes | 85.01 |
-| Jiggler 0.1.0rc1 | 5           | 10             | 27.46 sec                 | 75_896 bytes | 84_484 bytes | 99.5 |
-| -                |             |                |                           |              |              |       |
-| Sidekiq 7.0.2    | 10          | 10             | 27.85 sec                 | 58_260 bytes | 91_380 bytes | 88.75 |
-| Jiggler 0.1.0rc1 | 10          | 10             | 26.94 sec                 | 75_788 bytes | 84_504 bytes | 48.19 |
-| -                |             |                |                           |              |              |       |
-| Sidekiq 7.0.2    | 5           | 100            | 276.47 sec                | 57_564 bytes | 90_508 bytes | 98.14 |
-| Jiggler 0.1.0rc1 | 5           | 100            | 278.39 sec                | 73_068 bytes | 92_064 bytes | 95.08 |
-| -                |             |                |                           |              |              |      |
-| Sidekiq 7.0.2    | 10          | 100            | 271.32 sec                | 57_628 bytes | 95_904 bytes | 97.9 |
-| Jiggler 0.1.0rc1 | 10          | 100            | 270.49 sec                | 72_876 bytes | 91_768 bytes | 97.7 |
-| -                |             |                |                           |              |              |      |
-| Sidekiq 7.0.2    | 15          | 100            | 269.34 sec                | 57_572 bytes | 100_972 bytes | 99.19 |
-| Jiggler 0.1.0rc1 | 15          | 100            | 271.39 sec                | 72_696 bytes | 92_272 bytes | 97.95 |
-| -                |             |                |                           |              |              |      |
-| Sidekiq 7.0.2    | 20          | 100            | 267.86 sec                | 57_580 bytes | 105_372 bytes | 99.37 |
-| Jiggler 0.1.0rc1 | 20          | 100            | 270.52 sec                | 72_816 bytes | 92_420 bytes | 99.27 |
-
-NOTE: Jiggler has more dependencies, so with small load `start RSS` takes more space. \
-Jiggler is effective only for tasks with a lot of IO. For IO bound tasks increasing concurrency may gain effectiveness. \
-You must test the concurrency setting with your jobs to find out what configuration works best for your payload. \
-With CPU-heavy jobs Jiggler has poor performance.
-
-#### Simulate CPU-only job
-
-It's unlikely that someone ever uses such setup, as it doesn't make much sense, but just to make sure it's generally able to work:
-
-```ruby
-# a single job takes 0.35s to perform
+# a single job takes ~0.024s to perform
 def perform(_idx)
-  fib(33)
+  fib(24)
 end
 ```
 
 | Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS   |
 |------------------|-------------|----------------|---------------------------|--------------|--------------|
-| Sidekiq 7.0.2    | 5           | 100            | 268.12 sec                | 56_956 bytes | 75_456 bytes |
-| Jiggler 0.1.0rc1 | 5           | 100            | 256.21 sec                | 70_716 bytes | 72_344 bytes |
+| Sidekiq 7.0.2    | 5           | 200            | 6.68 sec                  | 30_372 bytes | 45_480 bytes |
+| Jiggler 0.1.0rc1 | 5           | 200            | 6.41 sec                  | 42_404 bytes | 43_820s bytes |
 | -                |             |                |                           |              |              |
-| Sidekiq 7.0.2    | 10          | 100            | 265.92 sec                | 56_900 bytes | 79_572 bytes |
-| Jiggler 0.1.0rc1 | 10          | 100            | 269.57 sec                | 70_624 bytes | 72_664 bytes |
+| Sidekiq 7.0.2    | 10          | 200            | 6.78 sec                  | 30_940 bytes | 50_312 bytes |
+| Jiggler 0.1.0rc1 | 10          | 100            | 6.36 sec                  | 42_212 bytes | 43_740 bytes |
 
+
+#### IO Event selector
+
+TODO: describe what's it
+`IO_EVENT_SELECTOR=EPoll`
 
 ### Getting Started
 
 Conceptually Jiggler consists of two parts: the `client` and the `server`. \
 The `client` is responsible for pushing jobs to `Redis` and allows to read stats, while the `server` reads jobs from `Redis`, processes them, and writes stats.
 
-The `client` uses `client_concurrency`, `redis_url` (this one is reused by the `server`) and `async_client` settings. The rest of the settings are `server` specific. On default the `client` uses sync `Redis` connections. It's possible to configure it to be async as well via setting `async` to `true`. More info below. \
+The `client` uses `client_concurrency`, `redis_url` (this one is reused by the `server`) and `async_client` settings. The rest of the settings are `server` specific. On default the `client` uses sync `Redis` connections. It's possible to configure it to be async as well via setting `client_async` to `true`. More info below. \
 The `server` uses async `Redis` connections. \
 The configuration can be skipped if you're using the default values.
 
@@ -252,7 +304,7 @@ Jiggler.config.cleaner.prune_all
 ```
 
 On default `client` uses synchronous `Redis` connections.  \
-In case the client is being used in async app (f.e. with [Falcon](https://github.com/socketry/falcon) web server, or in Polyphony, etc.), then it's possible to set a custom redis pool capable of sending async requests into redis. \
+In case the client is being used in async app (f.e. with [Falcon](https://github.com/socketry/falcon) web server, etc.), then it's possible to set a custom redis pool capable of sending async requests into redis. \
 The pool should be compatible with `Async::Pool` - support `acquire` method.
 
 ```ruby
@@ -262,16 +314,14 @@ end
 
 # or use build-in async pool with
 Jiggler.configure_client do |config|
-  config[:async] = true
+  config[:client_async] = true
 end
 ```
 
 Then, the client methods could be called with something like:
 ```ruby
-Async do
-  Jiggler.config.cleaner.prune_all
-  MyJob.enqueue
-end
+Sync { Jiggler.config.cleaner.prune_all }
+Async { MyJob.enqueue }
 ```
 
 ### Local development

@@ -1,23 +1,19 @@
 #!/usr/bin/env ruby
 
 # command: bundle exec bin/jigglerload
-# bundle exec bin/jiggler -v -r ./spec/fixtures/jobs
-
-# require_relative '../lib/jiggler'
-# require_relative '../lib/jiggler/cli'
 
 # require 'debug'
-
-
 # require 'jiggler'
 # require 'jiggler/cli'
 
 # require 'ruby-prof'
-
 # require 'heap-profiler'
 
 require 'uri'
 require 'net/http'
+require 'pg'
+require 'connection_pool'
+require 'async/http/internet'
 
 require_relative '../lib/jiggler/support/component'
 require_relative '../lib/jiggler/scheduled/enqueuer'
@@ -44,6 +40,10 @@ CONCURRENCY = 10
 ITERATIONS = 1
 BATCH = 10_000
 
+
+# $internet = Async::HTTP::Internet.new
+# $pg_pool = ConnectionPool.new(size: CONCURRENCY) { PG.connect(dbname: 'test', password: 'test', user: 'test') }
+
 Jiggler.configure do |config|
   config[:poll_interval] = 5
   config[:concurrency] = CONCURRENCY
@@ -67,23 +67,30 @@ class LoadJob
     end
   end
 
-  def sample_get_request
-    uri = URI("https://httpbin.org/ip")
+  def async_get_request
+    uri = "https://127.0.0.1/hello"
+    res = $internet.get(uri)
+    res.finish
+    puts "Request Error!!!" unless res.status == 200
+  end
+
+  def net_http_get_request
+    uri = URI("https://127.0.0.1/hello")
     res = Net::HTTP.get_response(uri)
     puts "Request Error!!!" unless res.is_a?(Net::HTTPSuccess)
   end
 
-  
-  # 1 job takes 0.003s
-  # 1000
-  # 10 conc 7.04s 76528 RSS 66.7 CPU
-  # 10_000
-  # 10 conc 49.29s 82244 RSS 68.65 CPU
-  def perform(idx)
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    fib(18) # 0.000046
-    sleep(4)
-    File.open("tmp/log.txt", "a") { |f| f.write "#{idx} ended #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n" }
+  def pg_query
+    $pg_pool.with do |conn|
+      conn.exec("SELECT *, pg_sleep(0.1) FROM pg_stat_activity")
+    end
+  end
+
+  def file_io(id)
+    File.open("/tmp/logs/async.txt", "a") { |f| f.write("#{id}\n") }
+  end
+
+  def perform(id)
   end
 end
 
@@ -102,19 +109,17 @@ def jobs_count
   end
 end
 
-
 count = ITERATIONS * BATCH
 
 Jiggler.logger.warn "Uploading #{count} jobs..."
 
 ITERATIONS.times do |i|
-  arr = Array.new(BATCH) { |idx| [idx] }
+  arr = Array.new(BATCH) { |id| [id] }
   LoadJob.enqueue_bulk(arr)
 end
 Jiggler.logger.warn "Created #{count} jobs"
 total = jobs_count
 Jiggler.logger.warn("--------->>> Main process before fork: #{get_rss_cpu(Process.pid)} Pending: #{total}")
-
 
 real_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 p2 = fork do

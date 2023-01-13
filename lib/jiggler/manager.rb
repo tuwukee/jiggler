@@ -37,10 +37,9 @@ module Jiggler
     private
 
     def wait_for_workers
-      logger.warn('Waiting for workers to finish...')
+      logger.info('Waiting for workers to finish...')
       @workers.each(&:wait)
       @shutdown_task.stop
-      logger.warn('All workers finished')
     end
 
     def schedule_shutdown

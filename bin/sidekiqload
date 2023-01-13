@@ -29,15 +29,8 @@ class LoadJob
     res = Net::HTTP.get_response(uri)
     puts "Request Error!!!" unless res.is_a?(Net::HTTPSuccess)
   end
-  
-  # 1000
-  # 10 conc 6.60s 82636 RSS 96.33 CPU
-  # 10_000
-  # 10 conc 41.49 91408 RSS 102.72 CPU
-  def perform(idx)
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    fib(18) # 0.000046
-    File.open("tmp/log.txt", "a") { |f| f.write "#{idx} ended #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n" }
+
+  def perform(id)
   end
 end
 
@@ -60,7 +53,7 @@ count = ITERATIONS * BATCH
 
 Sidekiq.logger.error "Uploading #{count} jobs..."
 ITERATIONS.times do |i|
-  arr = Array.new(BATCH) { |idx| [idx] }
+  arr = Array.new(BATCH) { |id| [id] }
   Sidekiq::Client.push_bulk("class" => LoadJob, "args" => arr)
 end
 Sidekiq.logger.error "Created #{count} jobs"
@@ -102,10 +95,6 @@ loop do
 end
 Sidekiq.logger.error("Sending INT...")
 Process.kill("INT", p2)
-# 5.times do
-#   sleep(2)
-#   Sidekiq.logger.error("Finalizing... #{get_rss_cpu(p2, cpus)}")
-# end
 Process.wait(p2)
 Sidekiq.logger.error("Real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}")
 Sidekiq.logger.error("Average CPU usage: #{cpus.sum / cpus.size}")
