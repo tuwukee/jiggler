@@ -54,7 +54,7 @@ module Jiggler
 
     def init_worker
       Jiggler::Worker.new(
-        config, @collection, &method(:process_worker_result)
+        @config, @collection, &method(:process_worker_result)
       )
     end
 

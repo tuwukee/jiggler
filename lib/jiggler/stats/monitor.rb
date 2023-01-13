@@ -5,7 +5,7 @@ module Jiggler
     class Monitor
       include Support::Helper
 
-      attr_reader :collection, :data_key, :exp
+      attr_reader :config, :collection, :data_key, :exp
 
       def initialize(config, collection)
         @config = config
@@ -15,7 +15,7 @@ module Jiggler
         # the key expiration should be greater than the stats interval
         # to avoid cases where the monitor is blocked
         # by long running workers and the key is not updated in time
-        @exp = config[:stats_interval] + 300 # interval + 5 minutes
+        @exp = @config[:stats_interval] + 300 # interval + 5 minutes
         @rss_path = "/proc/#{Process.pid}/status"
       end
 

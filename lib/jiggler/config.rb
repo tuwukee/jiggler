@@ -159,12 +159,6 @@ module Jiggler
     def logger
       @logger ||= ::Logger.new(STDOUT, level: :info)
     end
-
-    def handle_exception(ex, ctx = {})
-      err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(' ')
-      logger.error("error_message='#{ex.message}' #{err_context}")
-      logger.error(ex.backtrace.first(12).join("\n")) unless ex.backtrace.nil?
-    end
     
     def_delegators :@options, :[], :[]=, :fetch, :key?, :has_key?, :merge!, :delete, :slice
   end

@@ -7,8 +7,7 @@ RSpec.describe Jiggler::Summary do
       concurrency: 1,
       timeout: 1,
       queues: queues,
-      poller_enabled: false,
-      server_mode: true
+      poller_enabled: false
     )
   end
   let(:collection) { Jiggler::Stats::Collection.new('summary-test-uuid') } 

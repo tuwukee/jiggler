@@ -5,8 +5,7 @@ RSpec.describe Jiggler::Scheduled::Poller do
     Jiggler::Config.new(
       concurrency: 1,
       timeout: 1,
-      poll_interval: 1,
-      server_mode: true
+      poll_interval: 1
     )
   end
   let(:poller) { described_class.new(config) }

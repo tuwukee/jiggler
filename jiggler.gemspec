@@ -5,12 +5,12 @@ require_relative './lib/jiggler/version'
 Gem::Specification.new do |s|
   s.name        = 'jiggler'
   s.version     = Jiggler::VERSION
-  s.summary     = 'TBD'
-  s.description = 'TBD'
+  s.summary     = 'Ruby background job processor'
+  s.description = 'Ruby background job processor'
   s.authors     = ['Julija Alieckaja', 'Artsiom Kuts']
   s.email       = 'julija.alieckaja@gmail.com'
   s.homepage    = 'https://rubygems.org/gems/jiggler'
-  s.license     = 'MIT'
+  s.license     = 'LGPL-3.0'
   
   s.executables   = ['jiggler']
   s.files         = Dir['lib/**/*', 'LICENSE', 'README.md', 'CHANGELOG.md']

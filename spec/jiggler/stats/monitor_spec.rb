@@ -4,8 +4,7 @@ RSpec.describe Jiggler::Stats::Monitor do
   let(:config) do 
     Jiggler::Config.new(
       timeout: 1,
-      stats_interval: 1,
-      server_mode: true
+      stats_interval: 1
     )
   end
   let(:collection) { Jiggler::Stats::Collection.new('monitor-test-uuid') }

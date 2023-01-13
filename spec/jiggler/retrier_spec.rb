@@ -5,8 +5,7 @@ RSpec.describe Jiggler::Retrier do
     Jiggler::Config.new(
       concurrency: 1,
       timeout: 1,
-      queues: ['test'],
-      server_mode: true
+      queues: ['test']
     ) 
   end
   let(:collection) { Jiggler::Stats::Collection.new('test-retrier-uuid') }

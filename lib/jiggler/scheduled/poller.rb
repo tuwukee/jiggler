@@ -74,8 +74,8 @@ module Jiggler
       end
 
       def process_count
-        pcount = config.with_sync_redis do |conn| 
-          conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last.size
+        pcount = @config.with_sync_redis do |conn| 
+          conn.call('SCAN', '0', 'MATCH', @config.process_scan_key).last.size
         end
         pcount = 1 if pcount == 0
         pcount
@@ -86,7 +86,16 @@ module Jiggler
       def initial_wait
         total = INITIAL_WAIT + (12 * rand)
 
-        sleep(total)
+        # in case of an early exit skip the initial wait
+        Async(transient: true) do
+          sleep(total)
+          @condition.signal
+        end
+        @condition.wait
+      rescue => ex
+        handle_exception(
+          ex, { context: '\'Error on initial wait\'', tid: @tid }
+        )
       end
     end
   end

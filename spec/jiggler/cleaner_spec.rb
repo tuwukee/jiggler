@@ -14,11 +14,11 @@ RSpec.describe Jiggler::Cleaner do
   describe '#prune_failures_counter' do
     it 'prunes the failures counter' do
       config.client_redis_pool.with do |conn|
-        conn.call('SET', Jiggler::Stats::Monitor::FAILURES_COUNTER, 5)
+        conn.call('SET', config.failures_counter, 5)
       end
       cleaner.prune_failures_counter
       config.client_redis_pool.with do |conn|
-        expect(conn.call('GET', Jiggler::Stats::Monitor::FAILURES_COUNTER)).to be nil
+        expect(conn.call('GET', config.failures_counter)).to be nil
       end
     end
   end
@@ -26,11 +26,11 @@ RSpec.describe Jiggler::Cleaner do
   describe '#prune_processed_counter' do
     it 'prunes the processed counter' do
       config.client_redis_pool.with do |conn|
-        conn.call('SET', Jiggler::Stats::Monitor::PROCESSED_COUNTER, 5)
+        conn.call('SET', config.processed_counter, 5)
       end
       cleaner.prune_processed_counter
       config.client_redis_pool.with do |conn|
-        expect(conn.call('GET', Jiggler::Stats::Monitor::PROCESSED_COUNTER)).to be nil
+        expect(conn.call('GET', config.processed_counter)).to be nil
       end
     end
   end
@@ -142,8 +142,8 @@ RSpec.describe Jiggler::Cleaner do
         expect(conn.call('SMEMBERS', config.retries_set)).to be_empty
         expect(conn.call('SMEMBERS', config.scheduled_set)).to be_empty
         expect(conn.call('KEYS', "#{config.queue_prefix}*")).to be_empty
-        expect(conn.call('GET', Jiggler::Stats::Monitor::FAILURES_COUNTER)).to be nil
-        expect(conn.call('GET', Jiggler::Stats::Monitor::PROCESSED_COUNTER)).to be nil      
+        expect(conn.call('GET', config.failures_counter)).to be nil
+        expect(conn.call('GET', config.processed_counter)).to be nil      
       end
     end
   end

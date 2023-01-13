@@ -111,11 +111,11 @@ module Jiggler
     end
 
     def prn_failures_counter(conn)
-      conn.call('DEL', Jiggler::Stats::Monitor::FAILURES_COUNTER)
+      conn.call('DEL', config.failures_counter)
     end
 
     def prn_processed_counter(conn)
-      conn.call('DEL', Jiggler::Stats::Monitor::PROCESSED_COUNTER)
+      conn.call('DEL', config.processed_counter)
     end
   end
 end

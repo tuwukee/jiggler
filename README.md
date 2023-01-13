@@ -45,7 +45,7 @@ def perform
 end
 ```
 
-The parent process enqueues the jobs, starts the monitoring, and then forks the child job-processor-process. Thus, RSS value is affected by the number of jobs uploaded in the parent process. See `bin/jigglerload` to see the load test structure and measuring.
+The parent process enqueues the jobs, starts the monitoring, and then forks the child job-processor-process. Thus, `RSS` value is affected by the number of jobs uploaded in the parent process. See `bin/jigglerload` to see the load test structure and measuring.
 
 | Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS    |
 |------------------|-------------|----------------|---------------------------|--------------|---------------|
@@ -193,6 +193,31 @@ end
 On default it uses `Epoll` (`IO_EVENT_SELECTOR=EPoll`). \
 Another available option is `URing` (`IO_EVENT_SELECTOR=URing`). Underneath it uses `io_uring` library. It is a Linux kernel library that provides a high-performance interface for asynchronous I/O operations. It was introduced in Linux kernel version 5.1 and aims to address some of the limitations and scalability issues of the existing AIO (Asynchronous I/O) interface.
 In the future it might bring a lot of performance boost into Ruby fibers world (once `async` project fully adopts it), but at the moment in the most cases its performance is similar to `EPoll`, yet it could give some boost with File IO.
+
+#### Socketry stack
+
+The gem allows to use libs from `socketry` stack (https://github.com/socketry) within workers, potentially they could provide a better performance boost compared to Ruby native calls.
+F.e. when using making HTTP requests using `async/http/internet` to the Sinatra app described above:
+
+```ruby
+### global namespace
+require "async/http/internet"
+$internet = Async::HTTP::Internet.new
+
+### worker context
+def perform
+  uri = "https://127.0.0.1/hello"
+  res = $internet.get(uri)
+  res.finish
+  puts "Request Error!!!" unless res.status == 200
+end
+```
+
+| Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS   | average %CPU |
+|------------------|-------------|----------------|---------------------------|--------------|--------------|--------------|
+| Jiggler 0.1.0rc1 | 5           | 1_000          | 23.07 sec                 | 41_528 bytes | 44_372 bytes | 3.01 |
+| -                |             |                |                           |              |              |      |
+| Jiggler 0.1.0rc1 | 10          | 1_000          | 12.7 sec                  | 40_480 bytes | 44_404 bytes | 6.08 |
 
 ### Getting Started
 
