@@ -1,6 +1,6 @@
 #!/usr/bin/env ruby
 
-require_relative '../lib/jiggler/support/component'
+require_relative '../lib/jiggler/support/helper'
 require_relative '../lib/jiggler/scheduled/enqueuer'
 require_relative '../lib/jiggler/scheduled/poller'
 require_relative '../lib/jiggler/stats/collection'

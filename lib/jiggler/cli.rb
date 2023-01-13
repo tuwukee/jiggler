@@ -7,18 +7,6 @@ require 'async'
 require 'async/io/trap'
 require 'async/pool'
 
-# require jiggler server classes
-require 'jiggler/support/helper'
-require 'jiggler/scheduled/enqueuer'
-require 'jiggler/scheduled/poller'
-require 'jiggler/stats/collection'
-require 'jiggler/stats/monitor'
-require 'jiggler/errors'
-require 'jiggler/retrier'
-require 'jiggler/launcher'
-require 'jiggler/manager'
-require 'jiggler/worker'
-
 module Jiggler
   class CLI
     include Singleton
@@ -38,10 +26,6 @@ module Jiggler
       :TSTP => ->(cli) {
         cli.logger.info('Received TSTP, no longer accepting new work')
         cli.suspend
-      },
-      :HUP => ->(cli) {
-        cli.logger.info('Received SIGHUP, no longer accepting new work')
-        cli.suspend        
       }
     }
     UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info('No signal handler registered, ignoring') }
