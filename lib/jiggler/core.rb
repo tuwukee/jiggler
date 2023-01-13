@@ -19,7 +19,7 @@ module Jiggler
     block.call(config)
   end
 
-  def self.summary(pool: nil)
-    config.summary.all(pool: pool)
+  def self.summary
+    config.summary.all
   end
 end

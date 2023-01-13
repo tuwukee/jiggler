@@ -3,9 +3,7 @@
 module Jiggler
   module Stats
     class Monitor
-      include Support::Component
-      PROCESSED_COUNTER = 'jiggler:stats:processed_counter'
-      FAILURES_COUNTER = 'jiggler:stats:failures_counter'
+      include Support::Helper
 
       attr_reader :collection, :data_key, :exp
 
@@ -55,8 +53,8 @@ module Jiggler
         config.with_async_redis do |conn|
           conn.pipelined do |pipeline|
             pipeline.call('SET', collection.uuid, process_data, ex: exp)
-            pipeline.call('INCRBY', PROCESSED_COUNTER, processed_jobs)
-            pipeline.call('INCRBY', FAILURES_COUNTER, failed_jobs)
+            pipeline.call('INCRBY', config.processed_counter, processed_jobs)
+            pipeline.call('INCRBY', config.failures_counter, failed_jobs)
           end
         end
       rescue => ex

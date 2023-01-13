@@ -3,7 +3,7 @@
 module Jiggler
   module Stats
     class Collection
-      attr_reader :uuid, :data, :job_classes
+      attr_reader :uuid, :data
 
       def initialize(uuid)
         @uuid = uuid

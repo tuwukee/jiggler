@@ -2,7 +2,7 @@
 
 module Jiggler
   module Support
-    module Component
+    module Helper
       attr_reader :config
   
       def handle_exception(ex, ctx = {})

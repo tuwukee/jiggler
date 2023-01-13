@@ -4,7 +4,7 @@ require 'securerandom'
 
 module Jiggler
   class Manager
-    include Support::Component
+    include Support::Helper
 
     def initialize(config, collection)
       @workers = Set.new

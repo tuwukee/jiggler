@@ -13,6 +13,8 @@ module Jiggler
     RETRIES_SET = 'jiggler:set:retries'
     SCHEDULED_SET = 'jiggler:set:scheduled'
     DEAD_SET = 'jiggler:set:dead'
+    PROCESSED_COUNTER = 'jiggler:stats:processed_counter'
+    FAILURES_COUNTER = 'jiggler:stats:failures_counter'
 
     DEFAULTS = {
       require: nil,
@@ -57,8 +59,17 @@ module Jiggler
       DEFAULT_QUEUE
     end
 
+    # jiggler main process prefix
     def server_prefix
       SERVER_PREFIX
+    end
+
+    def processed_counter
+      PROCESSED_COUNTER
+    end
+
+    def failures_counter
+      FAILURES_COUNTER
     end
 
     def process_scan_key

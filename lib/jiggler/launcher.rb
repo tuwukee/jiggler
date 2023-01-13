@@ -2,7 +2,7 @@
 
 module Jiggler
   class Launcher
-    include Support::Component
+    include Support::Helper
 
     attr_reader :config
 

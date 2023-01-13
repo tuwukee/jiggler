@@ -2,7 +2,7 @@
 
 module Jiggler
   class Worker
-    include Support::Component
+    include Support::Helper
     TIMEOUT = 2 # timeout for brpop
 
     CurrentJob = Struct.new(:queue, :args, keyword_init: true)
@@ -54,9 +54,7 @@ module Jiggler
     end
 
     def wait
-      # logger.warn("worker #{@tid} is waiting...")
       @runner&.wait
-      # logger.warn("worker #{@tid} done")
     end
 
     private

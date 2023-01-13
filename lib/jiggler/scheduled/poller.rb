@@ -5,9 +5,9 @@
 module Jiggler
   module Scheduled    
     class Poller
-      include Support::Component
+      include Support::Helper
 
-      INITIAL_WAIT = 10
+      INITIAL_WAIT = 5
 
       def initialize(config)
         @config = config
@@ -81,14 +81,12 @@ module Jiggler
         pcount
       end
 
+      # wait a random amount of time so in case of multiple processes 
+      # their pollers won't be synchronized
       def initial_wait
-        total = INITIAL_WAIT + (5 * rand)
+        total = INITIAL_WAIT + (12 * rand)
 
-        Async(transient: true) do
-          sleep(total)
-          @condition.signal
-        end
-        @condition.wait
+        sleep(total)
       end
     end
   end

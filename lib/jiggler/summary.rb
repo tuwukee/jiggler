@@ -25,8 +25,8 @@ module Jiggler
           pipeline.call('ZCARD', config.retries_set)
           pipeline.call('ZCARD', config.dead_set)
           pipeline.call('ZCARD', config.scheduled_set)
-          pipeline.call('GET', Jiggler::Stats::Monitor::FAILURES_COUNTER)
-          pipeline.call('GET', Jiggler::Stats::Monitor::PROCESSED_COUNTER)
+          pipeline.call('GET', config.failures_counter)
+          pipeline.call('GET', config.processed_counter)
         end
         [*data, fetch_and_format_processes(conn), fetch_and_format_queues(conn)]
       end

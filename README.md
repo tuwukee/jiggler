@@ -2,12 +2,12 @@
 Background job processor based on Socketry Async
 
 Jiggler is a [Sidekiq](https://github.com/mperham/sidekiq)-inspired background job processor using [Socketry Async](https://github.com/socketry/async) and [Optimized JSON](https://github.com/ohler55/oj). \
-It uses fibers to processes jobs, making context switching lightweight and efficient. Requires Ruby 3+, Redis 6+.
+It uses fibers to processes jobs, making context switching lightweight. Requires Ruby 3+, Redis 6+.
 
-Jiggler is based on Sidekiq implementation, and re-uses some of its concepts and ideas.
+Jiggler is based on Sidekiq implementation, and re-uses most of its concepts and ideas.
 
 NOTE: Altrough some performance results may look interesting, it's absolutly not recommended to switch to it from well-tested stable solutions. \
-Jiggler has a meager set of features and a very basic monitoring. It's a small indie gem made purely for fun and to gain some hand-on experience with async and fibers. It isn't tested with production projects and is likely to explode as soon as it runs into real tasks. \
+Jiggler has a meager set of features and a very basic monitoring. It's a small indie gem made purely for fun and to gain some hand-on experience with async and fibers. It isn't tested with production projects and might have not-yet-discovered issues. \
 However, it's good to play around and/or to try it in the name of science.
 
 ### Installation
@@ -29,8 +29,7 @@ Run `jiggler --help` to see the list of command line arguments.
 ### Performance
 
 The tests were run on local (Ubuntu 22.04, Intel(R) Core(TM) i7 6700HQ 2.60GHz). \
-On the other configurations depending on internal threads context switching management the results may differ significantly. \
-It doesn't really work well on Apple M1 chips. (TODO: WHY? ಠ_ಥ)
+On the other configurations the results may differ significantly, f.e. with Apple M1 Max chips it treats some IO operations as blocking and shows a poor performance ಠ_ಥ.
 
 Ruby 3.2.0 \
 Redis 7.0.7 \
@@ -46,7 +45,7 @@ def perform
 end
 ```
 
-The parent process enqueues the jobs, starts the monitoring, and then forks the child process, which holds the job processor. Thus, RSS value is affected by the number of jobs uploaded in the parent process. See `bin/jigglerload` to see the load test structure and measuring.
+The parent process enqueues the jobs, starts the monitoring, and then forks the child job-processor-process. Thus, RSS value is affected by the number of jobs uploaded in the parent process. See `bin/jigglerload` to see the load test structure and measuring.
 
 | Job Processor    | Concurrency | Number of Jobs | Time to complete all jobs | Start RSS    | Finish RSS    |
 |------------------|-------------|----------------|---------------------------|--------------|---------------|
@@ -71,7 +70,7 @@ The context switching won't work well in case IO is performed by C-extentions wh
 
 ##### NET/HTTP requests
 
-Spin-up a local sinatra server to exclude network issues while testing HTTP requests.
+Spin-up a local sinatra server to exclude network issues while testing HTTP requests (it uses `puma` for multi-threading).
 
 ```ruby
 require "sinatra"
@@ -87,6 +86,7 @@ end
 Then, the code which is going to be performed within the workers should make a `net/http` request to the local endpoint.
 
 ```ruby
+# a single job takes ~0.1s to perform
 def perform
   uri = URI("http://127.0.0.1:9292/hello")
   res = Net::HTTP.get_response(uri)
@@ -121,6 +121,7 @@ $pg_pool = ConnectionPool.new(size: CONCURRENCY) do
 end
 
 ### worker context
+# a single job takes ~0.63s to perform
 def perform
   $pg_pool.with do |conn|
     conn.exec("SELECT *, pg_sleep(0.1) FROM pg_stat_activity")
@@ -188,8 +189,10 @@ end
 
 #### IO Event selector
 
-TODO: describe what's it
-`IO_EVENT_SELECTOR=EPoll`
+`IO_EVENT_SELECTOR` is an env variable which allows to specify the event selector used by the Ruby scheduler. \
+On default it uses `Epoll` (`IO_EVENT_SELECTOR=EPoll`). \
+Another available option is `URing` (`IO_EVENT_SELECTOR=URing`). Underneath it uses `io_uring` library. It is a Linux kernel library that provides a high-performance interface for asynchronous I/O operations. It was introduced in Linux kernel version 5.1 and aims to address some of the limitations and scalability issues of the existing AIO (Asynchronous I/O) interface.
+In the future it might bring a lot of performance boost into Ruby fibers world (once `async` project fully adopts it), but at the moment in the most cases its performance is similar to `EPoll`, yet it could give some boost with File IO.
 
 ### Getting Started
 
@@ -201,6 +204,8 @@ The `server` uses async `Redis` connections. \
 The configuration can be skipped if you're using the default values.
 
 ```ruby
+require "jiggler"
+
 Jiggler.configure do |config|
   config[:client_concurrency] = 12        # Should equal to the number of threads/fibers in the client app. Defaults to 10
   config[:concurrency] = 12               # The number of running fibers on the server. Defaults to 10
@@ -241,9 +246,29 @@ end
 
 To get the available stats run:
 ```ruby
-Jiggler.summary
+irb(main)> Jiggler.summary
+=> 
+{"retry_jobs_count"=>0,
+ "dead_jobs_count"=>3,
+ "scheduled_jobs_count"=>0,
+ "failures_count"=>4,
+ "processed_count"=>0,
+ "processes"=>
+  {"jiggler:svr:d5bb7021a927:JulijaA-MBP.local:10:25:default:1:1673628278:83647"=>
+    {"heartbeat"=>1673628288.142401,
+     "rss"=>44992,
+     "current_jobs"=>{},
+     "name"=>"jiggler:d5bb7021a927",
+     "hostname"=>"JulijaA-MBP.local",
+     "concurrency"=>"10",
+     "timeout"=>"25",
+     "queues"=>"default",
+     "poller_enabled"=>true,
+     "started_at"=>"1673628278",
+     "pid"=>"83647"}},
+ "queues"=>{"mine"=>1, "unknown"=>1, "test"=>1}}
 ```
-Note: Jiggler shows only queues which have enqueued jobs. 
+Note: Jiggler summary shows only queues which have enqueued jobs. 
 
 Job classes should include `Jiggler::Job` and implement `perform` method.
 
@@ -313,6 +338,8 @@ Jiggler.configure_client do |config|
 end
 
 # or use build-in async pool with
+require 'async/pool'
+
 Jiggler.configure_client do |config|
   config[:client_async] = true
 end

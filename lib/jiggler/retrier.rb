@@ -2,7 +2,7 @@
 
 module Jiggler
   class Retrier
-    include Support::Component
+    include Support::Helper
 
     attr_reader :config, :collection
 
