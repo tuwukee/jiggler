@@ -13,7 +13,6 @@ RSpec.describe 'Core' do
         config[:poll_interval] = 7
         config[:poller_enabled] = false
         config[:client_async] = true
-        config[:client_redis_pool] = double
         config[:queues] = %w[foo bar]
         config[:require] = 'foo'
         config[:environment] = 'bar'
@@ -27,11 +26,9 @@ RSpec.describe 'Core' do
       expect(Jiggler.config[:poll_interval]).to be 7
       expect(Jiggler.config[:poller_enabled]).to be false
       expect(Jiggler.config[:client_async]).to be true
-      expect(Jiggler.config[:client_redis_pool]).to_not be nil
       expect(Jiggler.config[:queues]).to eq %w[foo bar]
       expect(Jiggler.config[:require]).to eq 'foo'
       expect(Jiggler.config[:environment]).to eq 'bar'
     end
   end
 end
-  

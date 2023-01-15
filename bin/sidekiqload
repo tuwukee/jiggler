@@ -5,7 +5,11 @@
 require 'uri'
 require 'net/http'
 
-require "sidekiq"
+require 'pg'
+require 'connection_pool'
+
+require 'sidekiq'
+
 Sidekiq.redis { |c| c.flushall }
 
 CONCURRENCY = 10

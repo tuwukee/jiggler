@@ -129,7 +129,11 @@ module Jiggler
     end
 
     def validate!
-      [:concurrency, :timeout].each do |opt|
+      if config[:queues].any? { |q| q.include?(':') }
+        raise ArgumentError, 'Queue names cannot contain colons'
+      end
+
+      [:concurrency, :client_concurrency, :timeout].each do |opt|
         raise ArgumentError, "#{opt}: #{config[opt]} is not a valid value" if config[opt].to_i <= 0
       end
     end
@@ -143,7 +147,7 @@ module Jiggler
 
     def option_parser(opts)
       parser = OptionParser.new do |o|
-        o.on '-c', '--concurrency INT', 'Number of fibers to use' do |arg|
+        o.on '-c', '--concurrency INT', 'Number of fibers to use on the server' do |arg|
           opts[:concurrency] = Integer(arg)
         end
 
@@ -193,12 +197,6 @@ module Jiggler
 
       set_environment(opts)
 
-      if opts[:config_file]
-        unless File.exist?(opts[:config_file])
-          raise ArgumentError, "No such file #{opts[:config_file]}"
-        end
-      end
-
       opts = parse_config(opts[:config_file]).merge(opts) if opts[:config_file]
       opts[:queues] = [Jiggler::Config::DEFAULT_QUEUE] if opts[:queues].nil?
       opts[:server_mode] = true # cli starts only in server mode
@@ -234,6 +232,8 @@ module Jiggler
       opts.delete(:strict)
 
       opts
+    rescue => error
+      raise ArgumentError, "Error parsing config file: #{error.message}"
     end
 
     def load_app

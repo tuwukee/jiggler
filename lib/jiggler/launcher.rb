@@ -38,13 +38,13 @@ module Jiggler
       @uuid ||= begin
         data_str = [
           SecureRandom.hex(6),
-          ENV['DYNO'] || Socket.gethostname,
           config[:concurrency],
           config[:timeout],
           config[:queues].join(','),
           config[:poller_enabled] ? '1' : '0',
           Time.now.to_i,
-          Process.pid
+          Process.pid,
+          ENV['DYNO'] || Socket.gethostname
         ].join(':')
         "#{config.server_prefix}#{data_str}"
       end

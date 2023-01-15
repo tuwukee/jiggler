@@ -19,7 +19,7 @@ RSpec.describe Jiggler::CLI do
     context 'with args' do
       before { cli.instance_variable_set(:@config, Jiggler::Config.new(verbose: true)) }
       after { cli.instance_variable_set(:@config, Jiggler::Config.new) }
-      let(:path) { File.join('/jiggler/spec/fixtures/config/jiggler.yml') }
+      let(:path) { './spec/fixtures/config/jiggler.yml' }
 
       it 'fetches config file' do
         cli.parse_and_init(['-C', path])
@@ -81,6 +81,7 @@ RSpec.describe Jiggler::CLI do
         cli.parse_and_init(['-r', 'test.rb'])
         expect { cli.send(:load_app) }.to raise_error(SystemExit) 
       end
+      it { expect { cli.parse_and_init(['-q', 'in:va:lid']) }.to raise_error(ArgumentError) }
     end
   end
 end

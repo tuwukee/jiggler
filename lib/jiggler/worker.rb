@@ -90,7 +90,7 @@ module Jiggler
       raise err
     rescue UnknownJobError => err
       collection.incr_failures
-      handle_exception(
+      log_error_short(
         err,
         {
           error_class: err.class.name,
@@ -102,7 +102,7 @@ module Jiggler
       collection.incr_failures
       logger.error('Worker') { "Failed to parse job: #{current_job.args}" }
     rescue Exception => ex
-      handle_exception(
+      log_error(
         ex,
         {
           context: '\'Internal exception\'',
@@ -122,7 +122,6 @@ module Jiggler
       end
 
       collection.incr_processed
-      # logger.warn("worker #{@tid} has done job")
     ensure
       remove_current_job_from_collection
     end
@@ -138,7 +137,7 @@ module Jiggler
     end
 
     def handle_fetch_error(ex)
-      handle_exception(
+      log_error(
         ex,
         {
           context: '\'Fetch error\'',

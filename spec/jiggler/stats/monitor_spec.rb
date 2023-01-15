@@ -7,7 +7,8 @@ RSpec.describe Jiggler::Stats::Monitor do
       stats_interval: 1
     )
   end
-  let(:collection) { Jiggler::Stats::Collection.new('monitor-test-uuid') }
+  let(:uuid) { 'monitor-test-uuid' }
+  let(:collection) { Jiggler::Stats::Collection.new(uuid) }
   let(:monitor) { described_class.new(config, collection) }
 
   describe '#start' do
@@ -31,6 +32,7 @@ RSpec.describe Jiggler::Stats::Monitor do
         expect(monitor).to receive(:cleanup).and_call_original
         monitor.terminate
         expect(monitor.instance_variable_get(:@done)).to be true
+        expect(config.client_redis_pool.acquire { |conn| conn.call('GET', uuid) }).to be nil
       end
       task.wait
     end

@@ -40,16 +40,25 @@ module Jiggler
       end
     end
 
-    def prune_process(name:, pool: config.client_redis_pool)
-      hex = name.split(':').last
+    # uses full process uuid, it's not exposed in the web UI
+    # can be seen in raw Jiggler.summary
+    def prune_process(uuid:, pool: config.client_redis_pool)
       pool.acquire do |conn|
-        processes = conn.call('SCAN', '0', 'MATCH', "#{config.server_prefix}#{hex}*").last
+        conn.call('DEL', uuid)
+      end
+    end
+    
+    # hex is exposed in the web UI
+    # should look like jiggler:svr:74426a5e67db
+    def prune_process_by_hex(hex:, pool: config.client_redis_pool)
+      pool.acquire do |conn|
+        processes = conn.call('SCAN', '0', 'MATCH', "#{hex}*").last
         count = processes.count
         if count == 0
-          config.logger.error("No process found for #{name}")
+          config.logger.error("No process found for #{hex}")
           return
         elsif count > 1
-          config.logger.error("Multiple processes found for #{name}, not pruning #{processes}")
+          config.logger.error("Multiple processes found for #{hex}, not pruning #{processes}")
           return
         end
         conn.call('DEL', processes.first)

@@ -14,7 +14,7 @@ RSpec.describe Jiggler::Summary do
   let(:summary) { described_class.new(config) }
 
   describe '.all' do
-    xit 'has correct keys and data types' do
+    it 'has correct keys and data types' do
       subject = summary.all
       expect(subject).to be_a Hash
       expect(subject.keys).to eq Jiggler::Summary::KEYS
@@ -66,6 +66,25 @@ RSpec.describe Jiggler::Summary do
         })
       end
       task.wait
+    end
+
+    context 'key dissasembly' do
+      let(:uuid) { 'jiggler:svr:2aa9:10:15:drop,bark,meow:1:1673820635:29677:dyno:1' }
+
+      it 'has correct process metadata' do
+        allow(summary).to receive(:fetch_processes).and_return([uuid])
+        subject = summary.all
+        expect(subject['processes'][uuid]).to include({
+          'name' => 'jiggler:svr:2aa9',
+          'concurrency' => '10',
+          'timeout' => '15',
+          'queues' => 'drop,bark,meow',
+          'pid' => '29677',
+          'poller_enabled' => true,
+          'started_at' => '1673820635',
+          'hostname' => 'dyno:1',
+        })
+      end
     end
   end
 

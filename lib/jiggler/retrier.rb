@@ -28,7 +28,7 @@ module Jiggler
       process_retry(instance, parsed_job, queue, err)
       collection.incr_failures
       
-      handle_exception(
+      log_error(
         err,
         { 
           context: '\'Job raised exception\'',

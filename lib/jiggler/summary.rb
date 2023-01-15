@@ -60,21 +60,24 @@ module Jiggler
 
     private
 
+    def fetch_processes(conn)
+      conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last
+    end
+
     def fetch_and_format_processes(conn)
-      conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last.reduce({}) do |acc, uuid|
-        process_data = conn.call('GET', uuid)
-        process_data = Oj.load(process_data, mode: :compat)
+      fetch_processes(conn).reduce({}) do |acc, uuid|
+        process_data = Oj.load(conn.call('GET', uuid), mode: :compat) || {}
         values = uuid.split(':')
         acc[uuid] = process_data.merge({
-          'name' => "jiggler:#{values[2]}",
-          'hostname' => values[3],
-          'concurrency' => values[4],
-          'timeout' => values[5],
-          'queues' => values[6],
-          'poller_enabled' => values[7] == '1',
-          'started_at' => values[8],
-          'pid' => values[9]
+          'name' => values[0..2].join(':'),
+          'concurrency' => values[3],
+          'timeout' => values[4],
+          'queues' => values[5],
+          'poller_enabled' => values[6] == '1',
+          'started_at' => values[7],
+          'pid' => values[8]
         })
+        acc[uuid]['hostname'] = values[9..-1].join(':')
         acc
       end
     end

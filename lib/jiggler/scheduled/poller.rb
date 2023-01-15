@@ -43,7 +43,7 @@ module Jiggler
         # logger.warn("Poller runs")
         @enqueuer.enqueue_jobs
       rescue => ex
-        handle_exception(
+        log_error(
           ex, { context: '\'Error while enqueueing jobs\'', tid: @tid }
         )
       end
@@ -57,7 +57,7 @@ module Jiggler
         end
         @condition.wait
       rescue => ex
-        handle_exception(
+        log_error(
           ex, { context: '\'Error while waiting for scheduled jobs\'', tid: @tid }
         )
       end
@@ -93,7 +93,7 @@ module Jiggler
         end
         @condition.wait
       rescue => ex
-        handle_exception(
+        log_error(
           ex, { context: '\'Error on initial wait\'', tid: @tid }
         )
       end

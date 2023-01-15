@@ -58,7 +58,7 @@ module Jiggler
           end
         end
       rescue => ex
-        handle_exception(
+        log_error(
           ex, { context: '\'Error while loading stats into redis\'', tid: @tid }
         )
       end
@@ -78,7 +78,7 @@ module Jiggler
       end
 
       def cleanup
-        config.with_async_redis { |conn| conn.call('DEL', collection.uuid) }
+        config.cleaner.prune_process(uuid: collection.uuid, pool: config.redis_pool)
       end
 
       def wait
@@ -88,7 +88,7 @@ module Jiggler
         end
         @condition.wait
       rescue => ex
-        handle_exception(
+        log_error(
           ex, { context: '\'Error while waiting for stats\'', tid: @tid }
         )
       end
