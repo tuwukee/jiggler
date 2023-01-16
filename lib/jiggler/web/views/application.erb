@@ -66,7 +66,7 @@
               <td colspan='2' title='Concurrency' class='right'>
                 <span><%= data['concurrency'] %></span>
               </td>
-              <td colspan='2' title='RSS' class='right'>
+              <td colspan='2' title=<%= data['rss'] %> class='right'>
                 <span><%= format_memory(data['rss']) %></span>
               </td>
               <td colspan='1' title=<%= format_datetime(data['heartbeat']) %> class='right'>
@@ -124,8 +124,8 @@
             <th colspan='2' title='Queue'>
               <span>Queue</span>
             </th>
-            <th colspan='2' title='Arguments'>
-              <span>Arguments</span>
+            <th colspan='2' title='Args'>
+              <span>Args</span>
             </th>
             <th colspan='2' title='Started'>
               <span>Started</span>
@@ -152,7 +152,7 @@
                   <span><%= job_data['queue'] %></span>
                 </td>
                 <td colspan='2' title='Arguments'>
-                  <span><%= job_data['job_args']['args'] %></span>
+                  <span><%= format_args(job_data['job_args']['args']) %></span>
                 </td>
                 <td colspan='2' title=<%= format_datetime(data['started_at']) %>>
                   <span><%= time_ago_in_words(data['started_at']) %></span>
@@ -245,7 +245,7 @@
                 <span>Args</span>
               </th>
               <th colspan='2' title='Scheduled At'>
-                <span>Scheduled At</span>
+                <span>To be enqueued at</span>
               </th>
             </tr>
           </thead>
@@ -256,7 +256,7 @@
                   <span><%= data['name'] %></span>
                 </td>
                 <td colspan='6' title='Args'>
-                  <span><%= data['args'] %></span>
+                  <span><%= format_args(data['args']) %></span>
                 </td>
                 <td colspan='2' title=<%= format_datetime(data['scheduled_at']) %> class='right'>
                   <span><%= format_datetime(data['scheduled_at']) %></span>
@@ -311,7 +311,7 @@
                   <span><%= "#{data['error_class']}: #{data['error_message']}" %></span>
                 </td>
                 <td colspan='2' title='Args'>
-                  <span><%= data['args'] %></span>
+                  <span><%= format_args(data['args']) %></span>
                 </td>
                 <td colspan='1' title=<%= format_datetime(data['started_at']) %> class='right'>
                   <span><%= time_ago_in_words(data['started_at']) %></span>

@@ -113,6 +113,8 @@ NOTE: Jiggler has more dependencies, so with small load `start RSS` takes more s
 
 ##### PostgreSQL connection/queries
 
+`pg` gem supports Ruby's `Fiber.scheduler` starting from 1.3.0 version. Make sure yours DB-adapter supports it.
+
 ```ruby
 ### global namespace
 require "pg"
@@ -198,7 +200,7 @@ In the future it might bring a lot of performance boost into Ruby fibers world (
 #### Socketry stack
 
 The gem allows to use libs from `socketry` stack (https://github.com/socketry) within workers, potentially they could provide a better performance boost compared to Ruby native calls.
-F.e. when using making HTTP requests using `async/http/internet` to the Sinatra app described above:
+F.e. when making HTTP requests using `async/http/internet` to the Sinatra app described above:
 
 ```ruby
 ### global namespace

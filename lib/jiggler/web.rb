@@ -64,6 +64,11 @@ module Jiggler
       seconds > Jiggler.config[:stats_interval] * 2
     end
 
+    def format_args(args)
+      return if args.nil?
+      args.map { |arg| Oj.dump(arg, mode: :compat) }.join(', ')
+    end
+
     def poller_badge(poller_enabled)
       poller_enabled ? '<span class=\'badge badge-success\'>Polling</span>' : '<span class=\'badge\'>Polling Disabled</span>'
     end
