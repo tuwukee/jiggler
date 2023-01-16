@@ -3,10 +3,11 @@
 source 'https://rubygems.org'
 
 gem 'rack'
+gem 'redis-client'
+gem 'oj'
 gem 'async'
 gem 'async-io'
 gem 'async-pool'
-gem 'redis-client'
 
 group :development, :test do
   gem 'debug', '~> 1.6'

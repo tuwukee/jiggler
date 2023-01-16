@@ -13,6 +13,8 @@ module Jiggler
     RETRIES_SET = 'jiggler:set:retries'
     SCHEDULED_SET = 'jiggler:set:scheduled'
     DEAD_SET = 'jiggler:set:dead'
+    PROCESSED_COUNTER = 'jiggler:stats:processed_counter'
+    FAILURES_COUNTER = 'jiggler:stats:failures_counter'
 
     DEFAULTS = {
       require: nil,
@@ -24,8 +26,10 @@ module Jiggler
       poller_enabled: true,
       poll_interval: 5,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
-      redis_pool: nil,
-      server_mode: false
+      # client settings
+      client_concurrency: 10,
+      client_redis_pool: nil,
+      client_async: false,
     }
 
     def initialize(options = {})
@@ -55,8 +59,17 @@ module Jiggler
       DEFAULT_QUEUE
     end
 
+    # jiggler main process prefix
     def server_prefix
       SERVER_PREFIX
+    end
+
+    def processed_counter
+      PROCESSED_COUNTER
+    end
+
+    def failures_counter
+      FAILURES_COUNTER
     end
 
     def process_scan_key
@@ -93,23 +106,42 @@ module Jiggler
       @redis_options ||= begin
         opts = @options.slice(
           :concurrency,
-          :redis_url,
-          :redis_pool
+          :redis_url
         )
 
-        if @options[:server_mode]
-          opts[:concurrency] += 2 # monitor + safety margin
-          opts[:concurrency] += 1 if @options[:poller_enabled]
-          opts[:async] = true
-        end
+        opts[:concurrency] += 2 # monitor + safety margin
+        opts[:concurrency] += 1 if @options[:poller_enabled]
+        opts[:async] = true
+
+        opts
+      end
+    end
+
+    def client_redis_options
+      @client_redis_options ||= begin
+        opts = @options.slice(
+          :redis_url,
+          :client_redis_pool
+        )
+
+        opts[:concurrency] = @options[:client_concurrency]
+        opts[:async] = @options[:client_async]
         opts
       end
     end
 
     def redis_pool
-      @redis_pool ||= begin
-        @options[:redis_pool] || Jiggler::RedisStore.new(redis_options).pool
+      @redis_pool ||= Jiggler::RedisStore.new(redis_options).pool
+    end
+
+    def client_redis_pool
+      @client_redis_pool ||= begin
+        @options[:client_redis_pool] || Jiggler::RedisStore.new(client_redis_options).pool
       end
+    end
+
+    def client_redis_pool=(new_pool)
+      @client_redis_pool = new_pool
     end
 
     def cleaner
@@ -126,13 +158,6 @@ module Jiggler
 
     def logger
       @logger ||= ::Logger.new(STDOUT, level: :info)
-    end
-
-    def handle_exception(ex, ctx = {}, raise_ex: false)
-      err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(' ')
-      logger.error("error_message='#{ex.message}' #{err_context}")
-      logger.error(ex.backtrace.first(12).join("\n")) unless ex.backtrace.nil?
-      raise ex if raise_ex
     end
     
     def_delegators :@options, :[], :[]=, :fetch, :key?, :has_key?, :merge!, :delete, :slice

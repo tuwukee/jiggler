@@ -54,3 +54,11 @@ body {
 .badge-success {
   background-color: #008B69;
 }
+
+.outdated {
+  color: #858585;
+}
+
+.outdated .badge-success {
+  background-color: #858585;
+}

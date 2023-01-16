@@ -2,9 +2,19 @@
 
 # command: bundle exec bin/sidekiqload
 
-require "sidekiq"
+require 'uri'
+require 'net/http'
+
+require 'pg'
+require 'connection_pool'
+
+require 'sidekiq'
 
 Sidekiq.redis { |c| c.flushall }
+
+CONCURRENCY = 10
+ITERATIONS = 1
+BATCH = 10_000
 
 class LoadJob
   include Sidekiq::Job
@@ -18,49 +28,31 @@ class LoadJob
     end
   end
 
-  def perform(idx, ts = nil)
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    sleep 0.01
-    fib(33)
-    sleep 0.5
-    fib(20)
-    puts "#{idx} ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
+  def net_http_get_request
+    uri = URI("https://127.0.0.1/hello")
+    res = Net::HTTP.get_response(uri)
+    puts "Request Error!!!" unless res.is_a?(Net::HTTPSuccess)
+  end
+
+  def pg_query
+    $pg_pool.with do |conn|
+      conn.exec("SELECT *, pg_sleep(0.1) FROM pg_stat_activity")
+    end
+  end
+
+  def file_io(id)
+    File.open("tmp/logs/test.txt", "a") { |f| f.write("#{id}\n") }
+  end
+
+  def perform(id)
   end
 end
 
-def get_rss(pid)
-  `ps -o rss= -p #{pid}`.chomp.to_i
-end
-
-iter = 1
-count = 100
-Sidekiq.logger.error "Uploading #{count * iter} jobs..."
-iter.times do
-  arr = Array.new(count) { |idx| [idx] }
-  Sidekiq::Client.push_bulk("class" => LoadJob, "args" => arr)
-end
-Sidekiq.logger.error "Created #{count * iter} jobs"
-
-real_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-p2 = fork do
-  require "sidekiq/cli"
-
-  Sidekiq.configure_server do |config|
-    config.concurrency = 10
-    config.queues = %w[default]
-    config.logger.level = Logger::WARN
-    config.average_scheduled_poll_interval = 2
-  end
-
-  begin
-    cli = Sidekiq::CLI.instance
-    cli.parse ["-r", "tmp/temp.rb"]
-  
-    cli.run(boot_app: false)
-  rescue => e
-    Sidekiq.logger.error(e)
-    exit 1
-  end
+def get_rss_cpu(pid, cpus = nil)
+  data = `ps -o rss,%cpu= -p #{pid}`.split("\n").last.strip.split(" ")
+  cpu = data[1].to_f.round(2)
+  cpus << cpu if !cpus.nil? && cpu > 0
+  "RSS: #{data[0]} %CPU: #{cpu}"
 end
 
 def jobs_count
@@ -69,20 +61,54 @@ def jobs_count
   end
 end
 
-start = Time.now
+# when trying to upload 1_000_000 at once
+# ruby_connection/buffered_io.rb:140:in `block in fill_buffer': RedisClient::ReadTimeoutError (RedisClient::ReadTimeoutError)
+count = ITERATIONS * BATCH
 
+Sidekiq.logger.error "Uploading #{count} jobs..."
+ITERATIONS.times do |i|
+  arr = Array.new(BATCH) { |id| [id] }
+  Sidekiq::Client.push_bulk("class" => LoadJob, "args" => arr)
+end
+Sidekiq.logger.error "Created #{count} jobs"
 total = jobs_count
-Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
-loop do
-  sleep 2.0
-  total = jobs_count
-  Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
-  if total == 0
-    Sidekiq.logger.error("RSS: #{get_rss(p2)} Pending: #{total}")
-    Sidekiq.logger.error("Done, #{iter * count} jobs in #{Time.now - start} sec")
-    break
+Sidekiq.logger.error("--------->>> Main process before fork: #{get_rss_cpu(Process.pid)} Pending: #{total}")
+
+real_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+p2 = fork do
+  require "sidekiq/cli"
+  Sidekiq.configure_server do |config|
+    config.queues = %w[default]
+    config.logger.level = Logger::ERROR
+    config.average_scheduled_poll_interval = 5
+    # config.redis = { url: "redis://jiggler_redis:6379" }
+  end
+  
+  begin
+    cli = Sidekiq::CLI.instance
+    cli.parse ["-r", "tmp/temp.rb", "-t", "100", "-c", "#{CONCURRENCY}"] # require an empty file to pass validation
+    Sidekiq.logger.error "Concurrency: #{Sidekiq.default_configuration.concurrency}"
+  
+    cli.run(boot_app: false)
+  rescue => e
+    Sidekiq.logger.error(e)
+    exit 1
   end
 end
+
+start = Time.now
+cpus = []
+loop do
+  total = jobs_count
+  Sidekiq.logger.error("#{get_rss_cpu(p2, cpus)} Pending: #{total} Time: #{(Time.now - start).round(2)} sec")
+  if total == 0
+    Sidekiq.logger.error("Done, #{count} jobs in #{Time.now - start} sec")
+    break
+  end
+  sleep 2
+end
+Sidekiq.logger.error("Sending INT...")
 Process.kill("INT", p2)
 Process.wait(p2)
-Sidekiq.logger.error "real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}"
+Sidekiq.logger.error("Real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}")
+Sidekiq.logger.error("Average CPU usage: #{cpus.sum / cpus.size}")

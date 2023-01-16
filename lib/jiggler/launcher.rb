@@ -2,7 +2,7 @@
 
 module Jiggler
   class Launcher
-    include Support::Component
+    include Support::Helper
 
     attr_reader :config
 
@@ -17,18 +17,18 @@ module Jiggler
       manager.start
     end
 
-    def quite
+    def suspend
       return if @done
 
       @done = true
-      manager.quite
+      manager.suspend
 
       poller.terminate if config[:poller_enabled]
       monitor.terminate
     end
 
     def stop
-      quite
+      suspend
       manager.terminate
     end
 
@@ -38,13 +38,13 @@ module Jiggler
       @uuid ||= begin
         data_str = [
           SecureRandom.hex(6),
-          ENV['DYNO'] || Socket.gethostname,
           config[:concurrency],
           config[:timeout],
           config[:queues].join(','),
           config[:poller_enabled] ? '1' : '0',
           Time.now.to_i,
-          Process.pid
+          Process.pid,
+          ENV['DYNO'] || Socket.gethostname
         ].join(':')
         "#{config.server_prefix}#{data_str}"
       end

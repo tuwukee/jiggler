@@ -1,11 +1,10 @@
 # frozen_string_literal: true
 
-require 'async'
 require 'securerandom'
 
 module Jiggler
   class Manager
-    include Support::Component
+    include Support::Helper
 
     def initialize(config, collection)
       @workers = Set.new
@@ -22,15 +21,15 @@ module Jiggler
       @workers.each(&:run)
     end
 
-    def quite
+    def suspend
       return if @done
 
       @done = true
-      @workers.each(&:quite)
+      @workers.each(&:suspend)
     end
 
     def terminate
-      quite
+      suspend
       schedule_shutdown
       wait_for_workers
     end
@@ -41,7 +40,6 @@ module Jiggler
       logger.info('Waiting for workers to finish...')
       @workers.each(&:wait)
       @shutdown_task.stop
-      logger.info('All workers finished')
     end
 
     def schedule_shutdown
@@ -56,7 +54,7 @@ module Jiggler
 
     def init_worker
       Jiggler::Worker.new(
-        config, @collection, &method(:process_worker_result)
+        @config, @collection, &method(:process_worker_result)
       )
     end
 

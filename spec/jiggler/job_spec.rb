@@ -43,25 +43,33 @@ RSpec.describe Jiggler::Job do
   describe '.with_options' do
     it 'allows to override options on job level' do
       expect { MyJob.with_options(queue: 'woo').enqueue }.to change { 
-        Jiggler.config.redis_pool.acquire { |conn| conn.call('LLEN', 'jiggler:list:woo') }
+        Jiggler.config.client_redis_pool.acquire { |conn| conn.call('LLEN', 'jiggler:list:woo') }
       }.by(1)
-      Jiggler.config.redis_pool.acquire { |conn| conn.call('DEL', 'jiggler:list:woo') }
+      Jiggler.config.client_redis_pool.acquire { |conn| conn.call('DEL', 'jiggler:list:woo') }
     end
   end
 
   describe '.enqueue' do
     it 'adds the job to the queue' do
       expect { MyJob.with_options(queue: 'mine').enqueue }.to change { 
-        Jiggler.config.redis_pool.acquire { |conn| conn.call('LLEN', 'jiggler:list:mine') }
+        Jiggler.config.client_redis_pool.acquire { |conn| conn.call('LLEN', 'jiggler:list:mine') }
       }.by(1)
-      Jiggler.config.redis_pool.acquire { |conn| conn.call('DEL', 'jiggler:list:mine') }
+      Jiggler.config.client_redis_pool.acquire { |conn| conn.call('DEL', 'jiggler:list:mine') }
     end
   end
 
   describe '.enqueue_in' do
     it 'adds the job to the scheduled set' do
       expect { MyJob.with_options(queue: 'mine').enqueue_in(1) }.to change { 
-        Jiggler.config.redis_pool.acquire do |conn| 
+        Jiggler.config.client_redis_pool.acquire do |conn| 
+          conn.call('ZCARD', Jiggler.config.scheduled_set) 
+        end
+      }.by(1)
+    end
+
+    it 'supports multiple args' do
+      expect { MyJobWithArgs.with_options(queue: 'mine').enqueue_in(1, '1', 1, 1.0, true, [1], { '1' => 1 }) }.to change { 
+        Jiggler.config.client_redis_pool.acquire do |conn| 
           conn.call('ZCARD', Jiggler.config.scheduled_set) 
         end
       }.by(1)
@@ -79,7 +87,7 @@ RSpec.describe Jiggler::Job do
 
     it 'adds the jobs to the queue' do
       expect { MyJobWithArgs.enqueue_bulk(args_arr) }.to change { 
-        Jiggler.config.redis_pool.acquire { |conn| conn.call('LLEN', 'jiggler:list:default') }
+        Jiggler.config.client_redis_pool.acquire { |conn| conn.call('LLEN', 'jiggler:list:default') }
       }.by(3)
     end
   end

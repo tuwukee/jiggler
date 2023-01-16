@@ -2,7 +2,7 @@
 
 module Jiggler
   class Retrier
-    include Support::Component
+    include Support::Helper
 
     attr_reader :config, :collection
 
@@ -28,7 +28,7 @@ module Jiggler
       process_retry(instance, parsed_job, queue, err)
       collection.incr_failures
       
-      handle_exception(
+      log_error(
         err,
         { 
           context: '\'Job raised exception\'',
@@ -70,7 +70,7 @@ module Jiggler
       end
       parsed_job['attempt'] = count
       parsed_job['queue'] = job_class.retry_queue
-      payload = JSON.generate(parsed_job)
+      payload = Oj.dump(parsed_job, mode: :compat)
 
       config.with_async_redis do |conn|
         conn.call('ZADD', config.retries_set, retry_at.to_s, payload)
@@ -89,7 +89,7 @@ module Jiggler
       logger.warn('Retrier') { 
         "#{parsed_job['name']} has been sent to dead jid=#{parsed_job['jid']}"
       }
-      payload = JSON.generate(parsed_job)
+      payload = Oj.dump(parsed_job, mode: :compat)
       now = Time.now.to_f
 
       config.with_async_redis do |conn|

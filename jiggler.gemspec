@@ -5,12 +5,12 @@ require_relative './lib/jiggler/version'
 Gem::Specification.new do |s|
   s.name        = 'jiggler'
   s.version     = Jiggler::VERSION
-  s.summary     = 'TBD'
-  s.description = 'TBD'
+  s.summary     = 'Ruby background job processor'
+  s.description = 'Ruby background job processor using Redis and Async'
   s.authors     = ['Julija Alieckaja', 'Artsiom Kuts']
   s.email       = 'julija.alieckaja@gmail.com'
   s.homepage    = 'https://rubygems.org/gems/jiggler'
-  s.license     = 'MIT'
+  s.license     = 'LGPL-3.0'
   
   s.executables   = ['jiggler']
   s.files         = Dir['lib/**/*', 'LICENSE', 'README.md', 'CHANGELOG.md']
@@ -28,6 +28,7 @@ Gem::Specification.new do |s|
   s.add_dependency 'async-io', '~> 1.34'
   s.add_dependency 'async-pool', '~> 0.3'
   s.add_dependency 'redis-client', '~> 0.11'
+  s.add_dependency 'oj', '~> 3.13'
 
   s.add_development_dependency 'bundler', '~> 2.3'
   s.add_development_dependency 'rake', '~> 13.0'

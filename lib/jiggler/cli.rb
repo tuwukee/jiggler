@@ -2,10 +2,10 @@
 
 require 'singleton'
 require 'optparse'
-require 'async/io/trap'
-require 'erb'
-require 'debug'
 require 'yaml'
+require 'async'
+require 'async/io/trap'
+require 'async/pool'
 
 module Jiggler
   class CLI
@@ -13,7 +13,7 @@ module Jiggler
     CONTEXT_SWITCHER_THRESHOLD = 0.5
 
     attr_reader :logger, :config, :environment
-    
+
     SIGNAL_HANDLERS = {
       :INT => ->(cli) {
         cli.logger.fatal('Received INT, shutting down')
@@ -25,44 +25,45 @@ module Jiggler
       },
       :TSTP => ->(cli) {
         cli.logger.info('Received TSTP, no longer accepting new work')
-        cli.quite
-      },
-      :TTIN => ->(cli) {
-        # log running tasks here (+ backtrace)
+        cli.suspend
       }
     }
     UNHANDLED_SIGNAL_HANDLER = ->(cli) { cli.logger.info('No signal handler registered, ignoring') }
     SIGNAL_HANDLERS.default = UNHANDLED_SIGNAL_HANDLER
     SIGNAL_HANDLERS.freeze
     
-    def parse(args = ARGV.dup)
+    def parse_and_init(args = ARGV.dup)
       @config ||= Jiggler.config
 
       setup_options(args)
-      Jiggler.run_configuration
       initialize_logger
       validate!
+      load_app
     end
 
     def start
+      @cond = Async::Condition.new
       Async do
-        load_app
         setup_signal_handlers
         patch_scheduler
         @launcher = Launcher.new(config)
         @launcher.start
+        Async do
+          @cond.wait
+        end
       end
       @switcher&.exit
     end
 
     def stop
-      logger.info('Stopping Jiggler, bye!')
       @launcher.stop
+      logger.info('Jiggler is stopped, bye!')
+      @cond.signal
     end
 
-    def quite
-      logger.debug('Quietly shutting down Jiggler')
-      @launcher.quite
+    def suspend
+      @launcher.suspend
+      logger.info('Jiggler is suspended')
     end
 
     private
@@ -112,7 +113,7 @@ module Jiggler
     end
 
     def setup_signal_handlers
-      SIGNAL_HANDLERS.map do |signal, handler|
+      SIGNAL_HANDLERS.each do |signal, handler|
         trap = Async::IO::Trap.new(signal)
         trap.install!
         Async(transient: true) do
@@ -128,7 +129,11 @@ module Jiggler
     end
 
     def validate!
-      [:concurrency, :timeout].each do |opt|
+      if config[:queues].any? { |q| q.include?(':') }
+        raise ArgumentError, 'Queue names cannot contain colons'
+      end
+
+      [:concurrency, :client_concurrency, :timeout].each do |opt|
         raise ArgumentError, "#{opt}: #{config[opt]} is not a valid value" if config[opt].to_i <= 0
       end
     end
@@ -142,7 +147,7 @@ module Jiggler
 
     def option_parser(opts)
       parser = OptionParser.new do |o|
-        o.on '-c', '--concurrency INT', 'Number of fibers to use' do |arg|
+        o.on '-c', '--concurrency INT', 'Number of fibers to use on the server' do |arg|
           opts[:concurrency] = Integer(arg)
         end
 
@@ -192,12 +197,6 @@ module Jiggler
 
       set_environment(opts)
 
-      if opts[:config_file]
-        unless File.exist?(opts[:config_file])
-          raise ArgumentError, "No such file #{opts[:config_file]}"
-        end
-      end
-
       opts = parse_config(opts[:config_file]).merge(opts) if opts[:config_file]
       opts[:queues] = [Jiggler::Config::DEFAULT_QUEUE] if opts[:queues].nil?
       opts[:server_mode] = true # cli starts only in server mode
@@ -233,14 +232,19 @@ module Jiggler
       opts.delete(:strict)
 
       opts
+    rescue => error
+      raise ArgumentError, "Error parsing config file: #{error.message}"
     end
 
     def load_app
       if config[:require].nil? || config[:require].empty?
         logger.warn('No require option specified. Please specify a Ruby file to require with --require')
-        # exit(1)
+        # allow to start empty server
         return
       end
+      # the code required by this file is expected to call Jiggler.configure
+      # thus it'll be executed in the context of the current process
+      # and apply the configuration for the server
       require config[:require]
     rescue LoadError => e
       logger.fatal("Could not load jobs: #{e.message}")

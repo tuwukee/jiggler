@@ -1,22 +1,21 @@
 #!/usr/bin/env ruby
 
 # command: bundle exec bin/jigglerload
-# bundle exec bin/jiggler -v -r ./spec/fixtures/jobs
-
-# require_relative '../lib/jiggler'
-# require_relative '../lib/jiggler/cli'
 
 # require 'debug'
-
-
 # require 'jiggler'
 # require 'jiggler/cli'
 
 # require 'ruby-prof'
-
 # require 'heap-profiler'
 
-require_relative '../lib/jiggler/support/component'
+require 'uri'
+require 'net/http'
+require 'pg'
+require 'connection_pool'
+require 'async/http/internet'
+
+require_relative '../lib/jiggler/support/helper'
 require_relative '../lib/jiggler/scheduled/enqueuer'
 require_relative '../lib/jiggler/scheduled/poller'
 require_relative '../lib/jiggler/stats/collection'
@@ -37,16 +36,23 @@ require_relative '../lib/jiggler/version'
 require_relative '../lib/jiggler/core'
 require_relative '../lib/jiggler/cli'
 
-Jiggler.config[:server_mode] = true
+CONCURRENCY = 10
+ITERATIONS = 1
+BATCH = 10_000
 
-Jiggler.configure_server do |config|
-  config[:poll_interval] = 2
-  config[:concurrency] = 10
+# $internet = Async::HTTP::Internet.new
+# $pg_pool = ConnectionPool.new(size: CONCURRENCY) { PG.connect(dbname: 'test', password: 'test', user: 'test') }
+
+Jiggler.configure do |config|
+  config[:poll_interval] = 5
+  config[:concurrency] = CONCURRENCY
+  config[:client_concurrency] = 1
+  # config[:redis_url] = "redis://jiggler_redis:6379"
+  config[:timeout] = 100
   config.logger.level = Logger::WARN
 end
-Jiggler.run_configuration
 
-Sync { Jiggler.config.cleaner.prune_all }
+Jiggler.config.cleaner.prune_all
 
 class LoadJob
   include Jiggler::Job
@@ -60,31 +66,38 @@ class LoadJob
     end
   end
 
-  def perform(idx, ts = nil)
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    sleep 0.01
-    fib(33)
-    sleep 0.5
-    fib(20)
-    puts "#{idx} ended task #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - start}\n"
+  def async_get_request
+    uri = "https://127.0.0.1/hello"
+    res = $internet.get(uri)
+    res.finish
+    puts "Request Error!!!" unless res.status == 200
+  end
+
+  def net_http_get_request
+    uri = URI("https://127.0.0.1/hello")
+    res = Net::HTTP.get_response(uri)
+    puts "Request Error!!!" unless res.is_a?(Net::HTTPSuccess)
+  end
+
+  def pg_query
+    $pg_pool.with do |conn|
+      conn.exec("SELECT *, pg_sleep(0.1) FROM pg_stat_activity")
+    end
+  end
+
+  def file_io(id)
+    File.open("/tmp/logs/test.txt", "a") { |f| f.write("#{id}\n") }
+  end
+
+  def perform(id)
   end
 end
 
-cli = Jiggler::CLI.instance
-
-iter = 1
-count = 100
-Jiggler.logger.warn "Uploading #{count * iter} jobs..."
-Sync do
-  iter.times do |i|
-    arr = Array.new(count) { |idx| [idx] }
-    LoadJob.enqueue_bulk(arr)
-  end
-end
-Jiggler.logger.warn "Created #{count * iter} jobs"
-
-def get_rss(pid)
-  `ps -o rss= -p #{pid}`.chomp.to_i
+def get_rss_cpu(pid, cpus = nil)
+  data = `ps -o rss,%cpu= -p #{pid}`.split("\n").last.strip.split(" ")
+  cpu = data[1].to_f.round(2)
+  cpus << cpu if !cpus.nil? && cpu > 0
+  "RSS: #{data[0]} %CPU: #{cpu}"
 end
 
 def jobs_count
@@ -95,13 +108,25 @@ def jobs_count
   end
 end
 
+count = ITERATIONS * BATCH
+
+Jiggler.logger.warn "Uploading #{count} jobs..."
+
+ITERATIONS.times do |i|
+  arr = Array.new(BATCH) { |id| [id] }
+  LoadJob.enqueue_bulk(arr)
+end
+Jiggler.logger.warn "Created #{count} jobs"
+total = jobs_count
+Jiggler.logger.warn("--------->>> Main process before fork: #{get_rss_cpu(Process.pid)} Pending: #{total}")
+
 real_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 p2 = fork do
   cli = Jiggler::CLI.instance
 
   def start_jiggler(cli)
     begin
-      cli.parse
+      cli.parse_and_init
   
       cli.config.logger.warn("Jiggler is starting for LOAD TEST ✯⸜(*❛‿❛)⸝✯")
       cli.config.logger.warn("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config[:queues].join(',')}")
@@ -116,22 +141,21 @@ p2 = fork do
 end
 
 start = Time.now
-total = jobs_count
-Jiggler.logger.warn("RSS: #{get_rss(p2)} Pending: #{total}")
+cpus = [0]
 loop do
-  sleep 2.0
   total = jobs_count
-  Jiggler.logger.warn("RSS: #{get_rss(p2)} Pending: #{total}")
-  # Sync { Jiggler.logger.warn(Jiggler.summary) }
+  Jiggler.logger.warn("#{get_rss_cpu(p2, cpus)} Pending: #{total} Time: #{(Time.now - start).round(2)} sec")
   if total == 0
-    Jiggler.logger.warn("RSS: #{get_rss(p2)} Pending: #{total}")
-    Jiggler.logger.warn("Done, #{iter * count} jobs in #{Time.now - start} sec")
+    Jiggler.logger.warn("Done, #{count} jobs in #{Time.now - start} sec")
     break
   end
+  sleep 2
 end
+Jiggler.logger.warn("Sending INT...")
 Process.kill("INT", p2)
 Process.wait(p2)
-Jiggler.logger.warn "real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}"
+Jiggler.logger.warn("Real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}")
+Jiggler.logger.warn("CPU usage is: #{cpus.sum / cpus.size}")
 
 # -> RubyProf
 # RubyProf.exclude_threads = [Monitoring]

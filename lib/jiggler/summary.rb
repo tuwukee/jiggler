@@ -16,17 +16,19 @@ module Jiggler
 
     def initialize(config)
       @config = config
+      @scan_processes_index = '0'
+      @scan_queues_index = '0'
     end
 
     def all
       summary = {}
-      collected_data = config.redis_pool.acquire do |conn|
+      collected_data = config.client_redis_pool.acquire do |conn|
         data = conn.pipelined do |pipeline|
           pipeline.call('ZCARD', config.retries_set)
           pipeline.call('ZCARD', config.dead_set)
           pipeline.call('ZCARD', config.scheduled_set)
-          pipeline.call('GET', Jiggler::Stats::Monitor::FAILURES_COUNTER)
-          pipeline.call('GET', Jiggler::Stats::Monitor::PROCESSED_COUNTER)
+          pipeline.call('GET', config.failures_counter)
+          pipeline.call('GET', config.processed_counter)
         end
         [*data, fetch_and_format_processes(conn), fetch_and_format_queues(conn)]
       end
@@ -39,48 +41,53 @@ module Jiggler
     end
 
     def last_retry_jobs(num)
-      config.redis_pool.acquire do |conn|
+      config.client_redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.retries_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num)
-      end.map { |job| JSON.parse(job) }
+      end.map { |job| Oj.load(job, mode: :compat) }
     end
 
     def last_scheduled_jobs(num)
-      config.redis_pool.acquire do |conn|
+      config.client_redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.scheduled_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num, 'WITHSCORES')
       end.map do |(job, score)|
-        JSON.parse(job).merge('scheduled_at' => score)
+        Oj.load(job).merge('scheduled_at' => score)
       end
     end
 
     def last_dead_jobs(num)
-      config.redis_pool.acquire do |conn|
+      config.client_redis_pool.acquire do |conn|
         conn.call('ZRANGE', config.dead_set, '+inf', '-inf', 'BYSCORE', 'REV', 'LIMIT', 0, num)
-      end.map { |job| JSON.parse(job) }
+      end.map { |job| Oj.load(job, mode: :compat) }
     end
 
     private
 
+    def fetch_processes(conn)
+      # in case they keys were deleted scan still return the old keys sometimes
+      @scan_processes_index, res = conn.call('SCAN', @scan_processes_index, 'MATCH', config.process_scan_key)
+      res
+    end
+
     def fetch_and_format_processes(conn)
-      conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last.reduce({}) do |acc, uuid|
-        process_data = conn.call('GET', uuid)
-        process_data = JSON.parse(process_data)
+      fetch_processes(conn).reduce({}) do |acc, uuid|
+        process_data = Oj.load(conn.call('GET', uuid), mode: :compat) || {}
         values = uuid.split(':')
         acc[uuid] = process_data.merge({
-          'name' => "jiggler:#{values[2]}",
-          'hostname' => values[3],
-          'concurrency' => values[4],
-          'timeout' => values[5],
-          'queues' => values[6],
-          'poller_enabled' => values[7] == '1',
-          'started_at' => values[8],
-          'pid' => values[9]
+          'name' => values[0..2].join(':'),
+          'concurrency' => values[3],
+          'timeout' => values[4],
+          'queues' => values[5],
+          'poller_enabled' => values[6] == '1',
+          'started_at' => values[7],
+          'pid' => values[8]
         })
+        acc[uuid]['hostname'] = values[9..-1].join(':')
         acc
       end
     end
 
     def fetch_and_format_queues(conn)
-      lists = conn.call('SCAN', '0', 'MATCH', config.queue_scan_key).last
+      @scan_queues_index, lists = conn.call('SCAN', @scan_queues_index, 'MATCH', config.queue_scan_key)
       lists_data = {}
 
       collected_data = conn.pipelined do |pipeline|

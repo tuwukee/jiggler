@@ -8,8 +8,8 @@ module Jiggler
       @config = config
     end
 
-    def prune_all
-      config.redis_pool.acquire do |conn|
+    def prune_all(pool: config.client_redis_pool)
+      pool.acquire do |conn|
         conn.pipelined do |pipeline|
           prn_retries_set(pipeline)
           prn_scheduled_set(pipeline)
@@ -22,67 +22,76 @@ module Jiggler
       end
     end
 
-    def prune_failures_counter
-      config.redis_pool.acquire do |conn|
+    def prune_failures_counter(pool: config.client_redis_pool)
+      pool.acquire do |conn|
         prn_failures_counter(conn)
       end
     end
 
-    def prune_processed_counter
-      config.redis_pool.acquire do |conn|
+    def prune_processed_counter(pool: config.client_redis_pool)
+      pool.acquire do |conn|
         prn_processed_counter(conn)
       end
     end
 
-    def prune_all_processes
-      config.redis_pool.acquire do |conn|
+    def prune_all_processes(pool: config.client_redis_pool)
+      pool.acquire do |conn|
         prn_all_processes(conn)
       end
     end
 
-    def prune_process(name)
-      hex = name.split(':').last
-      config.redis_pool.acquire do |conn|
-        processes = conn.call('SCAN', '0', 'MATCH', "#{config.server_prefix}#{hex}*").last
+    # uses full process uuid, it's not exposed in the web UI
+    # can be seen in raw Jiggler.summary
+    def prune_process(uuid:, pool: config.client_redis_pool)
+      pool.acquire do |conn|
+        conn.call('DEL', uuid)
+      end
+    end
+    
+    # hex is exposed in the web UI
+    # should look like jiggler:svr:74426a5e67db
+    def prune_process_by_hex(hex:, pool: config.client_redis_pool)
+      pool.acquire do |conn|
+        processes = conn.call('SCAN', '0', 'MATCH', "#{hex}*").last
         count = processes.count
         if count == 0
-          config.logger.error("No process found for #{name}")
+          config.logger.error("No process found for #{hex}")
           return
         elsif count > 1
-          config.logger.error("Multiple processes found for #{name}, not pruning #{processes}")
+          config.logger.error("Multiple processes found for #{hex}, not pruning #{processes}")
           return
         end
         conn.call('DEL', processes.first)
       end
     end
 
-    def prune_dead_set
-      config.redis_pool.acquire do |conn|
+    def prune_dead_set(pool: config.client_redis_pool)
+      pool.acquire do |conn|
         prn_dead_set(conn)
       end
     end
 
-    def prune_retries_set
-      config.redis_pool.acquire do |conn|
+    def prune_retries_set(pool: config.client_redis_pool)
+      pool.acquire do |conn|
         prn_retries_set(conn)
       end
     end
 
-    def prune_scheduled_set
-      config.redis_pool.acquire do |conn|
+    def prune_scheduled_set(pool: config.client_redis_pool)
+      pool.acquire do |conn|
         prn_scheduled_set(conn)
       end
     end
 
-    def prune_all_queues
-      config.redis_pool.acquire do |conn|
+    def prune_all_queues(pool: config.client_redis_pool)
+      pool.acquire do |conn|
         prn_all_queues(conn)
       end
     end
 
-    def prune_queue(queue_name)
-      config.redis_pool.acquire do |conn|
-        conn.call('DEL', "#{config.queue_prefix}#{queue_name}")
+    def prune_queue(name:, pool: config.client_redis_pool)
+      pool.acquire do |conn|
+        conn.call('DEL', "#{config.queue_prefix}#{name}")
       end
     end
 
@@ -111,11 +120,11 @@ module Jiggler
     end
 
     def prn_failures_counter(conn)
-      conn.call('DEL', Jiggler::Stats::Monitor::FAILURES_COUNTER)
+      conn.call('DEL', config.failures_counter)
     end
 
     def prn_processed_counter(conn)
-      conn.call('DEL', Jiggler::Stats::Monitor::PROCESSED_COUNTER)
+      conn.call('DEL', config.processed_counter)
     end
   end
 end

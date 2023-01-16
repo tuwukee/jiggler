@@ -5,9 +5,9 @@
 module Jiggler
   module Scheduled    
     class Poller
-      include Support::Component
+      include Support::Helper
 
-      INITIAL_WAIT = 10
+      INITIAL_WAIT = 5
 
       def initialize(config)
         @config = config
@@ -40,9 +40,10 @@ module Jiggler
       end
 
       def enqueue
+        # logger.warn("Poller runs")
         @enqueuer.enqueue_jobs
       rescue => ex
-        handle_exception(
+        log_error(
           ex, { context: '\'Error while enqueueing jobs\'', tid: @tid }
         )
       end
@@ -56,7 +57,7 @@ module Jiggler
         end
         @condition.wait
       rescue => ex
-        handle_exception(
+        log_error(
           ex, { context: '\'Error while waiting for scheduled jobs\'', tid: @tid }
         )
       end
@@ -73,21 +74,28 @@ module Jiggler
       end
 
       def process_count
-        pcount = config.with_sync_redis do |conn| 
-          conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last.size
+        pcount = @config.with_sync_redis do |conn| 
+          conn.call('SCAN', '0', 'MATCH', @config.process_scan_key).last.size
         end
         pcount = 1 if pcount == 0
         pcount
       end
 
+      # wait a random amount of time so in case of multiple processes 
+      # their pollers won't be synchronized
       def initial_wait
-        total = INITIAL_WAIT + (5 * rand)
+        total = INITIAL_WAIT + (12 * rand)
 
+        # in case of an early exit skip the initial wait
         Async(transient: true) do
           sleep(total)
           @condition.signal
         end
         @condition.wait
+      rescue => ex
+        log_error(
+          ex, { context: '\'Error on initial wait\'', tid: @tid }
+        )
       end
     end
   end

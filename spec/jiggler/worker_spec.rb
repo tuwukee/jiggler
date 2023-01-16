@@ -5,8 +5,7 @@ RSpec.describe Jiggler::Worker do
     Jiggler::Config.new(
       concurrency: 1,
       timeout: 1,
-      queues: ['default', 'test'],
-      server_mode: true
+      queues: ['default', 'test']
     ) 
   end
   let(:collection) { Jiggler::Stats::Collection.new(config) }

@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 require 'redis_client'
-require 'async/pool'
 
 module Jiggler
   class RedisStore
