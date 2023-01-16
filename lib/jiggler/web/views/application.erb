@@ -53,7 +53,7 @@
         </thead>
         <tbody>
           <% @summary['processes'].each do |uuid, data| %>
-            <tr>
+            <tr class=<%= heartbeat_class(data['heartbeat']) %>>
               <td colspan='5' title='Process'>
                 <span><%= "#{data['name']} - #{data['hostname']}" %></span>
                 <%= poller_badge(data['poller_enabled']) %>
@@ -69,11 +69,11 @@
               <td colspan='2' title='RSS' class='right'>
                 <span><%= format_memory(data['rss']) %></span>
               </td>
-              <td colspan='1' title='Heartbeat' class='right'>
-                <span><%= format_datetime(data['heartbeat']) %></span>
+              <td colspan='1' title=<%= format_datetime(data['heartbeat']) %> class='right'>
+                <span><%= time_ago_in_words(data['heartbeat']) %></span>
               </td>
-              <td colspan='1' title='Started' class='right'>
-                <span><%= format_datetime(data['started_at']) %></span>
+              <td colspan='1' title=<%= format_datetime(data['started_at']) %> class='right'>
+                <span><%= time_ago_in_words(data['started_at']) %></span>
               </td>
             </tr>
           <% end %>
@@ -154,8 +154,8 @@
                 <td colspan='2' title='Arguments'>
                   <span><%= job_data['job_args']['args'] %></span>
                 </td>
-                <td colspan='2' title='Started'>
-                  <span><%= format_datetime(job_data['started_at']) %></span>
+                <td colspan='2' title=<%= format_datetime(data['started_at']) %>>
+                  <span><%= time_ago_in_words(data['started_at']) %></span>
                 </td>     
               </tr>           
             <% end %>
@@ -218,13 +218,13 @@
                 <td colspan='1' title='Attempt' class='right'>
                   <span><%= data['attempt'] %></span>
                 </td>
-                <td colspan='1' title='Started' class='right'>
-                  <span><%= format_datetime(data['started_at']) %></span>
+                <td colspan='1' title=<%= format_datetime(data['started_at']) %> class='right'>
+                  <span><%= time_ago_in_words(data['started_at']) %></span>
                 </td>
-                <td colspan='1' title='Retried' class='right'>
-                  <span><%= format_datetime(data['retried_at']) %></span>
+                <td colspan='1' title=<%= format_datetime(data['retried_at']) %> class='right'>
+                  <span><%= time_ago_in_words(data['retried_at']) %></span>
                 </td>
-                <td colspan='1' title='To Retry At' class='right'>
+                <td colspan='1' title=<%= format_datetime(data['retry_at']) %> class='right'>
                   <span><%= format_datetime(data['retry_at']) %></span>
                 </td>
               </tr>
@@ -258,7 +258,7 @@
                 <td colspan='6' title='Args'>
                   <span><%= data['args'] %></span>
                 </td>
-                <td colspan='2' title='Scheduled At' class='right'>
+                <td colspan='2' title=<%= format_datetime(data['scheduled_at']) %> class='right'>
                   <span><%= format_datetime(data['scheduled_at']) %></span>
                 </td>
               </tr>
@@ -313,11 +313,11 @@
                 <td colspan='2' title='Args'>
                   <span><%= data['args'] %></span>
                 </td>
-                <td colspan='1' title='Started' class='right'>
-                  <span><%= format_datetime(data['started_at']) %></span>
+                <td colspan='1' title=<%= format_datetime(data['started_at']) %> class='right'>
+                  <span><%= time_ago_in_words(data['started_at']) %></span>
                 </td>
-                <td colspan='1' title='Retried' class='right'>
-                  <span><%= format_datetime(data['retried_at']) %></span>
+                <td colspan='1' title=<%= format_datetime(data['retried_at']) %> class='right'>
+                  <span><%= time_ago_in_words(data['retried_at']) %></span>
                 </td>
               </tr>
             <% end %>

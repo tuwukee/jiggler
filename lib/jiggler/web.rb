@@ -37,6 +37,33 @@ module Jiggler
       "#{(kb/1024.0).round(2)} MB"
     end
 
+    def time_ago_in_words(timestamp)
+      return if timestamp.nil?
+      seconds = Time.now.to_i - timestamp.to_i
+      case seconds
+      when 0..59
+        "#{seconds} seconds ago"
+      when 60..3599
+        "#{(seconds/60).round} minutes ago"
+      when 3600..86399
+        "#{(seconds/3600).round} hours ago"
+      when 86400..604799
+        "#{(seconds/86400).round} days ago"
+      else
+        "#{(seconds/604800).round} weeks ago"
+      end
+    end
+
+    def heartbeat_class(timestamp)
+      return 'outdated' if outdated_heartbeat?(timestamp)
+    end
+
+    def outdated_heartbeat?(timestamp)
+      return true if timestamp.nil?
+      seconds = Time.now.to_i - timestamp.to_i
+      seconds > Jiggler.config[:stats_interval] * 2
+    end
+
     def poller_badge(poller_enabled)
       poller_enabled ? '<span class=\'badge badge-success\'>Polling</span>' : '<span class=\'badge\'>Polling Disabled</span>'
     end

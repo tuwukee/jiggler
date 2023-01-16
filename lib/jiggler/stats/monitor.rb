@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+require 'debug'
 
 module Jiggler
   module Stats
@@ -15,7 +16,7 @@ module Jiggler
         # the key expiration should be greater than the stats interval
         # to avoid cases where the monitor is blocked
         # by long running workers and the key is not updated in time
-        @exp = @config[:stats_interval] + 300 # interval + 5 minutes
+        @exp = @config[:stats_interval] + 180 # interval + 3 minutes
         @rss_path = "/proc/#{Process.pid}/status"
       end
 
@@ -26,13 +27,13 @@ module Jiggler
             load_data_into_redis
             wait unless @done
           end
+          cleanup
         end
       end
 
       def terminate
         @condition.signal
         @done = true
-        cleanup
       end
   
       def process_data
@@ -78,7 +79,7 @@ module Jiggler
       end
 
       def cleanup
-        config.cleaner.prune_process(uuid: collection.uuid, pool: config.redis_pool)
+        config.with_sync_redis { |conn| conn.call('DEL', collection.uuid) }
       end
 
       def wait

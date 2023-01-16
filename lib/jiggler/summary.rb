@@ -61,7 +61,10 @@ module Jiggler
     private
 
     def fetch_processes(conn)
-      conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last
+      # in case they keys were deleted in the meantime
+      # scan/keys still return the old keys sometimes
+      # conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last
+      conn.call('KEYS', config.process_scan_key)
     end
 
     def fetch_and_format_processes(conn)
