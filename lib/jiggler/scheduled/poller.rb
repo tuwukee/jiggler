@@ -65,15 +65,19 @@ module Jiggler
         end
       end
 
-      def process_count
-        pcount = @config.with_sync_redis do |conn| 
+      def fetch_count
+        @config.with_sync_redis do |conn| 
           conn.call('SCAN', '0', 'MATCH', @config.process_scan_key).last.size
         rescue => err
           log_error_short(err, { context: '\'Poller getting processes error\'', tid: @tid })
           1
         end
-        pcount = 1 if pcount == 0
-        pcount
+      end
+
+      def process_count
+        count = fetch_count
+        count = 1 if count == 0
+        count
       end
 
       # wait a random amount of time so in case of multiple processes 

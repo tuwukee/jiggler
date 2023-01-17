@@ -72,11 +72,7 @@ module Jiggler
 
         @lua_zpopbyscore_sha = nil
         retry
-      end
-
-      def logger
-        @config.logger
-      end      
+      end     
     end
   end
 end
