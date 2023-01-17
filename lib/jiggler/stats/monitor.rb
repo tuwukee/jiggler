@@ -26,13 +26,13 @@ module Jiggler
             load_data_into_redis
             wait unless @done
           end
-          cleanup
         end
       end
 
       def terminate
         @condition.signal
         @done = true
+        cleanup
       end
   
       def process_data
@@ -44,7 +44,7 @@ module Jiggler
       end
 
       def load_data_into_redis
-        # logger.warn("Monitor runs")
+        # logger.warn('Monitor runs')
         processed_jobs = collection.data[:processed]
         failed_jobs = collection.data[:failures]
         collection.data[:processed] -= processed_jobs
@@ -56,11 +56,11 @@ module Jiggler
             pipeline.call('INCRBY', config.processed_counter, processed_jobs)
             pipeline.call('INCRBY', config.failures_counter, failed_jobs)
           end
+
+          cleanup_with(conn) if @done
+        rescue => err
+          log_error_short(err, { context: '\'Monitor loading stats error\'', tid: @tid })
         end
-      rescue => ex
-        log_error(
-          ex, { context: '\'Error while loading stats into redis\'', tid: @tid }
-        )
       end
 
       def process_rss
@@ -78,7 +78,11 @@ module Jiggler
       end
 
       def cleanup
-        config.with_sync_redis { |conn| conn.call('DEL', collection.uuid) }
+        config.with_async_redis do |conn| 
+          cleanup_with(conn)
+        rescue => err
+          log_error_short(err, { context: '\'Cleanup error\'', tid: @tid })
+        end
       end
 
       def wait
@@ -87,10 +91,12 @@ module Jiggler
           @condition.signal
         end
         @condition.wait
-      rescue => ex
-        log_error(
-          ex, { context: '\'Error while waiting for stats\'', tid: @tid }
-        )
+      end
+
+      private
+
+      def cleanup_with(conn)
+        conn.call('DEL', collection.uuid)
       end
     end
   end

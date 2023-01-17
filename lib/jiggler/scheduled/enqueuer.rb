@@ -3,6 +3,8 @@
 module Jiggler
   module Scheduled
     class Enqueuer
+      include Support::Helper
+
       LUA_ZPOPBYSCORE = <<~LUA
         local key, now = KEYS[1], ARGV[1]
         local jobs = redis.call('zrangebyscore', key, '-inf', now, 'limit', 0, 1)
@@ -16,6 +18,7 @@ module Jiggler
         @config = config
         @done = false
         @lua_zpopbyscore_sha = nil
+        @tid = tid
       end
 
       def enqueue_jobs
@@ -28,6 +31,8 @@ module Jiggler
               job_args = zpopbyscore(conn, key: sorted_set, argv: Time.now.to_f.to_s)
             end
           end
+        rescue => err
+          log_error_short(err, { context: '\'Enqueuing jobs error\'', tid: @tid })
         end
       end
 
@@ -41,7 +46,14 @@ module Jiggler
         # logger.debug('Poller Enqueuer') { "Pushing #{job_args} to #{list_name}" }
         conn.call('LPUSH', list_name, job_args)
       rescue => err
-        logger.error("Error while pushing #{job_args} to queue: #{err}")
+        log_error_short(
+          err, { 
+            context: '\'Pushing scheduled job error\'', 
+            tid: @tid,
+            job_args: job_args,
+            queue: list_name
+          }
+        )
       end
 
       private

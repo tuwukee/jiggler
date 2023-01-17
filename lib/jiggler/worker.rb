@@ -144,7 +144,7 @@ module Jiggler
           tid: @tid
         }
       )
-      sleep(TIMEOUT) # sleep for a while before retrying
+      sleep(TIMEOUT + rand(5) * config[:concurrency]) # sleep for a while before retrying
     end
 
     def add_current_job_to_collection(parsed_job, queue)

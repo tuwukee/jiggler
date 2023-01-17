@@ -238,7 +238,6 @@ module Jiggler
     end
 
     def ping_redis
-      # ping redis to ensure connection is valid
       config.with_sync_redis { |conn| conn.call('PING') }
       true
     rescue => err
