@@ -42,6 +42,7 @@ module Jiggler
     end
 
     def start
+      return unless ping_redis
       @cond = Async::Condition.new
       Async do
         setup_signal_handlers
@@ -234,6 +235,14 @@ module Jiggler
       opts
     rescue => error
       raise ArgumentError, "Error parsing config file: #{error.message}"
+    end
+
+    def ping_redis
+      config.with_sync_redis { |conn| conn.call('PING') }
+      true
+    rescue => err
+      logger.fatal("Redis connection error: #{err.message}")
+      false
     end
 
     def load_app

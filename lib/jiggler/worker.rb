@@ -110,7 +110,7 @@ module Jiggler
           jid: parsed_args['jid']
         }
       )
-      raise ex
+      # raise ex
     end
 
     def execute(parsed_job, queue)
@@ -137,14 +137,14 @@ module Jiggler
     end
 
     def handle_fetch_error(ex)
-      log_error(
+      log_error_short(
         ex,
         {
           context: '\'Fetch error\'',
           tid: @tid
         }
       )
-      raise ex
+      sleep(TIMEOUT + rand(5) * config[:concurrency]) # sleep for a while before retrying
     end
 
     def add_current_job_to_collection(parsed_job, queue)

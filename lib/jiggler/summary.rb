@@ -16,8 +16,6 @@ module Jiggler
 
     def initialize(config)
       @config = config
-      @scan_processes_index = '0'
-      @scan_queues_index = '0'
     end
 
     def all
@@ -63,9 +61,8 @@ module Jiggler
     private
 
     def fetch_processes(conn)
-      # in case they keys were deleted scan still return the old keys sometimes
-      @scan_processes_index, res = conn.call('SCAN', @scan_processes_index, 'MATCH', config.process_scan_key)
-      res
+      # in case they keys were deleted/modified could return incorrect results
+      conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last
     end
 
     def fetch_and_format_processes(conn)
@@ -87,7 +84,7 @@ module Jiggler
     end
 
     def fetch_and_format_queues(conn)
-      @scan_queues_index, lists = conn.call('SCAN', @scan_queues_index, 'MATCH', config.queue_scan_key)
+      lists = conn.call('SCAN', '0', 'MATCH', config.queue_scan_key).last
       lists_data = {}
 
       collected_data = conn.pipelined do |pipeline|

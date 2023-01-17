@@ -6,6 +6,7 @@ RSpec.describe Jiggler::Summary do
     Jiggler::Config.new(
       concurrency: 1,
       timeout: 1,
+      stats_interval: 1,
       queues: queues,
       poller_enabled: false
     )
@@ -29,22 +30,24 @@ RSpec.describe Jiggler::Summary do
     end
 
     it 'gets latest data' do
-      Sync { config.cleaner.prune_all }
-      task = Async do
+      Sync do
+        config.cleaner.prune_all
         launcher = Jiggler::Launcher.new(config)
         uuid = launcher.send(:uuid)
         MyJob.with_options(queue: 'queue1').enqueue
         
-        first_summary = Sync { summary.all }
+        first_summary = summary.all
         expect(first_summary['queues']).to include({
           'queue1' => 1
         })
         expect(first_summary['processes'].keys).to_not include(uuid)
         
-        launcher_task = Async { launcher.start }
         second_summary = nil
+        launcher_task = Async { launcher.start }
         stop_task = Async do
-          sleep(1)
+          sleep(2)
+          monitor = launcher.send(:monitor)
+          monitor.load_data_into_redis
           second_summary = summary.all
           launcher.stop
         end
@@ -65,7 +68,6 @@ RSpec.describe Jiggler::Summary do
           'current_jobs' => {}
         })
       end
-      task.wait
     end
 
     context 'key dissasembly' do

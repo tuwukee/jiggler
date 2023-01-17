@@ -225,9 +225,16 @@ end
 Conceptually Jiggler consists of two parts: the `client` and the `server`. \
 The `client` is responsible for pushing jobs to `Redis` and allows to read stats, while the `server` reads jobs from `Redis`, processes them, and writes stats.
 
-The `client` uses `client_concurrency`, `redis_url` (this one is reused by the `server`) and `async_client` settings. The rest of the settings are `server` specific. On default the `client` uses sync `Redis` connections. It's possible to configure it to be async as well via setting `client_async` to `true`. More info below. \
 The `server` uses async `Redis` connections. \
-The configuration can be skipped if you're using the default values.
+The `client` on default is `sync`. It's possible to configure the client to be async as well via setting `client_async` to `true`. More info below. \
+Client settings are:
+- `client_concurrency`
+- `async_client`
+- `redis_url` (this one is shared with the `server`)
+
+The rest of the settings are `server` specific. 
+
+**NOTE**: `require "jiggler"` loads only client classes. It doesn't include `async` lib, this dependency is being required only within the `server` part.
 
 ```ruby
 require "jiggler"

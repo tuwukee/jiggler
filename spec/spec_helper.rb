@@ -4,6 +4,7 @@ require 'debug'
 
 # client
 require 'jiggler'
+require 'jiggler/web'
 
 # server
 require 'jiggler/support/helper'
