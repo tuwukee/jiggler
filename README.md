@@ -17,6 +17,11 @@ Install the gem:
 gem install jiggler
 ```
 
+Use `--pre` for release candidates:
+```
+gem install jiggler --pre
+```
+
 Start Jiggler server as a separate process with bin command:
 ```
 jiggler -r <FILE_PATH>
