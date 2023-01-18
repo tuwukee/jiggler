@@ -1,13 +1,19 @@
 # frozen_string_literal: true
 
 RSpec.describe Jiggler::Worker do
-  let(:config) do
-    Jiggler::Config.new(
+  before(:all) do 
+    Jiggler.instance_variable_set(:@config, Jiggler::Config.new(
       concurrency: 1,
+      client_concurrency: 1,
       timeout: 1,
       queues: ['default', 'test']
-    ) 
+    ) )
   end
+  after(:all) do
+    Jiggler.instance_variable_set(:@config, Jiggler::Config.new)
+  end
+
+  let(:config) { Jiggler.config }
   let(:collection) { Jiggler::Stats::Collection.new(config) }
   let(:worker) do 
     described_class.new(config, collection) do

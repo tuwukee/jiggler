@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'securerandom'
-
 module Jiggler
   class Manager
     include Support::Helper

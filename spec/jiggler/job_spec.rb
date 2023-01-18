@@ -1,13 +1,18 @@
 # frozen_string_literal: true
 
 RSpec.describe Jiggler::Job do
-  let(:config) do
-    Jiggler::Config.new(
+  before(:all) do 
+    Jiggler.instance_variable_set(:@config, Jiggler::Config.new(
       concurrency: 1,
+      client_concurrency: 1,
       timeout: 1,
       poller_enabled: false
-    )
+    ))
   end
+  after(:all) do
+    Jiggler.instance_variable_set(:@config, Jiggler::Config.new)
+  end
+
   describe '.job_options' do
     context 'on default' do
       let(:job) { MyJob.new }
