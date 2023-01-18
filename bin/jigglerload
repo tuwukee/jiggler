@@ -15,30 +15,32 @@
 # require 'connection_pool'
 # require 'async/http/internet'
 
-require_relative '../lib/jiggler/support/helper'
-require_relative '../lib/jiggler/scheduled/enqueuer'
-require_relative '../lib/jiggler/scheduled/poller'
-require_relative '../lib/jiggler/stats/collection'
-require_relative '../lib/jiggler/stats/monitor'
+# require_relative '../lib/jiggler/support/helper'
+# require_relative '../lib/jiggler/scheduled/enqueuer'
+# require_relative '../lib/jiggler/scheduled/poller'
+# require_relative '../lib/jiggler/stats/collection'
+# require_relative '../lib/jiggler/stats/monitor'
+# 
+# require_relative '../lib/jiggler/errors'
+# require_relative '../lib/jiggler/redis_store'
+# require_relative '../lib/jiggler/job'
+# require_relative '../lib/jiggler/config'
+# require_relative '../lib/jiggler/cleaner'
+# require_relative '../lib/jiggler/retrier'
+# require_relative '../lib/jiggler/launcher'
+# require_relative '../lib/jiggler/manager'
+# require_relative '../lib/jiggler/worker'
+# require_relative '../lib/jiggler/summary'
+# require_relative '../lib/jiggler/version'
+# 
+# require_relative '../lib/jiggler/core'
+# require_relative '../lib/jiggler/cli'
 
-require_relative '../lib/jiggler/errors'
-require_relative '../lib/jiggler/redis_store'
-require_relative '../lib/jiggler/job'
-require_relative '../lib/jiggler/config'
-require_relative '../lib/jiggler/cleaner'
-require_relative '../lib/jiggler/retrier'
-require_relative '../lib/jiggler/launcher'
-require_relative '../lib/jiggler/manager'
-require_relative '../lib/jiggler/worker'
-require_relative '../lib/jiggler/summary'
-require_relative '../lib/jiggler/version'
+require 'jiggler'
 
-require_relative '../lib/jiggler/core'
-require_relative '../lib/jiggler/cli'
-
-CONCURRENCY = 10
+CONCURRENCY = 5
 ITERATIONS = 1
-BATCH = 10_000
+BATCH = 100_000
 
 # $internet = Async::HTTP::Internet.new
 # $pg_pool = ConnectionPool.new(size: CONCURRENCY) { PG.connect(dbname: 'test', password: 'test', user: 'test') }
@@ -101,10 +103,8 @@ def get_rss_cpu(pid, cpus = nil)
 end
 
 def jobs_count
-  Sync do
-    Jiggler.config.redis_pool.acquire do |conn|
-      conn.call 'LLEN', 'jiggler:list:default'
-    end
+  Jiggler.config.client_redis_pool.acquire do |conn|
+    conn.call 'LLEN', 'jiggler:list:default'
   end
 end
 
@@ -122,6 +122,8 @@ Jiggler.logger.warn("--------->>> Main process before fork: #{get_rss_cpu(Proces
 
 real_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 p2 = fork do
+  require 'jiggler/server'
+
   cli = Jiggler::CLI.instance
 
   def start_jiggler(cli)

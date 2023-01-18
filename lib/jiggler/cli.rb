@@ -3,6 +3,7 @@
 require 'singleton'
 require 'optparse'
 require 'yaml'
+require 'set'
 require 'async'
 require 'async/io/trap'
 require 'async/pool'

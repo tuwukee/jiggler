@@ -3,6 +3,7 @@
 require 'oj'
 require 'securerandom'
 
+# namespace methods
 module Jiggler  
   def self.config
     @config ||= Jiggler::Config.new

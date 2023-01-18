@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+# This class manages the workers lifecycle
 module Jiggler
   class Manager
     include Support::Helper
