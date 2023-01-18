@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
-require 'securerandom'
-
+# This class manages the workers lifecycle
 module Jiggler
   class Manager
     include Support::Helper

@@ -61,7 +61,7 @@ module Jiggler
     private
 
     def fetch_processes(conn)
-      # in case they keys were deleted/modified could return incorrect results
+      # in case they keys were deleted/modified may return incorrect results
       conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last
     end
 

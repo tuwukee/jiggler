@@ -1,12 +1,10 @@
 # frozen_string_literal: true
 
 require 'oj'
+require 'securerandom'
 
-module Jiggler
-  def self.server?
-    config[:server_mode] == true
-  end
-  
+# namespace methods
+module Jiggler  
   def self.config
     @config ||= Jiggler::Config.new
   end
