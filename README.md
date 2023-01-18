@@ -1,4 +1,6 @@
 # jiggler
+[![Gem Version](https://badge.fury.io/rb/jiggler.svg)](https://badge.fury.io/rb/jiggler)
+
 Background job processor based on Socketry Async
 
 Jiggler is a [Sidekiq](https://github.com/mperham/sidekiq)-inspired background job processor using [Socketry Async](https://github.com/socketry/async) and [Optimized JSON](https://github.com/ohler55/oj). It uses fibers to processes jobs, making context switching lightweight. Requires Ruby 3+, Redis 6+.
@@ -46,19 +48,19 @@ end
 The parent process enqueues the jobs, starts the monitoring, and then forks the child job-processor-process. Thus, `RSS` value is affected by the number of jobs uploaded in the parent process. See `bin/jigglerload` to see the load test structure and measuring. \
 1_000_000 jobs were enqueued in 100k batches x10.
 
-| Job Processor    | Concurrency | Jobs      | Time to complete | Start RSS  | Finish RSS    |
-|------------------|-------------|-----------|------------------|------------|---------------|
-| Sidekiq 7.0.2    | 5           | 100_000   | 24.55 sec        | 128_524 kb | 106_428 kb (GC hit) |
-| Jiggler 0.1.0rc1 | 5           | 100_000   | 14.91 sec        | 93_164 kb  | 95_324 kb |
-| -                |             |           |                  |            |           |
-| Sidekiq 7.0.2    | 10          | 100_000   | 20.70 sec        | 128_440 kb | 121_176 kb (GC hit) |
-| Jiggler 0.1.0rc1 | 10          | 100_000   | 13.98 sec        | 93_060 kb  | 95_384 kb |
-| -                |             |           |                  |            |           |
-| Sidekiq 7.0.2    | 5           | 1_000_000 | 193.99 sec | 191_512 kb | 165_884 kb (GC hit) |
-| Jiggler 0.1.0rc1 | 5           | 1_000_000 | 155.69 sec | 105_256 kb | 75_108 kb (GC hit) |
+| Job Processor    | Concurrency | Jobs      | Time      | Start RSS  | Finish RSS    |
+|------------------|-------------|-----------|-----------|------------|---------------|
+| Sidekiq 7.0.2    | 5           | 100_000   | 20.01 sec | 132_080 kb | 103_168 kb (GC) |
+| Jiggler 0.1.0rc1 | 5           | 100_000   | 14.25 sec | 87_532 kb  | 91_464 kb |
+| -                |             |           |           |            |           |
+| Sidekiq 7.0.2    | 10          | 100_000   | 20.49 sec | 132_164 kb | 125_768 kb (GC) |
+| Jiggler 0.1.0rc1 | 10          | 100_000   | 13.25 sec | 87_688 kb  | 91_625 kb |
+| -                |             |           |           |            |           |
+| Sidekiq 7.0.2    | 5           | 1_000_000 | 186.90 sec | 159_712 kb | 186_224 kb |
+| Jiggler 0.1.0rc1 | 5           | 1_000_000 | 123.13 sec | 113_212 kb | 116_336 kb |
 | -                |             |           |            |            |            |
-| Sidekiq 7.0.2    | 10          | 1_000_000 | 193.51 sec | 222_212 kb | 336_560 kb |
-| Jiggler 0.1.0rc1 | 10          | 1_000_000 | 140.25 sec | 107_680 kb | 112_168 kb |
+| Sidekiq 7.0.2    | 10          | 1_000_000 | 186.94 sec | 159_000 kb | 192_780 kb |
+| Jiggler 0.1.0rc1 | 10          | 1_000_000 | 115.56 sec | 113_656 kb | 116_896 kb |
 
 
 #### IO tests
@@ -69,14 +71,14 @@ The context switching won't work well in case IO is performed by C-extentions wh
 
 ##### NET/HTTP requests
 
-Spin-up a local sinatra server to exclude network issues while testing HTTP requests (it uses `puma` for multi-threading).
+Spin-up a local sinatra app to exclude network issues while testing HTTP requests (it uses `falcon` web server).
 
 ```ruby
 require "sinatra"
 
 class MyApp < Sinatra::Base
   get "/hello" do
-    sleep(0.1)
+    sleep(0.2)
     "Hello World!"
   end
 end
@@ -85,7 +87,7 @@ end
 Then, the code which is going to be performed within the workers should make a `net/http` request to the local endpoint.
 
 ```ruby
-# a single job takes ~0.1s to perform
+# a single job takes ~0.21s to perform
 def perform
   uri = URI("http://127.0.0.1:9292/hello")
   res = Net::HTTP.get_response(uri)
@@ -94,19 +96,19 @@ end
 ```
 
 It's not recommended to run sidekiq with high concurrency values, setting it for the sake of test. \
-The time difference for these samples is within the statistical error, however the memory consumption is less with the fibers. \
+The time difference for these samples is small-ish, however the memory consumption is less with the fibers. \
 Since fibers have relatively small memory foot-print and context switching is also relatively cheap, it's possible to set concurrency to higher values within Jiggler without too much trade-offs.
 
 | Job Processor    | Concurrency | Jobs  | Time to complete  | Start RSS | Finish RSS | %CPU |
 |------------------|-------------|-------|-------------------|-----------|------------|------|
-| Sidekiq 7.0.2    | 5           | 1_000 | 25.14 sec         | 32_760 kb | 48_224 kb  | 11.04 |
-| Jiggler 0.1.0rc1 | 5           | 1_000 | 24.48 sec         | 41_296 kb | 42_232 kb  | 6.49  |
-| -                |             |       |                   |           |            |       |
-| Sidekiq 7.0.2    | 10          | 1_000 | 13.74 sec         | 32_716 kb | 53_360 kb  | 19.01 |
-| Jiggler 0.1.0rc1 | 10          | 1_000 | 13.85 sec         | 40_760 kb | 42_412 kb  | 11.79 |
-| -                |             |       |                   |           |            |       |
-| Sidekiq 7.0.2    | 15          | 1_000 | 10.31 sec         | 31_696 kb | 58_676 kb  | 25.44 |
-| Jiggler 0.1.0rc1 | 15          | 1_000 | 9.65 sec          | 40_764 kb | 42_400 kb  | 16.88 |
+| Sidekiq 7.0.2    | 5           | 1_000 | 43.74 sec         | 30_444 kb | 45_124 kb  | 5.9 |
+| Jiggler 0.1.0rc1 | 5           | 1_000 | 43.65 sec         | 33_476 kb | 34_144 kb  | 2.9 |
+| -                |             |       |                   |           |            |      |
+| Sidekiq 7.0.2    | 10          | 1_000 | 23.05 sec         | 30_604 kb | 50_292 kb  | 10.93 |
+| Jiggler 0.1.0rc1 | 10          | 1_000 | 22.86 sec         | 32_416 kb | 34_128 kb  | 5.69 |
+| -                |             |       |                   |           |            |      |
+| Sidekiq 7.0.2    | 15          | 1_000 | 16.17 sec         | 30_636 kb | 55_144 kb  | 16.47 |
+| Jiggler 0.1.0rc1 | 15          | 1_000 | 15.87 sec         | 33_328 kb | 34_548 kb  | 8.25 |
 
 **NOTE**: Jiggler has more dependencies, so with small load `start RSS` takes more space.
 
@@ -123,24 +125,24 @@ $pg_pool = ConnectionPool.new(size: CONCURRENCY) do
 end
 
 ### worker context
-# a single job takes ~0.63s to perform
+# a single job takes ~0.102s to perform
 def perform
   $pg_pool.with do |conn|
-    conn.exec("SELECT *, pg_sleep(0.1) FROM pg_stat_activity")
+    conn.exec("SELECT pg_sleep(0.1)")
   end
 end
 ```
 
-| Job Processor    | Concurrency | Jobs | Time to complete | Start RSS | Finish RSS | %CPU |
-|------------------|-------------|------|------------------|-----------|------------|------|
-| Sidekiq 7.0.2    | 5           | 100  | 23.54 sec        | 30_228 kb | 48_872 kb  | 5.07 |
-| Jiggler 0.1.0rc1 | 5           | 100  | 21.02 sec        | 41_268 kb | 46_252 kb  | 1.49 |
-| -                |             |      |                  |           |            |      |
-| Sidekiq 7.0.2    | 10          | 100  | 18.11 sec        | 30_548 kb | 53_080 kb  | 10.2 |
-| Jiggler 0.1.0rc1 | 10          | 100  | 17.85 sec        | 41_708 kb | 46_828 kb  | 2.82 |
-| -                |             |      |                  |           |            |      |
-| Sidekiq 7.0.2    | 15          | 100  | 16.09 sec        | 30_496 kb | 58_444 kb  | 11.58 |
-| Jiggler 0.1.0rc1 | 15          | 100  | 14.23 sec        | 42_004 kb | 46_968 kb  | 4.62 |
+| Job Processor    | Concurrency | Jobs  | Time      | Start RSS | Finish RSS | %CPU |
+|------------------|-------------|-------|-----------|-----------|------------|------|
+| Sidekiq 7.0.2    | 5           | 1_000 | 23.44 sec | 31_436 kb | 48_856 kb  | 7.56 |
+| Jiggler 0.1.0rc1 | 5           | 1_000 | 23.20 sec | 35_312 kb | 38_592 kb  | 2.91 |
+| -                |             |       |           |           |            |      |
+| Sidekiq 7.0.2    | 10          | 1_000 | 13.15 sec | 31_272 kb | 52_808 kb  | 13.76 |
+| Jiggler 0.1.0rc1 | 10          | 1_000 | 12.65 sec | 35_296 kb | 38_784 kb  | 6.11 |
+| -                |             |       |           |           |            |      |
+| Sidekiq 7.0.2    | 15          | 1_000 | 9.63 sec  | 31_016 kb | 59_868 kb  | 20.32 |
+| Jiggler 0.1.0rc1 | 15          | 1_000 | 9.17 sec  | 35_188 kb | 38_948 kb  | 9.26 |
 
 ##### File IO
 
@@ -150,13 +152,16 @@ def perform(file_name, id)
 end
 ```
 
-| Job Processor    | Concurrency | Jobs   | Time to complete | Start RSS    | Finish RSS | %CPU  |
-|------------------|-------------|--------|------------------|--------------|------------|-------|
-| Sidekiq 7.0.2    | 5           | 20_000 | 10.16 sec        | 51_340 kb    | 64_456 kb  | 76.37 |
-| Jiggler 0.1.0rc1 | 5           | 20_000 | 6.01 sec         | 50_512 kb    | 53_568 kb  | 52.23 |
-| -                |             |        |                  |              |            |       |
-| Sidekiq 7.0.2    | 10          | 20_000 | 9.11 sec         | 52_336 kb    | 72_232 kb  | 80.3  |
-| Jiggler 0.1.0rc1 | 10          | 20_000 | 5.57 sec         | 50_316 kb    | 53_768 kb  | 58.56 |
+| Job Processor    | Concurrency | Jobs   | Time      | Start RSS    | Finish RSS | %CPU  |
+|------------------|-------------|--------|-----------|--------------|------------|-------|
+| Sidekiq 7.0.2    | 5           | 30_000 | 11.94 sec | 61_944 kb    | 71_948 kb  | 94.34 |
+| Jiggler 0.1.0rc1 | 5           | 30_000 | 7.87 sec  | 50_140 kb    | 51_272 kb  | 61.7  |
+| -                |             |        |           |              |            |       |
+| Sidekiq 7.0.2    | 10          | 30_000 | 11.6 sec  | 62_020 kb    | 78_952 kb  | 94.44 |
+| Jiggler 0.1.0rc1 | 10          | 30_000 | 7.17 sec  | 50_060 kb    | 51_464 kb  | 69.25 |
+| -                |             |        |           |              |            |       |
+| Sidekiq 7.0.2    | 15          | 30_000 | 11.24 sec | 62_016 kb    | 83_808 kb  | 94.16 |
+| Jiggler 0.1.0rc1 | 15          | 30_000 | 7.02 sec  | 49_988 kb    | 51_428 kb  | 70.3  |
 
 
 Jiggler is effective only for tasks with a lot of IO. You must test the concurrency setting with your jobs to find out what configuration works best for your payload.
@@ -180,13 +185,13 @@ def perform(_idx)
 end
 ```
 
-| Job Processor    | Concurrency | Jobs | Time to complete | Start RSS  | Finish RSS |
-|------------------|-------------|------|------------------|------------|------------|
-| Sidekiq 7.0.2    | 5           | 100  | 5.61 sec         | 29_164 kb  | 48_188 kb |
-| Jiggler 0.1.0rc1 | 5           | 100  | 5.67 sec         | 38_896 kb  | 39_620 kb |
-| -                |             |      |                  |            |           |
-| Sidekiq 7.0.2    | 10          | 100  | 5.71 sec         | 28_148 kb  | 48_112 kb |
-| Jiggler 0.1.0rc1 | 10          | 100  | 5.36 sec         | 39_144 kb  | 39_800 kb |
+| Job Processor    | Concurrency | Jobs | Time     | Start RSS  | Finish RSS |
+|------------------|-------------|------|----------|------------|------------|
+| Sidekiq 7.0.2    | 5           | 100  | 5.81 sec | 27_792 kb  | 42_464 kb |
+| Jiggler 0.1.0rc1 | 5           | 100  | 5.29 sec | 31_304 kb  | 32_320 kb |
+| -                |             |      |          |            |           |
+| Sidekiq 7.0.2    | 10          | 100  | 5.63 sec | 28_044 kb  | 47_640 kb |
+| Jiggler 0.1.0rc1 | 10          | 100  | 5.43 sec | 32_316 kb  | 32_548 kb |
 
 #### IO Event selector
 
@@ -197,7 +202,7 @@ In the future it might bring a lot of performance boost into Ruby fibers world (
 
 #### Socketry stack
 
-The gem allows to use libs from `socketry` stack (https://github.com/socketry) within workers, potentially they could provide a better performance boost compared to Ruby native calls.
+The gem allows to use libs from `socketry` stack (https://github.com/socketry) within workers. \
 F.e. when making HTTP requests using `async/http/internet` to the Sinatra app described above:
 
 ```ruby
@@ -214,11 +219,13 @@ def perform
 end
 ```
 
-| Job Processor    | Concurrency | Jobs  | Time to complete | Start RSS | Finish RSS | %CPU |
-|------------------|-------------|-------|------------------|-----------|------------|------|
-| Jiggler 0.1.0rc1 | 5           | 1_000 | 23.07 sec        | 41_528 kb | 44_372 kb  | 3.01 |
-| -                |             |       |                  |           |            |      |
-| Jiggler 0.1.0rc1 | 10          | 1_000 | 12.7 sec         | 40_480 kb | 44_404 kb  | 6.08 |
+| Job Processor    | Concurrency | Jobs  | Time      | Start RSS | Finish RSS | %CPU |
+|------------------|-------------|-------|-----------|-----------|------------|------|
+| Jiggler 0.1.0rc1 | 5           | 1_000 | 43.23 sec | 34_340 kb | 38_488 kb  | 1.51 |
+| -                |             |       |           |           |            |      |
+| Jiggler 0.1.0rc1 | 10          | 1_000 | 22.67 sec | 34_552 kb | 38_600 kb  | 2.75 |
+| -                |             |       |           |           |            |      |
+| Jiggler 0.1.0rc1 | 15          | 1_000 | 15.88 sec | 34_332 kb | 38_544 kb  | 4.06 |
 
 ### Getting Started
 

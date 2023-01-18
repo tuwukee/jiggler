@@ -29,14 +29,14 @@ class LoadJob
   end
 
   def net_http_get_request
-    uri = URI("https://127.0.0.1/hello")
+    uri = URI("http://127.0.0.1:9292/hello")
     res = Net::HTTP.get_response(uri)
     puts "Request Error!!!" unless res.is_a?(Net::HTTPSuccess)
   end
 
   def pg_query
     $pg_pool.with do |conn|
-      conn.exec("SELECT *, pg_sleep(0.1) FROM pg_stat_activity")
+      conn.exec("SELECT pg_sleep(0.1)")
     end
   end
 

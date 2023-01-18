@@ -9,11 +9,11 @@
 # require 'ruby-prof'
 # require 'heap-profiler'
 
-require 'uri'
-require 'net/http'
-require 'pg'
-require 'connection_pool'
-require 'async/http/internet'
+# require 'uri'
+# require 'net/http'
+# require 'pg'
+# require 'connection_pool'
+# require 'async/http/internet'
 
 require_relative '../lib/jiggler/support/helper'
 require_relative '../lib/jiggler/scheduled/enqueuer'
@@ -67,26 +67,26 @@ class LoadJob
   end
 
   def async_get_request
-    uri = "https://127.0.0.1/hello"
+    uri = "http://127.0.0.1:9292/hello"
     res = $internet.get(uri)
     res.finish
     puts "Request Error!!!" unless res.status == 200
   end
 
   def net_http_get_request
-    uri = URI("https://127.0.0.1/hello")
+    uri = URI("http://127.0.0.1:9292/hello")
     res = Net::HTTP.get_response(uri)
     puts "Request Error!!!" unless res.is_a?(Net::HTTPSuccess)
   end
 
   def pg_query
     $pg_pool.with do |conn|
-      conn.exec("SELECT *, pg_sleep(0.1) FROM pg_stat_activity")
+      conn.exec("SELECT pg_sleep(0.1)")
     end
   end
 
   def file_io(id)
-    File.open("/tmp/logs/test.txt", "a") { |f| f.write("#{id}\n") }
+    File.open("tmp/logs/test.txt", "a") { |f| f.write("#{id}\n") }
   end
 
   def perform(id)

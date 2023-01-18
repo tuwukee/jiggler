@@ -46,8 +46,6 @@ RSpec.describe Jiggler::Summary do
         launcher_task = Async { launcher.start }
         stop_task = Async do
           sleep(2)
-          monitor = launcher.send(:monitor)
-          monitor.load_data_into_redis
           second_summary = summary.all
           launcher.stop
         end
