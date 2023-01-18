@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 RSpec.describe Jiggler::Worker do
-  before(:all) do 
+  before(:all) do
     Jiggler.instance_variable_set(:@config, Jiggler::Config.new(
       concurrency: 1,
       client_concurrency: 1,

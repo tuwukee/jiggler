@@ -143,7 +143,7 @@ p2 = fork do
 end
 
 start = Time.now
-cpus = [0]
+cpus = []
 loop do
   total = jobs_count
   Jiggler.logger.warn("#{get_rss_cpu(p2, cpus)} Pending: #{total} Time: #{(Time.now - start).round(2)} sec")
@@ -157,6 +157,7 @@ Jiggler.logger.warn("Sending INT...")
 Process.kill("INT", p2)
 Process.wait(p2)
 Jiggler.logger.warn("Real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}")
+cpus << 0 if cpus.empty?
 Jiggler.logger.warn("CPU usage is: #{cpus.sum / cpus.size}")
 
 # -> RubyProf

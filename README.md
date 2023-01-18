@@ -50,18 +50,17 @@ The parent process enqueues the jobs, starts the monitoring, and then forks the 
 
 | Job Processor    | Concurrency | Jobs      | Time      | Start RSS  | Finish RSS    |
 |------------------|-------------|-----------|-----------|------------|---------------|
-| Sidekiq 7.0.2    | 5           | 100_000   | 20.01 sec | 132_080 kb | 103_168 kb (GC) |
-| Jiggler 0.1.0    | 5           | 100_000   | 14.25 sec | 87_532 kb  | 91_464 kb |
+| Sidekiq 7.0.3    | 5           | 100_000   | 20.69 sec | 131_068 kb | 110_544 kb (GC) |
+| Jiggler 0.1.0    | 5           | 100_000   | 14.53 sec | 82_020 kb  | 92_904 kb |
 | -                |             |           |           |            |           |
-| Sidekiq 7.0.2    | 10          | 100_000   | 20.49 sec | 132_164 kb | 125_768 kb (GC) |
-| Jiggler 0.1.0    | 10          | 100_000   | 13.25 sec | 87_688 kb  | 91_625 kb |
+| Sidekiq 7.0.3    | 10          | 100_000   | 20.70 sec | 132_048 kb | 122_660 kb (GC) |
+| Jiggler 0.1.0    | 10          | 100_000   | 13.75 sec | 82_380 kb  | 93_108 kb |
 | -                |             |           |           |            |           |
-| Sidekiq 7.0.2    | 5           | 1_000_000 | 186.90 sec | 159_712 kb | 186_224 kb |
-| Jiggler 0.1.0    | 5           | 1_000_000 | 123.13 sec | 113_212 kb | 116_336 kb |
+| Sidekiq 7.0.3    | 5           | 1_000_000 | 189.54 sec | 172_188 kb | 148_180 kb (GC) |
+| Jiggler 0.1.0    | 5           | 1_000_000 | 123.13 sec | 91_028 kb  | 98_888 kb |
 | -                |             |           |            |            |            |
-| Sidekiq 7.0.2    | 10          | 1_000_000 | 186.94 sec | 159_000 kb | 192_780 kb |
-| Jiggler 0.1.0    | 10          | 1_000_000 | 115.56 sec | 113_656 kb | 116_896 kb |
-
+| Sidekiq 7.0.3    | 10          | 1_000_000 | 184.26 sec | 175_048 kb | 161_744 kb (GC) |
+| Jiggler 0.1.0    | 10          | 1_000_000 | 119.05 sec | 90_916 kb | 98_944 kb |
 
 #### IO tests
 
@@ -101,16 +100,14 @@ Since fibers have relatively small memory foot-print and context switching is al
 
 | Job Processor    | Concurrency | Jobs  | Time to complete  | Start RSS | Finish RSS | %CPU |
 |------------------|-------------|-------|-------------------|-----------|------------|------|
-| Sidekiq 7.0.2    | 5           | 1_000 | 43.74 sec         | 30_444 kb | 45_124 kb  | 5.9 |
-| Jiggler 0.1.0    | 5           | 1_000 | 43.65 sec         | 33_476 kb | 34_144 kb  | 2.9 |
+| Sidekiq 7.0.3    | 5           | 1_000 | 43.65 sec         | 30_632 kb | 45_436 kb  | 9.0 |
+| Jiggler 0.1.0    | 5           | 1_000 | 43.58 sec         | 28_724 kb | 35_508 kb  | 6.34 |
 | -                |             |       |                   |           |            |      |
-| Sidekiq 7.0.2    | 10          | 1_000 | 23.05 sec         | 30_604 kb | 50_292 kb  | 10.93 |
-| Jiggler 0.1.0    | 10          | 1_000 | 22.86 sec         | 32_416 kb | 34_128 kb  | 5.69 |
+| Sidekiq 7.0.3    | 10          | 1_000 | 23.12 sec         | 30_640 kb | 50_436 kb  | 13.26 |
+| Jiggler 0.1.0    | 10          | 1_000 | 22.87 sec         | 28_644 kb | 35_788 kb  | 9.32 |
 | -                |             |       |                   |           |            |      |
-| Sidekiq 7.0.2    | 15          | 1_000 | 16.17 sec         | 30_636 kb | 55_144 kb  | 16.47 |
-| Jiggler 0.1.0    | 15          | 1_000 | 15.87 sec         | 33_328 kb | 34_548 kb  | 8.25 |
-
-**NOTE**: Jiggler has more dependencies, so with small load `start RSS` takes more space.
+| Sidekiq 7.0.3    | 15          | 1_000 | 16.21 sec         | 30_384 kb | 55_420 kb  | 18.14 |
+| Jiggler 0.1.0    | 15          | 1_000 | 16.02 sec         | 28_604 kb | 35_956 kb  | 11.97 |
 
 ##### PostgreSQL connection/queries
 
@@ -135,14 +132,14 @@ end
 
 | Job Processor    | Concurrency | Jobs  | Time      | Start RSS | Finish RSS | %CPU |
 |------------------|-------------|-------|-----------|-----------|------------|------|
-| Sidekiq 7.0.2    | 5           | 1_000 | 23.44 sec | 31_436 kb | 48_856 kb  | 7.56 |
-| Jiggler 0.1.0    | 5           | 1_000 | 23.20 sec | 35_312 kb | 38_592 kb  | 2.91 |
+| Sidekiq 7.0.3    | 5           | 1_000 | 23.32 sec | 31_564 kb | 49_112 kb  | 8.41 |
+| Jiggler 0.1.0    | 5           | 1_000 | 23.28 sec | 28_672 kb | 39_748 kb  | 5.39 |
 | -                |             |       |           |           |            |      |
-| Sidekiq 7.0.2    | 10          | 1_000 | 13.15 sec | 31_272 kb | 52_808 kb  | 13.76 |
-| Jiggler 0.1.0    | 10          | 1_000 | 12.65 sec | 35_296 kb | 38_784 kb  | 6.11 |
+| Sidekiq 7.0.3    | 10          | 1_000 | 13.15 sec | 31_272 kb | 52_808 kb  | 14.76 |
+| Jiggler 0.1.0    | 10          | 1_000 | 12.82 sec | 28_992 kb | 38_784 kb  | 9.98 |
 | -                |             |       |           |           |            |      |
-| Sidekiq 7.0.2    | 15          | 1_000 | 9.63 sec  | 31_016 kb | 59_868 kb  | 20.32 |
-| Jiggler 0.1.0    | 15          | 1_000 | 9.17 sec  | 35_188 kb | 38_948 kb  | 9.26 |
+| Sidekiq 7.0.3    | 15          | 1_000 | 9.63 sec  | 31_016 kb | 59_868 kb  | 20.45 |
+| Jiggler 0.1.0    | 15          | 1_000 | 9.37 sec  | 28_704 kb | 39_960 kb  | 14.14 |
 
 ##### File IO
 
@@ -154,14 +151,14 @@ end
 
 | Job Processor    | Concurrency | Jobs   | Time      | Start RSS    | Finish RSS | %CPU  |
 |------------------|-------------|--------|-----------|--------------|------------|-------|
-| Sidekiq 7.0.2    | 5           | 30_000 | 11.94 sec | 61_944 kb    | 71_948 kb  | 94.34 |
-| Jiggler 0.1.0    | 5           | 30_000 | 7.87 sec  | 50_140 kb    | 51_272 kb  | 61.7  |
+| Sidekiq 7.0.3    | 5           | 50_000 | 19.77 sec | 83_244 kb    | 72_576 kb (GC) | 99.6 |
+| Jiggler 0.1.0    | 5           | 50_000 | 11.35 sec | 55_552 kb    | 64_476 kb  | 64.89 |
 | -                |             |        |           |              |            |       |
-| Sidekiq 7.0.2    | 10          | 30_000 | 11.6 sec  | 62_020 kb    | 78_952 kb  | 94.44 |
-| Jiggler 0.1.0    | 10          | 30_000 | 7.17 sec  | 50_060 kb    | 51_464 kb  | 69.25 |
-| -                |             |        |           |              |            |       |
-| Sidekiq 7.0.2    | 15          | 30_000 | 11.24 sec | 62_016 kb    | 83_808 kb  | 94.16 |
-| Jiggler 0.1.0    | 15          | 30_000 | 7.02 sec  | 49_988 kb    | 51_428 kb  | 70.3  |
+| Sidekiq 7.0.3    | 10          | 50_000 | 17.57 sec | 83_268 kb    | 81_204 kb (GC) | 95.15 |
+| Jiggler 0.1.0    | 10          | 30_000 | 10.29 sec | 55_432 kb    | 64_536 kb  | 99.2 |
+| -                |             |        |           |              |            |      |
+| Sidekiq 7.0.3    | 15          | 50_000 | 17.03 sec | 83_312 kb    | 87_176 kb (GC) | 94.7 |
+| Jiggler 0.1.0    | 15          | 30_000 | 10.70 sec | 55_852 kb    | 65_716 kb  | 94.64  |
 
 
 Jiggler is effective only for tasks with a lot of IO. You must test the concurrency setting with your jobs to find out what configuration works best for your payload.
@@ -187,11 +184,11 @@ end
 
 | Job Processor    | Concurrency | Jobs | Time     | Start RSS  | Finish RSS |
 |------------------|-------------|------|----------|------------|------------|
-| Sidekiq 7.0.2    | 5           | 100  | 5.81 sec | 27_792 kb  | 42_464 kb |
-| Jiggler 0.1.0    | 5           | 100  | 5.29 sec | 31_304 kb  | 32_320 kb |
+| Sidekiq 7.0.3    | 5           | 100  | 5.81 sec | 27_792 kb  | 42_464 kb |
+| Jiggler 0.1.0    | 5           | 100  | 5.53 sec | 27_020 kb  | 33_660 kb |
 | -                |             |      |          |            |           |
-| Sidekiq 7.0.2    | 10          | 100  | 5.63 sec | 28_044 kb  | 47_640 kb |
-| Jiggler 0.1.0    | 10          | 100  | 5.43 sec | 32_316 kb  | 32_548 kb |
+| Sidekiq 7.0.3    | 10          | 100  | 5.63 sec | 28_044 kb  | 47_640 kb |
+| Jiggler 0.1.0    | 10          | 100  | 5.43 sec | 27_136 kb  | 33_856 kb |
 
 #### IO Event selector
 
@@ -221,11 +218,26 @@ end
 
 | Job Processor    | Concurrency | Jobs  | Time      | Start RSS | Finish RSS | %CPU |
 |------------------|-------------|-------|-----------|-----------|------------|------|
-| Jiggler 0.1.0    | 5           | 1_000 | 43.23 sec | 34_340 kb | 38_488 kb  | 1.51 |
+| Jiggler 0.1.0    | 5           | 1_000 | 43.31 sec | 30_548 kb | 38_512 kb  | 2.17 |
 | -                |             |       |           |           |            |      |
-| Jiggler 0.1.0    | 10          | 1_000 | 22.67 sec | 34_552 kb | 38_600 kb  | 2.75 |
+| Jiggler 0.1.0    | 10          | 1_000 | 22.75 sec | 30_584 kb | 38_460 kb  | 4.1  |
 | -                |             |       |           |           |            |      |
-| Jiggler 0.1.0    | 15          | 1_000 | 15.88 sec | 34_332 kb | 38_544 kb  | 4.06 |
+| Jiggler 0.1.0    | 15          | 1_000 | 15.88 sec | 30_536 kb | 38_580 kb  | 5.74 |
+
+#### Idle
+
+3 minutes of idle work.
+
+| Job Processor    | Concurrency | Start RSS | Finish RSS | %CPU |
+|------------------|-------------|-----------|------------|------|
+| Sidekiq 7.0.3    | 5           | 27_508 kb | 42_680 kb  | 0.73 |
+| Jiggler 0.1.0    | 5           | 26_640 kb | 34_848 kb  | 0.42 |
+| -                |             |           |            |      |
+| Sidekiq 7.0.3    | 10          | 28_312 kb | 47_856 kb  | 0.85 |
+| Jiggler 0.1.0    | 10          | 26_576 kb | 34_388 kb  | 0.45 |
+| -                |             |           |            |      |
+| Sidekiq 7.0.3    | 15          | 28_472 kb | 53_236 kb  | 0.9 |
+| Jiggler 0.1.0    | 15          | 26_584 kb | 34_336 kb  | 0.5 |
 
 ### Getting Started
 

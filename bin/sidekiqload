@@ -111,4 +111,5 @@ Sidekiq.logger.error("Sending INT...")
 Process.kill("INT", p2)
 Process.wait(p2)
 Sidekiq.logger.error("Real time is: #{Process.clock_gettime(Process::CLOCK_MONOTONIC) - real_start}")
+cpus << 0 if cpus.empty?
 Sidekiq.logger.error("Average CPU usage: #{cpus.sum / cpus.size}")
