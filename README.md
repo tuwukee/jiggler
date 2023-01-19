@@ -160,10 +160,10 @@ end
 | Jiggler 0.1.0    | 5           | 50_000 | 11.35 sec | 55_552 kb    | 64_476 kb  | 64.89 |
 | -                |             |        |           |              |            |       |
 | Sidekiq 7.0.3    | 10          | 50_000 | 17.57 sec | 83_268 kb    | 81_204 kb (GC) | 95.15 |
-| Jiggler 0.1.0    | 10          | 30_000 | 10.29 sec | 55_432 kb    | 64_536 kb  | 99.2 |
+| Jiggler 0.1.0    | 10          | 50_000 | 10.29 sec | 55_432 kb    | 64_536 kb  | 99.2 |
 | -                |             |        |           |              |            |      |
 | Sidekiq 7.0.3    | 15          | 50_000 | 17.03 sec | 83_312 kb    | 87_176 kb (GC) | 94.7 |
-| Jiggler 0.1.0    | 15          | 30_000 | 10.70 sec | 55_852 kb    | 65_716 kb  | 94.64  |
+| Jiggler 0.1.0    | 15          | 50_000 | 10.70 sec | 55_852 kb    | 65_716 kb  | 94.64  |
 
 
 Jiggler is effective only for tasks with a lot of IO. You must test the concurrency setting with your jobs to find out what configuration works best for your payload.
