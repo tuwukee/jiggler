@@ -7,7 +7,7 @@ Jiggler is a [Sidekiq](https://github.com/mperham/sidekiq)-inspired background j
 
 *Jiggler is based on Sidekiq implementation, and re-uses most of its concepts and ideas.*
 
-**NOTE**: Altrough some performance results may look interesting, it's absolutly not recommended to switch to it from well-tested stable solutions. Jiggler has a meager set of features and a very basic monitoring. It's a small indie gem made purely for fun and to gain some hand-on experience with async and fibers. It isn't tested with production projects and might have not-yet-discovered issues. \
+**NOTE**: Jiggler is a small gem made purely for fun and to gain some hand-on experience with async and fibers. It isn't tested with production projects and might have not-yet-discovered issues. Use at your own risk. \
 However, it's good to play around and/or to try it in the name of science.
 
 ### Installation
@@ -67,6 +67,22 @@ The parent process enqueues the jobs, starts the monitoring, and then forks the 
 | Sidekiq 7.0.3    | 10          | 1_000_000 | 184.26 sec | 175_048 kb | 161_744 kb (GC) |
 | Jiggler 0.1.0    | 10          | 1_000_000 | 119.05 sec | 90_916 kb | 98_944 kb |
 
+Fibers use little memory, so it is possible to create a lot of fibers without a huge memory footprint. \
+It makes sense only with the tasks with a lot of I/O, and even for such tasks we're still limited by the connection pool, network throughput, etc, so extrimely increasing the number of fibers might not be beneficial, but for the sake of test let's try out relatively high concurrency numbers. \
+I won't include sidekiq results with high concurrency setting, because it's a bit unfair to it.
+
+| Job Processor    | Concurrency | Jobs      | Time      | Start RSS  | Finish RSS    |
+|------------------|-------------|-----------|-----------|------------|---------------|
+| Jiggler 0.1.0    | 50          | 100_000   | 13.55 sec | 82_052 kb  | 94_120 kb |
+| -                |             |           |           |            |           |
+| Jiggler 0.1.0    | 100         | 100_000   | 13.89 sec | 82_084 kb  | 63_284 kb (GC) |
+| -                |             |           |           |            |           |
+| Jiggler 0.1.0    | 50          | 1_000_000 | 118.11 sec | 89_532 kb | 77_084 kb (GC) |
+| -                |             |           |           |            |           |
+| Jiggler 0.1.0    | 100         | 1_000_000 | 118.05 sec | 89_702 kb | 77_528 kb (GC) |
+
+The performance with concurrency set to 100 is almost the same or worse than with 50, meaning that the optimal number for the noop task lays somewhere below 100 (or even below 50).
+
 #### IO tests
 
 The idea of the next tests is to simulate jobs with different kinds of IO tasks. \
@@ -99,7 +115,7 @@ def perform
 end
 ```
 
-It's not recommended to run sidekiq with high concurrency values, setting it for the sake of test. \
+It's not recommended to run sidekiq with high concurrency values, setting it (upto 15 for sidekiq) for the sake of test. \
 The time difference for these samples is small-ish, however the memory consumption is less with the fibers. \
 Since fibers have relatively small memory foot-print and context switching is also relatively cheap, it's possible to set concurrency to higher values within Jiggler without too much trade-offs.
 
@@ -113,6 +129,10 @@ Since fibers have relatively small memory foot-print and context switching is al
 | -                |             |       |                   |           |            |      |
 | Sidekiq 7.0.3    | 15          | 1_000 | 16.21 sec         | 30_384 kb | 55_420 kb  | 18.14 |
 | Jiggler 0.1.0    | 15          | 1_000 | 16.02 sec         | 28_604 kb | 35_956 kb  | 11.97 |
+| -                |             |       |                   |           |            |      |
+| Jiggler 0.1.0    | 50          | 1_000 | 6.5 sec           | 28_744 kb | 38_700 kb  | 31.36 |
+| -                |             |       |                   |           |            |      |
+| Jiggler 0.1.0    | 100         | 1_000 | 4.52 sec          | 28_624 kb | 41_124 kb  | 47.85 |
 
 ##### PostgreSQL connection/queries
 
@@ -145,6 +165,12 @@ end
 | -                |             |       |           |           |            |      |
 | Sidekiq 7.0.3    | 15          | 1_000 | 9.63 sec  | 31_016 kb | 59_868 kb  | 20.45 |
 | Jiggler 0.1.0    | 15          | 1_000 | 9.37 sec  | 28_704 kb | 39_960 kb  | 14.14 |
+| -                |             |       |           |           |            |      |
+| Jiggler 0.1.0    | 50          | 1_000 | 5.2 sec   | 28_808 kb | 42_012 kb  | 41.5 |
+| -                |             |       |           |           |            |      |
+| Jiggler 0.1.0    | 100         | 1_000 | 5.11 sec  | 28_884 kb | 46_636 kb  | 66.0 |
+
+NOTE: check how many connections your postgresql server can accept at once (default is 100).
 
 ##### File IO
 
@@ -157,20 +183,23 @@ end
 | Job Processor    | Concurrency | Jobs   | Time      | Start RSS    | Finish RSS | %CPU  |
 |------------------|-------------|--------|-----------|--------------|------------|-------|
 | Sidekiq 7.0.3    | 5           | 50_000 | 19.77 sec | 83_244 kb    | 72_576 kb (GC) | 99.6 |
-| Jiggler 0.1.0    | 5           | 50_000 | 11.35 sec | 55_552 kb    | 64_476 kb  | 64.89 |
+| Jiggler 0.1.0    | 5           | 50_000 | 10.51 sec | 56_348 kb    | 65_554 kb  | 92.06 |
 | -                |             |        |           |              |            |       |
 | Sidekiq 7.0.3    | 10          | 50_000 | 17.57 sec | 83_268 kb    | 81_204 kb (GC) | 95.15 |
-| Jiggler 0.1.0    | 10          | 50_000 | 10.29 sec | 55_432 kb    | 64_536 kb  | 99.2 |
+| Jiggler 0.1.0    | 10          | 50_000 | 10.29 sec | 55_412 kb    | 64_558 kb  | 93.08 |
 | -                |             |        |           |              |            |      |
 | Sidekiq 7.0.3    | 15          | 50_000 | 17.03 sec | 83_312 kb    | 87_176 kb (GC) | 94.7 |
-| Jiggler 0.1.0    | 15          | 50_000 | 10.70 sec | 55_852 kb    | 65_716 kb  | 94.64  |
+| Jiggler 0.1.0    | 15          | 50_000 | 10.7 sec  | 55_852 kb    | 65_716 kb  | 94.64 |
+| -                |             |        |           |              |            |      |
+| Jiggler 0.1.0    | 50          | 50_000 | 10.9 sec  | 55_680 kb    | 65_888 kb  | 92.9 |
+| -                |             |        |           |              |            |      |
+| Jiggler 0.1.0    | 100         | 50_000 | 10.71 sec | 56_500 kb    | 52_768 kb (GC) | 94.6 |
 
-
-Jiggler is effective only for tasks with a lot of IO. You must test the concurrency setting with your jobs to find out what configuration works best for your payload.
+For this test 15-50-100 concurrency didn't provide much benefits, so the optimal number lays somewhere below this.
 
 #### Simulate CPU-only job
 
-With CPU-heavy jobs Jiggler has poor performance. Just to make sure it's generally able to work with CPU-only payloads:
+Jiggler is effective only for tasks with a lot of IO. You must test the concurrency setting with your jobs to find out what configuration works best for your payload. With CPU-heavy jobs Jiggler has poor performance. Just to make sure it's generally able to work with CPU-only payloads:
 
 ```ruby
 def fib(n)
@@ -228,6 +257,26 @@ end
 | Jiggler 0.1.0    | 10          | 1_000 | 22.75 sec | 30_584 kb | 38_460 kb  | 4.1  |
 | -                |             |       |           |           |            |      |
 | Jiggler 0.1.0    | 15          | 1_000 | 15.88 sec | 30_536 kb | 38_580 kb  | 5.74 |
+| -                |             |       |           |           |            |      |
+| Jiggler 0.1.0    | 50          | 1_000 | 6.3 sec   | 30_608 kb | 40_900 kb  | 16.83 |
+| -                |             |       |           |           |            |      |
+| Jiggler 0.1.0    | 100         | 1_000 | 4.31 sec  | 30_828 kb | 43_296 kb  | 27.25 |
+
+Besides that, it's possible to spawn `async` tasks within workers as well:
+
+```ruby
+def perform(ids)
+  resources = Resource.where(id: ids)
+  resources.each do |resource|
+    Async do
+      result = api_client.get(resource)
+      resource.update(data: result) if result
+    rescue => err
+      logger.error(err)
+    end
+  end
+end
+```
 
 #### Idle
 
@@ -241,8 +290,12 @@ end
 | Sidekiq 7.0.3    | 10          | 28_312 kb | 47_856 kb  | 0.85 |
 | Jiggler 0.1.0    | 10          | 26_576 kb | 34_388 kb  | 0.45 |
 | -                |             |           |            |      |
-| Sidekiq 7.0.3    | 15          | 28_472 kb | 53_236 kb  | 0.9 |
-| Jiggler 0.1.0    | 15          | 26_584 kb | 34_336 kb  | 0.5 |
+| Sidekiq 7.0.3    | 15          | 28_472 kb | 53_236 kb  | 0.9  |
+| Jiggler 0.1.0    | 15          | 26_584 kb | 34_336 kb  | 0.5  |
+| -                |             |           |            |      |
+| Jiggler 0.1.0    | 50          | 26_740 kb | 35_556 kb  | 0.72 |
+| -                |             |           |            |      |
+| Jiggler 0.1.0    | 100         | 26_648 kb | 37_404 kb  | 1.03 |
 
 ### Getting Started
 
@@ -394,7 +447,7 @@ Jiggler.configure_client do |config|
   config[:client_redis_pool] = my_async_redis_pool
 end
 
-# or use build-in async pool with
+# or use built-in async pool with
 require "async/pool"
 
 Jiggler.configure_client do |config|
