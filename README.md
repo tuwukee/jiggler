@@ -199,7 +199,7 @@ For this test 15-50-100 concurrency didn't provide much benefits, so the optimal
 
 #### Simulate CPU-only job
 
-Jiggler is effective only for tasks with a lot of IO. You must test the concurrency setting with your jobs to find out what configuration works best for your payload. With CPU-heavy jobs Jiggler has poor performance. Just to make sure it's generally able to work with CPU-only payloads:
+Jiggler is effective only for tasks with a lot of IO. You must test the concurrency setting with your jobs to find out what configuration works best for your payload. With CPU-heavy jobs both Sidekiq and Jiggler do not provide performance boost compared to sequental execution. Yet Jiggler has a tiny bit better results compared to the thread-based approach, because of lightweight fiber context-switches. Test with CPU-only payload:
 
 ```ruby
 def fib(n)
