@@ -9,8 +9,7 @@ gem 'async'
 gem 'async-io'
 gem 'async-pool'
 
-group :development, :test do
-  gem 'debug', '~> 1.6'
+group :development do
   gem 'rackup'
   gem 'sidekiq' # for mem/speed comparison
   gem 'ruby-prof'
@@ -18,5 +17,6 @@ group :development, :test do
 end
 
 group :test do
+  gem 'debug'
   gem 'rspec'
 end

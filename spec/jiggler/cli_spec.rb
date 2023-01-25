@@ -20,6 +20,7 @@ RSpec.describe Jiggler::CLI do
       before { cli.instance_variable_set(:@config, Jiggler::Config.new(verbose: true)) }
       after { cli.instance_variable_set(:@config, Jiggler::Config.new) }
       let(:path) { './spec/fixtures/config/jiggler.yml' }
+      let(:jobs_file) { './spec/fixtures/jobs' }
 
       it 'fetches config file' do
         cli.parse_and_init(['-C', path])
@@ -39,8 +40,8 @@ RSpec.describe Jiggler::CLI do
       end
 
       it 'fetches require' do
-        cli.parse_and_init(['-r', path])
-        expect(cli.config[:require]).to eq(path)
+        cli.parse_and_init(['-r', jobs_file])
+        expect(cli.config[:require]).to eq(jobs_file)
       end
 
       it 'fetches timeout' do
@@ -77,10 +78,7 @@ RSpec.describe Jiggler::CLI do
       it { expect { cli.parse_and_init(['-c', 'invalid']) }.to raise_error(ArgumentError) }
       it { expect { cli.parse_and_init(['-c', '-1']) }.to raise_error(ArgumentError) }
       it { expect { cli.parse_and_init(['-t', 'yo']) }.to raise_error(ArgumentError) }
-      it do 
-        cli.parse_and_init(['-r', 'test.rb'])
-        expect { cli.send(:load_app) }.to raise_error(SystemExit) 
-      end
+      it { expect { cli.parse_and_init(['-r', 'test.rb']) }.to raise_error(SystemExit) }
       it { expect { cli.parse_and_init(['-q', 'in:va:lid']) }.to raise_error(ArgumentError) }
     end
   end
