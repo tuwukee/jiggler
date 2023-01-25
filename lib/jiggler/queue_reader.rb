@@ -2,11 +2,13 @@
 
 module Jiggler
   class QueueReader
-    attr_reader :queue, :priority
+    include Support::Helper
 
-    def initialize(queue, priority)
+    def initialize(config, queue, priority, pqueue)
+      @config = config
       @queue = queue
       @priority = priority
+      @pqueue = pqueue
     end
   end
 end
