@@ -16,6 +16,7 @@ require 'jiggler/errors'
 require 'jiggler/retrier'
 require 'jiggler/launcher'
 require 'jiggler/manager'
+require 'jiggler/queue_reader'
 require 'jiggler/worker'
 require 'jiggler/cli'
 

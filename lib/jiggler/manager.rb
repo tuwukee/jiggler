@@ -17,12 +17,16 @@ module Jiggler
       @config = config
       @timeout = @config[:timeout]
       @collection = collection
-
+      
+      # the queue is non blocking
       @pqueue = FastContainers::PriorityQueue.new(:min)
+      # make the readers optional via config
       config.prefixed_queues.each do |queue, priority|
         @readers << Jiggler::QueueReader.new(config, queue, priority, @pqueue)
       end
-
+      
+      # workers should use a fetcher abstraction
+      # to determine should they fetch data from readers or from redis directly
       @config[:concurrency].times do
         @workers << init_worker
       end
