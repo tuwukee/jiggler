@@ -5,7 +5,8 @@ RSpec.describe Jiggler::Cleaner do
     Jiggler::Config.new(
       concurrency: 1,
       timeout: 1,
-      poller_enabled: false
+      poller_enabled: false,
+      async_client: false
     )
   end
   let(:cleaner) { described_class.new(config) }

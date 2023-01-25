@@ -31,9 +31,31 @@ RSpec.describe Jiggler::Config do
       expect(config[:poll_interval]).to be 5
       expect(config[:client_async]).to be false
     end
+    
+    context 'for prefixed queues' do
+      it 'generates prefixes' do
+        expect(config.prefixed_queues.keys).to eq ['jiggler:list:test', 'jiggler:list:test2']
+        expect(config.prefixed_queues.values).to eq [0, 1]
+        expect(config.sorted_prefixed_queues).to eq ['jiggler:list:test', 'jiggler:list:test2']
+      end
 
-    it 'generates prefixed queues' do
-      expect(config.prefixed_queues).to eq ['jiggler:list:test', 'jiggler:list:test2']
+      context 'when queues are not specified' do
+        let(:config) { Jiggler::Config.new }
+        it 'sets default queue' do
+          expect(config.prefixed_queues.keys).to eq ['jiggler:list:default']
+          expect(config.prefixed_queues.values).to eq [0]
+          expect(config.sorted_prefixed_queues).to eq ['jiggler:list:default']
+        end
+      end
+
+      context 'when quesues are specified as hash' do
+        let(:config) { Jiggler::Config.new(queues: { test: 4, test2: 1 }) }
+        it 'respects priority' do
+          expect(config.prefixed_queues.keys).to eq ['jiggler:list:test', 'jiggler:list:test2']
+          expect(config.prefixed_queues.values).to eq [4, 1]
+          expect(config.sorted_prefixed_queues).to eq ['jiggler:list:test2', 'jiggler:list:test']
+        end
+      end
     end
 
     it 'gets redis options for server' do

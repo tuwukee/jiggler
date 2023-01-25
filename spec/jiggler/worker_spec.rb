@@ -6,7 +6,7 @@ RSpec.describe Jiggler::Worker do
       concurrency: 1,
       client_concurrency: 1,
       timeout: 1,
-      queues: ['default', 'test']
+      queues: { 'default' => 2, 'test' => 1 }
     ) )
   end
   after(:all) do

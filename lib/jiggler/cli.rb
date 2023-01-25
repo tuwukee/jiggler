@@ -223,6 +223,7 @@ module Jiggler
       end
     end
 
+    # TODO: verify it works with priority queues
     def parse_config(path)
       erb = ERB.new(File.read(path))
       erb.filename = File.expand_path(path)
