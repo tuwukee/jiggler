@@ -8,6 +8,7 @@ gem 'oj'
 gem 'async'
 gem 'async-io'
 gem 'async-pool'
+gem 'priority_queue_cxx'
 
 group :development do
   gem 'rackup'

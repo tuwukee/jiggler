@@ -1,16 +1,28 @@
 # frozen_string_literal: true
 
+require 'fc'
+require 'set'
+
 # This class manages the workers lifecycle
 module Jiggler
   class Manager
     include Support::Helper
 
     def initialize(config, collection)
+      # TODO: verify if a regular array is enough
       @workers = Set.new
+      @readers = []
+
       @done = false
       @config = config
       @timeout = @config[:timeout]
       @collection = collection
+
+      @pqueue = FastContainers::PriorityQueue.new(:min)
+      config.prefixed_queues.each do |queue, priority|
+        @readers << Jiggler::QueueReader.new(config, queue, priority, @pqueue)
+      end
+
       @config[:concurrency].times do
         @workers << init_worker
       end
