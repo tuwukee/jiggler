@@ -65,7 +65,9 @@ module Jiggler
     end
 
     def fetch_one
-      queue, args = config.with_sync_redis { |conn| conn.blocking_call(false, 'BRPOP', *queues, TIMEOUT) }
+      queue, args = config.with_sync_redis do |conn| 
+        conn.blocking_call(false, 'BRPOP', *config.sorted_prefixed_queues, TIMEOUT)
+      end
       return nil unless queue
 
       if @done
@@ -157,10 +159,6 @@ module Jiggler
 
     def remove_current_job_from_collection
       collection.data[:current_jobs].delete(@tid)
-    end
-
-    def queues
-      @queues ||= config.prefixed_queues
     end
 
     def constantize(str)
