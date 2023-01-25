@@ -98,8 +98,7 @@ module Jiggler
       end
     end
     
-    # temp method
-    # in the feature instead of sorting each queue reader should have its own priority
+    # queues sorted by priority
     def sorted_prefixed_queues
       @sorted_prefixed_queues ||= prefixed_queues.sort_by { |_, v| v }.map(&:first)
     end
