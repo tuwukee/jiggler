@@ -29,6 +29,8 @@ RSpec.describe 'Core' do
       expect(Jiggler.config[:queues]).to eq %w[foo bar]
       expect(Jiggler.config[:require]).to eq 'foo'
       expect(Jiggler.config[:environment]).to eq 'bar'
+      # reset config
+      Jiggler.instance_variable_set(:@config, nil)
     end
   end
 end

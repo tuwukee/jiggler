@@ -19,10 +19,16 @@ module Jiggler
       @collection = collection
       
       # the queue is non blocking
-      @pqueue = FastContainers::PriorityQueue.new(:min)
-      # make the readers optional via config
-      config.prefixed_queues.each do |queue, priority|
-        @readers << Jiggler::QueueReader.new(config, queue, priority, @pqueue)
+      @pqueue = FastContainers::PriorityQueue.new(:max)
+      # make the readers optional via config (?)
+      # or make them mandatory (?)
+      config.sorted_queues_data.each do |queue_data|
+        @readers << Jiggler::QueueReader.new(
+          config, 
+          queue_data[1][:list], 
+          queue_data[1][:priority], 
+          @pqueue
+        )
       end
       
       # workers should use a fetcher abstraction

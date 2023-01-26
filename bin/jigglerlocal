@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+require 'debug'
+
 require_relative '../lib/jiggler/support/helper'
 require_relative '../lib/jiggler/scheduled/enqueuer'
 require_relative '../lib/jiggler/scheduled/poller'
@@ -17,6 +19,7 @@ require_relative '../lib/jiggler/manager'
 require_relative '../lib/jiggler/worker'
 require_relative '../lib/jiggler/summary'
 require_relative '../lib/jiggler/version'
+require_relative '../lib/jiggler/queue_reader'
 
 require_relative '../lib/jiggler/core'
 require_relative '../lib/jiggler/cli'
@@ -26,7 +29,7 @@ begin
   cli.parse_and_init
   
   cli.config.logger.info("Jiggler is starting in LOCAL #{Jiggler.config[:environment].upcase} ✯⸜(*❛‿❛)⸝✯")
-  cli.config.logger.info("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config[:queues].join(',')}")
+  cli.config.logger.info("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config.sorted_queues.join(',')}")
 
   cli.start
 rescue => e

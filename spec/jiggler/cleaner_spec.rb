@@ -5,12 +5,10 @@ RSpec.describe Jiggler::Cleaner do
     Jiggler::Config.new(
       concurrency: 1,
       timeout: 1,
-      poller_enabled: false,
-      async_client: false
+      poller_enabled: false
     )
   end
   let(:cleaner) { described_class.new(config) }
-  after(:all) { Jiggler.config.cleaner.prune_all }
 
   describe '#prune_failures_counter' do
     it 'prunes the failures counter' do
@@ -152,6 +150,7 @@ RSpec.describe Jiggler::Cleaner do
         expect(conn.call('LRANGE', 'jiggler:list:cleaner-test-1', 0, -1)).to be_empty
         expect(conn.call('LRANGE', 'jiggler:list:cleaner-test-2', 0, -1)).to eq(['{}'])
       end
+      config.cleaner.prune_all
     end
   end
 

@@ -4,9 +4,9 @@ module Jiggler
   class QueueReader
     include Support::Helper
 
-    def initialize(config, queue, priority, pqueue)
+    def initialize(config, list, priority, pqueue)
       @config = config
-      @queue = queue
+      @list = list
       @priority = priority
       @pqueue = pqueue
     end

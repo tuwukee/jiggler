@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'erb'
-
 module Jiggler
   class Web
     WEB_PATH = File.expand_path("#{File.dirname(__FILE__)}/web")

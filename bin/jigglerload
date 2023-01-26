@@ -131,7 +131,8 @@ p2 = fork do
       cli.parse_and_init
   
       cli.config.logger.warn("Jiggler is starting for LOAD TEST ✯⸜(*❛‿❛)⸝✯")
-      cli.config.logger.warn("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config[:queues].join(',')}")
+      cli.config.logger.info("Jiggler version=#{Jiggler::VERSION} pid=#{Process.pid} concurrency=#{cli.config[:concurrency]} queues=#{cli.config.sorted_queues.join(',')}")
+
       cli.start
     rescue => e
       warn e.message
