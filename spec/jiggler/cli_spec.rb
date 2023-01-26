@@ -26,7 +26,7 @@ RSpec.describe Jiggler::CLI do
         cli.parse_and_init(['-C', path])
         expect(cli.config[:config_file]).to eq(path)
         expect(cli.config[:concurrency]).to be 1
-        expect(cli.config[:queues]).to eq(['users', 'blep'])
+        expect(cli.config[:queues]).to eq([['users', 0], ['blep', 3]])
       end
 
       it 'fetches concurrency' do

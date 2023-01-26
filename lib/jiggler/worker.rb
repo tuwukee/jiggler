@@ -66,7 +66,7 @@ module Jiggler
 
     def fetch_one
       queue, args = config.with_sync_redis do |conn| 
-        conn.blocking_call(false, 'BRPOP', *config.sorted_prefixed_queues, TIMEOUT)
+        conn.blocking_call(false, 'BRPOP', *config.sorted_lists, TIMEOUT)
       end
       return nil unless queue
 

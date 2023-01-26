@@ -80,27 +80,37 @@ module Jiggler
       @queue_scan_key ||= "#{queue_prefix}*"
     end
 
-    def prefixed_queues
-      @prefixed_queues ||= begin
+    def queues_data
+      @queues_data ||= begin
         queues = {}
-        if @options[:queues].is_a?(Array)
-          @options[:queues].each_with_index.map do |queue, index|
-            queues["#{QUEUE_PREFIX}#{queue}"] = index
-          end
-        else
-          # iterate over hash
-          @options[:queues].each do |queue, index|
-            queues["#{QUEUE_PREFIX}#{queue}"] = index
-          end
-        end
 
+        @options[:queues].each do |queue|
+          name, priority = queue
+          # by default all queues have the same priority
+          priority ||= 0
+
+          queues[name] = {
+            priority: priority,
+            # list is a redis list key for a queue
+            list: "#{QUEUE_PREFIX}#{name}",
+          }
+        end
+        
         queues
       end
     end
     
-    # queues sorted by priority
-    def sorted_prefixed_queues
-      @sorted_prefixed_queues ||= prefixed_queues.sort_by { |_, v| v }.map(&:first)
+    # sort in descending order (higher priority first)
+    def sorted_queues_data
+      @sorted_queues_data ||= queues_data.sort_by { |_, v| -v[:priority] }
+    end
+    
+    def sorted_lists
+      @sorted_lists ||= sorted_queues_data.map { |_, v| v[:list] }
+    end
+
+    def sorted_queues
+      @sorted_queues ||= sorted_queues_data.map { |k, _| k }
     end
 
     def with_async_redis

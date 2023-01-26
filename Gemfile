@@ -10,6 +10,10 @@ gem 'async-io'
 gem 'async-pool'
 gem 'priority_queue_cxx'
 
+group :development, :test do
+  gem 'debug'
+end
+
 group :development do
   gem 'rackup'
   gem 'sidekiq' # for mem/speed comparison
@@ -18,6 +22,5 @@ group :development do
 end
 
 group :test do
-  gem 'debug'
   gem 'rspec'
 end
