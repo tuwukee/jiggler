@@ -11,7 +11,6 @@ require 'async/pool'
 module Jiggler
   class CLI
     include Singleton
-    CONTEXT_SWITCHER_THRESHOLD = 0.5
 
     attr_reader :logger, :config, :environment
 
@@ -45,16 +44,15 @@ module Jiggler
     def start
       return unless ping_redis
       @cond = Async::Condition.new
+      scheduler_loop = Fiber.current
       Async do
         setup_signal_handlers
-        patch_scheduler
-        @launcher = Launcher.new(config)
-        @launcher.start
-        Async do
-          @cond.wait
-        end
+        cleanup = patch_scheduler(scheduler_loop, config[:fiber_switcher_threshold])
+        @launcher = Launcher.new(config).tap(&:start)
+        Async { @cond.wait }
+      ensure
+        cleanup.call
       end
-      @switcher&.exit
     end
 
     def stop
@@ -71,46 +69,31 @@ module Jiggler
     private
 
     # forces scheduler to switch fibers if they take more than threshold to execute
-    def patch_scheduler
-      @switcher = Thread.new(Fiber.scheduler) do |scheduler|
-        loop do
-          sleep(CONTEXT_SWITCHER_THRESHOLD)
-          switch = scheduler.context_switch
-          next if switch.nil?
-          next if Process.clock_gettime(Process::CLOCK_MONOTONIC) - switch < CONTEXT_SWITCHER_THRESHOLD
+    def patch_scheduler(scheduler_fiber, threshold)
+      switch_value = Struct.new(:switched_at).new
 
-          Process.kill('URG', Process.pid)
+      thr = Thread.new(switch_value) do |switch_value|
+        loop do
+          sleep(threshold)
+          transfer = switch_value.switched_at
+          next if transfer.nil?
+          Process.kill('URG', Process.pid) if now - transfer > threshold
         end
       end
 
       Signal.trap('URG') do
-        next Fiber.scheduler.context_switch!(nil) unless Async::Task.current?
+        next unless Async::Task.current? # shouldn't really happen
         Async::Task.current.yield
       end
 
-      Fiber.scheduler.instance_eval do
-        def context_switch
-          @context_switch
-        end
+      tp = TracePoint.trace(:fiber_switch) do |tp|
+        update = Fiber.current.object_id != scheduler_fiber
+        switch_value.switched_at = update ? now : nil
+      end
 
-        def context_switch!(value = Process.clock_gettime(Process::CLOCK_MONOTONIC))
-          @context_switch = value
-        end
-
-        def block(...)
-          context_switch!(nil)
-          super
-        end
-
-        def kernel_sleep(...)
-          context_switch!(nil)
-          super
-        end
-
-        def resume(fiber, *args)
-          context_switch!
-          super
-        end
+      -> do
+        thr.exit
+        tp.disable
       end
     end
 
@@ -145,6 +128,10 @@ module Jiggler
       @parser = option_parser(opts)
       @parser.parse!(argv)
       opts
+    end
+
+    def now
+      Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
 
     def option_parser(opts)

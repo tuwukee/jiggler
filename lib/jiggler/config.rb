@@ -28,6 +28,7 @@ module Jiggler
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
       # client settings
       client_concurrency: 10,
+      fiber_switcher_threshold: 0.1,
       client_redis_pool: nil,
       client_async: false,
     }
