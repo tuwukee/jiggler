@@ -30,6 +30,7 @@ module Jiggler
       client_concurrency: 10,
       client_redis_pool: nil,
       client_async: false,
+      mode: :at_least_once
     }
 
     def initialize(options = {})
@@ -37,6 +38,10 @@ module Jiggler
       @options[:redis_url] = ENV['REDIS_URL'] if @options[:redis_url].nil? && ENV['REDIS_URL']
       @options[:queues] ||= [DEFAULT_QUEUE]
       @directory = {}
+    end
+
+    def at_least_once?
+      @options[:mode] == :at_least_once
     end
 
     def queue_prefix

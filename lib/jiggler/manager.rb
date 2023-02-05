@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'fc'
 require 'set'
 
 # This class manages the workers lifecycle
@@ -17,28 +16,17 @@ module Jiggler
       @config = config
       @timeout = @config[:timeout]
       @collection = collection
-      
-      # the queue is non blocking
-      @pqueue = FastContainers::PriorityQueue.new(:max)
-      # make the readers optional via config (?)
-      # or make them mandatory (?)
-      config.sorted_queues_data.each do |queue_data|
-        @readers << Jiggler::QueueReader.new(
-          config, 
-          queue_data[1][:list], 
-          queue_data[1][:priority], 
-          @pqueue
-        )
-      end
-      
-      # workers should use a fetcher abstraction
-      # to determine should they fetch data from readers or from redis directly
+      @acknowledger = Acknowledger.new(config)
+      @fetcher = init_fetcher
+
       @config[:concurrency].times do
         @workers << init_worker
       end
     end
 
     def start
+      @acknowledger.start
+      @fetcher.start
       @workers.each(&:run)
     end
 
@@ -46,16 +34,28 @@ module Jiggler
       return if @done
 
       @done = true
-      @workers.each(&:suspend)
+      @fetcher.suspend
     end
 
     def terminate
       suspend
       schedule_shutdown
       wait_for_workers
+      wait_for_acknowledger
     end
 
     private
+
+    def init_fetcher
+      klass = @config.at_least_once? ? AtLeastOnceFetcher : AtMostOnceFetcher
+      klass.new(@config, @collection)
+    end
+
+    def wait_for_acknowledger
+      logger.info('Waiting for the finished jobs to acknowledge...')
+      @acknowledger.terminate
+      @acknowledger.wait
+    end
 
     def wait_for_workers
       logger.info('Waiting for workers to finish...')
@@ -75,7 +75,7 @@ module Jiggler
 
     def init_worker
       Jiggler::Worker.new(
-        @config, @collection, &method(:process_worker_result)
+        @config, @collection, @acknowledger, @fetcher, &method(:process_worker_result)
       )
     end
 
