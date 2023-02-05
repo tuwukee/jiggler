@@ -7,17 +7,17 @@ module Jiggler
         Async do
           yield
         rescue Exception => ex
-          log_error(ex, { context: name, tid: tid })        
+          log_error(ex, context: name, tid: tid)
         end
       end
 
-      def log_error(ex, ctx = {})
+      def log_error(ex, **ctx)
         err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(' ')
         logger.error("error_message='#{ex.message}' #{err_context}")
         logger.error(ex.backtrace.first(12).join("\n")) unless ex.backtrace.nil?
       end
 
-      def log_error_short(err, ctx = {})
+      def log_error_short(err, **ctx)
         err_context = ctx.compact.map { |k, v| "#{k}=#{v}" }.join(' ')
         logger.error("error_message='#{err.message}' #{err_context}")
       end

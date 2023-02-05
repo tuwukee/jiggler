@@ -3,18 +3,19 @@
 module Jiggler
   class Worker
     include Support::Helper
-    TIMEOUT = 2 # timeout for brpop
 
     CurrentJob = Struct.new(:queue, :args, keyword_init: true)
 
-    attr_reader :current_job, :config, :done, :collection
+    attr_reader :current_job, :config, :done, :collection, :acknowledger, :fetcher
 
-    def initialize(config, collection, &callback)
+    def initialize(config, collection, acknowledger, fetcher, &callback)
       @done = false
       @current_job = nil
       @callback = callback
       @config = config
       @collection = collection
+      @acknowledger = acknowledger
+      @fetcher = fetcher
     end
 
     def run
@@ -43,12 +44,7 @@ module Jiggler
     end
 
     def terminate
-      @done = true
       @runner&.stop
-    end
-
-    def suspend
-      @done = true
     end
 
     def wait
@@ -59,23 +55,15 @@ module Jiggler
 
     def process_job
       @current_job = fetch_one
-      return if current_job.nil? # timed out brpop or done
+      return if current_job.nil? # done
+
       execute_job
       @current_job = nil
     end
 
     def fetch_one
-      queue, args = config.with_sync_redis do |conn| 
-        conn.blocking_call(false, 'BRPOP', *config.sorted_lists, TIMEOUT)
-      end
-      return nil unless queue
-
-      if @done
-        requeue(queue, args)
-        nil
-      else
-        CurrentJob.new(queue: queue, args: args)
-      end
+      job = fetcher.fetch
+      @done = true if job.nil?
     rescue Async::Stop => err
       raise err
     rescue => err
@@ -88,6 +76,7 @@ module Jiggler
     def execute_job
       parsed_args = Oj.load(current_job.args, mode: :compat)
       execute(parsed_args, current_job.queue)
+      acknowledger.ack(current_job)
     rescue Async::Stop => err
       raise err
     rescue UnknownJobError => err

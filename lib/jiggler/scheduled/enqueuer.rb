@@ -32,7 +32,7 @@ module Jiggler
             end
           end
         rescue => err
-          log_error_short(err, { context: '\'Enqueuing jobs error\'', tid: @tid })
+          log_error_short(err, context: '\'Enqueuing jobs error\'', tid: @tid)
         end
       end
 
