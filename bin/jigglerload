@@ -43,7 +43,7 @@ require_relative '../lib/jiggler/cli'
 # require 'jiggler'
 
 CONCURRENCY = 5
-ITERATIONS = 1
+ITERATIONS = 10
 BATCH = 100_000
 
 # $internet = Async::HTTP::Internet.new
@@ -55,6 +55,7 @@ Jiggler.configure do |config|
   config[:client_concurrency] = 1
   # config[:redis_url] = "redis://jiggler_redis:6379"
   config[:timeout] = 100
+  config[:mode] = :at_least_once
   config.logger.level = Logger::WARN
 end
 

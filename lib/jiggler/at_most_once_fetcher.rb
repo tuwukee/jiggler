@@ -17,19 +17,21 @@ module Jiggler
     end
 
     def start
-      safe_async('Fetcher') do
-        loop do
-          if @tasks_queue.num_waiting.zero? && !@done
-            @condition.wait # supposed to block here until consumers notify
-          end
-          break if @done
+      config[:concurrency].times do
+        safe_async('Fetcher') do
+          loop do
+            if @tasks_queue.num_waiting.zero? && !@done
+              @condition.wait # supposed to block here until consumers notify
+            end
+            break if @done
 
-          q, args = config.with_async_redis do |conn|
-            conn.blocking_call(false, 'BRPOP', *config.sorted_lists, TIMEOUT)
-          end
-          break if args.nil? && @done
+            q, args = config.with_sync_redis do |conn|
+              conn.blocking_call(false, 'BRPOP', *config.sorted_lists, TIMEOUT)
+            end
+            break if args.nil? && @done
 
-          @done ? requeue(q, args) : @tasks_queue.push(job(q, args))
+            @done ? requeue(q, args) : @tasks_queue.push(job(q, args))
+          end
         end
       end
     end
@@ -48,7 +50,7 @@ module Jiggler
     private
 
     def requeue(queue, args)
-      config.with_async_redis do |conn|
+      config.with_sync_redis do |conn|
         conn.call('RPUSH', queue, args)
       end
     end

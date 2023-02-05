@@ -18,7 +18,7 @@ module Jiggler
 
     CurrentJob = Struct.new(:queue, :args, :reserve_queue, keyword_init: true) do
       def ack
-        config.with_async_redis do |conn|
+        config.with_sync_redis do |conn|
           conn.call('LREM', reserve_queue, args)
         end
       end
@@ -26,26 +26,29 @@ module Jiggler
 
     def start
       config.sorted_queues_data.each do |queue, data|
-        safe_async("'Fetcher for #{queue}'") do
-          list = data[:list]
-          rlist = in_process_queue(list)
-          loop do
-            if @consumers_queue.num_waiting.zero? && !@done
-              @condition.wait # supposed to block here until consumers notify
+        config[:concurrency].times do
+          safe_async("'Fetcher for #{queue}'") do
+            list = data[:list]
+            rlist = in_process_queue(list)
+            loop do
+              if @consumers_queue.num_waiting.zero? && !@done
+                @condition.wait # supposed to block here until consumers notify
+              end
+              break if @done
+
+              args = config.with_sync_redis do |conn|
+                conn.blocking_call(false, 'BRPOPLPUSH', list, rlist, TIMEOUT)
+              end
+              # no requeue logic rn as we expect monitor to handle
+              # in-process-tasks list for this process
+              break if @done
+
+              next if args.nil? 
+
+              @tasks_queue.push(job(list, args, rlist), data[:priority]) 
+              @consumers_queue.push('') # to unblock any waiting consumer
             end
-            break if @done
-
-            args = config.with_async_redis do |conn|
-              conn.blocking_call(false, 'BRPOPLPUSH', list, rlist, TIMEOUT)
-            end
-            # no requeue logic rn as we expect monitor to handle
-            # in-process-tasks list for this process
-            break if @done
-
-            next if args.nil? 
-
-            @tasks_queue.push(job(list, args, rlist), data[:priority]) 
-            @consumers_queue.push('') # to unblock any waiting consumer
+            logger.warn("Fetcher for #{queue} stopped")
           end
         end
       end
@@ -58,6 +61,7 @@ module Jiggler
     end
 
     def suspend
+      logger.warn("Suspending the fetcher")
       @done = true
       @condition.signal
       @consumers_queue.close # unblocks awaiting consumers
