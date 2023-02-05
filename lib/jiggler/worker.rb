@@ -63,7 +63,10 @@ module Jiggler
 
     def fetch_one
       job = fetcher.fetch
-      @done = true if job.nil?
+      if job.nil?
+        logger.warn("Suspending the worker")
+        @done = true
+      end
     rescue Async::Stop => err
       raise err
     rescue => err

@@ -22,6 +22,7 @@ module Jiggler
             log_error(err, context: '\'Could not acknowledge a job\'', job: job)
           end
         end
+        logger.warn("Acknowledger exits")
       end
     end
     
@@ -30,6 +31,7 @@ module Jiggler
     end
 
     def terminate
+      logger.warn("Suspending the acknowledger")
       @queue.close
     end
   end
