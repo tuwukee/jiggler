@@ -25,12 +25,14 @@ module Jiggler
       stats_interval: 10,
       poller_enabled: true,
       poll_interval: 5,
+      in_process_interval: 10,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
       # client settings
       client_concurrency: 10,
       client_redis_pool: nil,
+      fetchers_concurrency: 1,
       client_async: false,
-      mode: :at_least_once
+      guaranteed_execution: true
     }
 
     def initialize(options = {})
@@ -38,10 +40,6 @@ module Jiggler
       @options[:redis_url] = ENV['REDIS_URL'] if @options[:redis_url].nil? && ENV['REDIS_URL']
       @options[:queues] ||= [DEFAULT_QUEUE]
       @directory = {}
-    end
-
-    def at_least_once?
-      @options[:mode] == :at_least_once
     end
 
     def queue_prefix
@@ -140,6 +138,15 @@ module Jiggler
           :concurrency,
           :redis_url
         )
+
+        if @options[:guaranteed_execution]
+          # for acknowledgers
+          opts[:concurrency] *= 2
+          # for queue fetchers
+          opts[:concurrency] += @options[:fetchers_concurrency] * sorted_queues.count
+          # extra poller task to cleanup leftover in-process queues
+          opts[:concurrency] += 1
+        end
 
         opts[:concurrency] += 2 # monitor + safety margin
         opts[:concurrency] += 1 if @options[:poller_enabled]

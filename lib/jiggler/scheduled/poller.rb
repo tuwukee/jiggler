@@ -12,6 +12,7 @@ module Jiggler
       def initialize(config)
         @config = config
         @enqueuer = Jiggler::Scheduled::Enqueuer.new(config)
+        @requeuer = Jiggler::Scheduled::Requeuer.new(config)
         @done = false
         @job = nil
         @count_calls = 0
@@ -21,6 +22,7 @@ module Jiggler
       def terminate
         @done = true
         @enqueuer.terminate
+        @requeuer.terminate
 
         Async do
           @condition.signal
@@ -29,12 +31,20 @@ module Jiggler
       end
 
       def start
-        @job = safe_async('Poller') do
+        @job = Async do
           @tid = tid
           initial_wait
-          until @done
-            enqueue
-            wait unless @done
+          safe_async('Poller') do
+            until @done
+              enqueue
+              wait unless @done
+            end
+          end
+          safe_async('Requeuer') do
+            until @done
+              handle_stale_in_process_queues
+              wait(in_process_interval) unless @done
+            end
           end
         end
       end
@@ -44,14 +54,22 @@ module Jiggler
         @enqueuer.enqueue_jobs
       end
 
+      def handle_stale_in_process_queues
+        @requeuer.handle_stale
+      end
+
       private
 
-      def wait
+      def wait(interval = random_poll_interval)
         Async(transient: true) do
-          sleep(random_poll_interval)
+          sleep(timeout)
           @condition.signal
         end
         @condition.wait
+      end
+
+      def in_process_interval
+        @config[:in_process_interval] * rand
       end
 
       def random_poll_interval
@@ -76,7 +94,7 @@ module Jiggler
 
       def process_count
         count = fetch_count
-        count = 1 if count == 0
+        count = 1 if count.zero?
         count
       end
 
