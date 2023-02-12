@@ -15,6 +15,8 @@ RSpec.describe Jiggler::AtMostOnce::Fetcher do
     let(:collection) { Jiggler::Stats::Collection.new(uuid, uuid) }
     let(:fetcher) { Jiggler::AtMostOnce::Fetcher.new(config, collection) }
 
+    before { config.cleaner.prune_all }
+
     it 'fetches current job' do
       MyJob.with_options(queue: 'fetcher_queue').enqueue
 
@@ -26,8 +28,6 @@ RSpec.describe Jiggler::AtMostOnce::Fetcher do
       expect(args['jid']).to be_a(String)
       expect(args['retries']).to be 0
       expect(args['args']).to eq([])
-
-      config.cleaner.prune_all
     end
   end
 end
