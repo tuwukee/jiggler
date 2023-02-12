@@ -137,6 +137,16 @@ RSpec.describe Jiggler::Cleaner do
         expect(conn.call('LRANGE', 'jiggler:list:cleaner-test-0', 0, -1)).to be_empty
       end
     end
+
+    it 'prunes in_progress queues' do
+      config.client_redis_pool.acquire do |conn|
+        conn.call('LPUSH', 'jiggler:list:cleaner-test-0:in-progress:1', '{}')
+      end
+      cleaner.prune_all_queues
+      config.client_redis_pool.acquire do |conn|
+        expect(conn.call('LRANGE', 'jiggler:list:cleaner-test-0:in-progress:1', 0, -1)).to be_empty
+      end
+    end
   end
 
   describe '#prune_queue' do

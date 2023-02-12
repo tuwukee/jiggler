@@ -6,7 +6,7 @@ module Jiggler
   module AtLeastOnce
     class Fetcher < BaseFetcher
       TIMEOUT = 2.0 # 2 seconds of waiting for brpoplpush
-      RESERVE_QUEUE_SUFFIX = 'in_progress_tasks'
+      RESERVE_QUEUE_SUFFIX = 'in_progress'
 
       attr_reader :producers
 

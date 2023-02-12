@@ -52,7 +52,7 @@ module Jiggler
 
         config.with_async_redis do |conn|
           conn.pipelined do |pipeline|
-            pipeline.call('SET', collection.uuid, process_data, ex: exp)
+            pipeline.call('SET', collection.identity, process_data, ex: exp)
             pipeline.call('INCRBY', config.processed_counter, processed_jobs)
             pipeline.call('INCRBY', config.failures_counter, failed_jobs)
           end

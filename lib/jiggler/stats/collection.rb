@@ -3,10 +3,11 @@
 module Jiggler
   module Stats
     class Collection
-      attr_reader :uuid, :data
+      attr_reader :uuid, :identity, :data
 
-      def initialize(uuid)
+      def initialize(uuid, identity)
         @uuid = uuid
+        @identity = identity
         @data = {
           processed: 0,
           failures: 0,
