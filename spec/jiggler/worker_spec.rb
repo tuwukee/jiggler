@@ -6,8 +6,9 @@ RSpec.describe Jiggler::Worker do
       concurrency: 1,
       client_concurrency: 1,
       timeout: 1,
-      queues: [['default', 2], ['test', 1]]
-    ) )
+      queues: [['default', 2], ['test', 1]],
+      mode: :at_most_once
+    ))
   end
   after(:all) do
     Jiggler.instance_variable_set(:@config, Jiggler::Config.new)
@@ -15,8 +16,10 @@ RSpec.describe Jiggler::Worker do
 
   let(:config) { Jiggler.config }
   let(:collection) { Jiggler::Stats::Collection.new(config) }
+  let(:acknowledger) { Jiggler::AtMostOnce::Acknowledger.new(config) }
+  let(:fetcher) { Jiggler::AtMostOnce::Fetcher.new(config, collection) }
   let(:worker) do 
-    described_class.new(config, collection) do
+    described_class.new(config, collection, acknowledger, fetcher) do
       config.logger.debug("Callback called: #{rand(100)}")
     end
   end

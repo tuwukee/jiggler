@@ -30,16 +30,14 @@ module Jiggler
       
       log_error(
         err,
-        { 
-          context: '\'Job raised exception\'',
-          error_class: err.class.name,
-          name: parsed_job['name'],
-          queue: parsed_job['queue'],
-          args: parsed_job['args'],
-          attempt: parsed_job['attempt'],
-          tid: @tid,
-          jid: parsed_job['jid']
-        }
+        context: '\'Job raised exception\'',
+        error_class: err.class.name,
+        name: parsed_job['name'],
+        queue: parsed_job['queue'],
+        args: parsed_job['args'],
+        attempt: parsed_job['attempt'],
+        tid: @tid,
+        jid: parsed_job['jid']
       )
     end
 

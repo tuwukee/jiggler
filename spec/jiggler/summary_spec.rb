@@ -8,10 +8,13 @@ RSpec.describe Jiggler::Summary do
       timeout: 1,
       stats_interval: 1,
       queues: queues,
-      poller_enabled: false
+      poller_enabled: false,
+      mode: :at_most_once
     )
   end
-  let(:collection) { Jiggler::Stats::Collection.new('summary-test-uuid') } 
+  let(:collection) { Jiggler::Stats::Collection.new('summary-test-uuid') }
+  let(:acknowledger) { Jiggler::AtMostOnce::Acknowledger.new(config) }
+  let(:fetcher) { Jiggler::AtMostOnce::Fetcher.new(config, collection) }
   let(:summary) { described_class.new(config) }
 
   describe '.all' do
@@ -90,12 +93,13 @@ RSpec.describe Jiggler::Summary do
 
   describe '#last_dead_jobs' do
     it 'returns last n dead jobs' do
+      # clean data and enqueue a failling job with no retries
       Sync do 
         config.cleaner.prune_all
         expect(summary.last_dead_jobs(1)).to be_empty
         MyFailedJob.with_options(queue: 'queue1', retries: 0).enqueue('yay')
       end
-      worker = Jiggler::Worker.new(config, collection) do
+      worker = Jiggler::Worker.new(config, collection, acknowledger, fetcher) do
         config.logger.info('Doing some weird dead testings')
       end
       task = Async do
@@ -106,6 +110,8 @@ RSpec.describe Jiggler::Summary do
         worker.terminate
       end
       task.wait
+
+      # ensure the job is saved as dead
       jobs = Sync { summary.last_dead_jobs(3) }
       expect(jobs.count).to be 1
       expect(jobs.first).to include({
@@ -117,6 +123,7 @@ RSpec.describe Jiggler::Summary do
 
   describe '#last_retry_jobs' do
     it 'returns last n retry jobs' do
+      # clean data and enqueue 5 failling jobs
       Sync do
         config.cleaner.prune_all
         expect(summary.last_retry_jobs(3)).to be_empty
@@ -127,9 +134,12 @@ RSpec.describe Jiggler::Summary do
           ).enqueue("yay-#{i}")
         end
       end
-      worker = Jiggler::Worker.new(config, collection) do
+      
+      worker = Jiggler::Worker.new(config, collection, acknowledger, fetcher) do
         config.logger.info('Doing some weird retry testings')
       end
+      
+      # start worker, wait for 1 sec, terminate worker
       task = Async do
         Async do
           worker.run
@@ -138,7 +148,10 @@ RSpec.describe Jiggler::Summary do
         worker.terminate
       end
       task.wait
+
+      # fetch last 3 retry jobs to ensure they are in the right order
       jobs = Sync { summary.last_retry_jobs(3) }
+      puts jobs.first
       expect(jobs.count).to be 3
       expect(jobs.first).to include({
         'name' => 'MyFailedJob',
