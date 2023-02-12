@@ -16,7 +16,8 @@ module Jiggler
         @done = false
         @job = nil
         @count_calls = 0
-        @condition = Async::Condition.new
+        @requeuer_condition = Async::Condition.new
+        @enqueuer_condition = Async::Condition.new
       end
 
       def terminate
@@ -25,7 +26,8 @@ module Jiggler
         @requeuer.terminate
 
         Async do
-          @condition.signal
+          @requeuer_condition.signal
+          @enqueuer_condition.signal
           @job&.wait
         end
       end
@@ -37,15 +39,16 @@ module Jiggler
           safe_async('Poller') do
             until @done
               enqueue
-              wait unless @done
+              wait(@enqueuer_condition) unless @done
             end
           end
           safe_async('Requeuer') do
             until @done
               handle_stale_in_process_queues
-              wait(in_process_interval) unless @done
+              logger.warn('executing requeuer')
+              wait(@requeuer_condition, in_process_interval) unless @done
             end
-          end
+          end if @config.at_least_once?
         end
       end
 
@@ -60,16 +63,17 @@ module Jiggler
 
       private
 
-      def wait(interval = random_poll_interval)
+      def wait(condition, interval = random_poll_interval)
         Async(transient: true) do
           sleep(interval)
-          @condition.signal
+          condition.signal
         end
-        @condition.wait
+        condition.wait
       end
 
       def in_process_interval
-        @config[:in_process_interval] * rand
+        # 10 to 25 seconds by default
+        [@config[:in_process_interval] * rand, 10].max
       end
 
       def random_poll_interval
@@ -99,14 +103,7 @@ module Jiggler
       # wait a random amount of time so in case of multiple processes 
       # their pollers won't be synchronized
       def initial_wait
-        total = INITIAL_WAIT + (12 * rand)
-
-        # in case of an early exit skip the initial wait
-        Async(transient: true) do
-          sleep(total)
-          @condition.signal
-        end
-        @condition.wait
+        wait(@enqueuer_condition, INITIAL_WAIT + (12 * rand))
       end
     end
   end
