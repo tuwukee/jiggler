@@ -84,12 +84,10 @@ module Jiggler
       end
 
       def fetch_count
-        @config.with_sync_redis do |conn| 
-          conn.call('SCAN', '0', 'MATCH', @config.process_scan_key).last.size
-        rescue => err
-          log_error_short(err, { context: '\'Poller getting processes error\'', tid: @tid })
-          1
-        end
+        scan_all(@config.process_scan_key).size
+      rescue => err
+        log_error_short(err, { context: '\'Poller getting processes error\'', tid: @tid })
+        1
       end
 
       def process_count

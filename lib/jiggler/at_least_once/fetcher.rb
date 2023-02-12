@@ -56,7 +56,7 @@ module Jiggler
       end
 
       def fetch
-        @condition.signal
+        @condition.signal if signal?
         return :done if @consumers_queue.pop.nil?
 
         @tasks_queue.pop
@@ -70,6 +70,14 @@ module Jiggler
       end
 
       private
+
+      def queue_signaling_limit
+        @queue_signaling_limit ||= [config[:concurrency] / 2, 1].max
+      end
+
+      def signal?
+        @consumers_queue.size < queue_signaling_limit
+      end
 
       def in_process_queue(queue)
         "#{queue}:#{RESERVE_QUEUE_SUFFIX}:#{collection.uuid}"

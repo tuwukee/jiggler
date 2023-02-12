@@ -25,6 +25,20 @@ module Jiggler
       def logger
         @config.logger
       end
+
+      def scan_all(mask)
+        @config.with_sync_redis do |conn|
+          start = '0'
+          all_keys = []
+          loop do
+            start, keys = conn.call('SCAN', start, 'MATCH', mask)
+            break if keys.empty?
+            all_keys += keys
+            break if start == '0'
+          end
+          all_keys
+        end
+      end
   
       def tid
         return unless Async::Task.current?
