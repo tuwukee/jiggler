@@ -16,8 +16,7 @@ module Jiggler
       @config = config
       @timeout = @config[:timeout]
       @collection = collection
-      @acknowledger = Acknowledger.new(config)
-      @fetcher = init_fetcher
+      init_acknowledger_and_fetcher
 
       @config[:concurrency].times do
         @workers << init_worker
@@ -46,9 +45,14 @@ module Jiggler
 
     private
 
-    def init_fetcher
-      klass = @config.at_least_once? ? AtLeastOnceFetcher : AtMostOnceFetcher
-      klass.new(@config, @collection)
+    def init_acknowledger_and_fetcher
+      if @config[:guaranteed_execution] == true
+        @fetcher = AtLeastOnce::Fetcher.new(@config, @collection)
+        @acknowledger = AtLeastOnce::Acknowledger.new(@config)
+      else
+        @fetcher = AtMostOnce::Fetcher.new(@config, @collection)
+        @acknowledger = AtMostOnce::Acknowledger.new(@config)
+      end
     end
 
     def wait_for_acknowledger

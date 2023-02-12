@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module Jiggler
-  class BasicFetcher
+  class BaseFetcher
     include Support::Helper
 
     attr_reader :config, :collection
