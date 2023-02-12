@@ -57,7 +57,7 @@ Jiggler.configure do |config|
   config[:client_concurrency] = 1
   # config[:redis_url] = "redis://jiggler_redis:6379"
   config[:timeout] = 100
-  config[:guaranteed_execution] = true
+  config[:mode] = :at_least_once
   config.logger.level = Logger::WARN
 end
 
