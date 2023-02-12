@@ -6,7 +6,7 @@ module Jiggler
 
     CurrentJob = Struct.new(:queue, :args, keyword_init: true)
 
-    attr_reader :current_job, :config, :done, :collection, :acknowledger, :fetcher
+    attr_reader :current_job, :config, :collection, :acknowledger, :fetcher
 
     def initialize(config, collection, acknowledger, fetcher, &callback)
       @done = false

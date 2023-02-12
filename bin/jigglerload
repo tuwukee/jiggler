@@ -18,6 +18,7 @@ require 'net/http'
 require_relative '../lib/jiggler/support/helper'
 require_relative '../lib/jiggler/scheduled/enqueuer'
 require_relative '../lib/jiggler/scheduled/poller'
+require_relative '../lib/jiggler/scheduled/requeuer'
 require_relative '../lib/jiggler/stats/collection'
 require_relative '../lib/jiggler/stats/monitor'
 

@@ -93,20 +93,12 @@ RSpec.describe Jiggler::Worker do
     context 'when worker is running' do
       it 'terminates the worker' do
         task = Async do
-          expect(worker.done).to be false
           Async { worker.run }
+          sleep(0.5)
           worker.terminate
         end
         task.wait
-        expect(worker.done).to be true
-      end
-    end
-
-    context 'when worker is not running' do
-      it do
-        expect(worker.done).to be false
-        worker.terminate
-        expect(worker.done).to be true
+        expect(worker.instance_variable_get(:@runner)).to be_nil
       end
     end
   end
