@@ -31,10 +31,10 @@ module Jiggler
 
       private
 
-      def reqeue_data
+      def requeue_data
         grouped_queues = in_progress_queues.map do |queue|
           [queue, *queue.split(AtLeastOnce::Fetcher::RESERVE_QUEUE_SUFFIX)]
-        end.group(&:last)
+        end.group_by(&:last)
         grouped_queues.except(*running_processes).values.flatten(1)
       end
 

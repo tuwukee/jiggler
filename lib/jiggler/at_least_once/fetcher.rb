@@ -76,7 +76,7 @@ module Jiggler
       end
 
       def signal?
-        @consumers_queue.size < queue_signaling_limit
+        @consumers_queue.size < config[:concurrency]
       end
 
       def in_process_queue(queue)

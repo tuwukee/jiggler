@@ -46,7 +46,7 @@ module Jiggler
     private
 
     def init_acknowledger_and_fetcher
-      if @config[:guaranteed_execution] == true
+      if @config.at_least_once?
         @fetcher = AtLeastOnce::Fetcher.new(@config, @collection)
         @acknowledger = AtLeastOnce::Acknowledger.new(@config)
       else
