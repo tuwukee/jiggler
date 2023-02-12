@@ -1,0 +1,44 @@
+# frozen_string_literal: true
+
+RSpec.describe Jiggler::AtLeastOnce::Fetcher do
+  describe '#fetch' do
+    let(:config) do
+      Jiggler::Config.new(
+        concurrency: 1,
+        timeout: 1,
+        poller_enabled: false,
+        queues: ['fetcher_queue'],
+        mode: :at_least_once
+      )
+    end
+    let(:uuid) { "#{SecureRandom.hex(3)}-test" }
+    let(:collection) { Jiggler::Stats::Collection.new(uuid, uuid) }
+    let(:fetcher) { Jiggler::AtLeastOnce::Fetcher.new(config, collection) }
+
+    it 'fetches current job' do
+      MyJob.with_options(queue: 'fetcher_queue').enqueue
+      job = nil
+      task = Async do
+        Async do
+          fetcher.start
+        end
+        sleep(0.5)
+        job = fetcher.fetch
+        fetcher.suspend
+      end
+      task.wait
+      args = Oj.load(job.args)
+
+      expect(job.queue).to eq('jiggler:list:fetcher_queue')
+      expect(job.reserve_queue).to eq('jiggler:list:fetcher_queue:in_progress:' + uuid)
+
+      expect(args['name']).to eq('MyJob')
+      expect(args['jid']).to be_a(String)
+      expect(args['retries']).to be 0
+      expect(args['args']).to eq([])
+
+      config.cleaner.prune_all
+    end
+  end
+end
+  

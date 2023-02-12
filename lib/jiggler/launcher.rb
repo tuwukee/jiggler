@@ -37,9 +37,13 @@ module Jiggler
     private
 
     def uuid
-      @uuid ||= begin
+      @uuid ||= SecureRandom.hex(6)
+    end
+
+    def identity
+      @identity ||= begin
         data_str = [
-          SecureRandom.hex(6),
+          uuid,
           config[:concurrency],
           config[:timeout],
           config[:queues].join(','),
@@ -53,7 +57,7 @@ module Jiggler
     end
 
     def collection
-      @collection ||= Stats::Collection.new(uuid)
+      @collection ||= Stats::Collection.new(uuid, identity)
     end
 
     def manager

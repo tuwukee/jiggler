@@ -15,7 +15,8 @@ RSpec.describe Jiggler::Worker do
   end
 
   let(:config) { Jiggler.config }
-  let(:collection) { Jiggler::Stats::Collection.new(config) }
+  let(:uuid) { "#{SecureRandom.hex(3)}-test" }
+  let(:collection) { Jiggler::Stats::Collection.new(uuid, uuid) }
   let(:acknowledger) { Jiggler::AtMostOnce::Acknowledger.new(config) }
   let(:fetcher) { Jiggler::AtMostOnce::Fetcher.new(config, collection) }
   let(:worker) do 

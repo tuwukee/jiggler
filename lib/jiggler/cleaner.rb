@@ -108,15 +108,22 @@ module Jiggler
     def prn_dead_set(conn)
       conn.call('DEL', config.dead_set)
     end
-
+    
+    # it deletes in_progress queues as well
     def prn_all_queues(conn)
-      queues = conn.call('SCAN', '0', 'MATCH', config.queue_scan_key).last
-      conn.call('DEL', *queues) unless queues.empty?
+      cursor = ''
+      until cursor == '0'
+        cursor, queues = conn.call('SCAN', cursor, 'MATCH', config.queue_scan_key)
+        conn.call('DEL', *queues) unless queues.empty?
+      end
     end
 
     def prn_all_processes(conn)
-      processes = conn.call('SCAN', '0', 'MATCH', config.process_scan_key).last
-      conn.call('DEL', *processes) unless processes.empty?
+      cursor = ''
+      until cursor == '0'
+        cursor, processes = conn.call('SCAN', cursor, 'MATCH', config.process_scan_key)
+        conn.call('DEL', *processes) unless processes.empty?
+      end
     end
 
     def prn_failures_counter(conn)
