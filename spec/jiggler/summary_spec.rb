@@ -12,7 +12,8 @@ RSpec.describe Jiggler::Summary do
       mode: :at_most_once
     )
   end
-  let(:collection) { Jiggler::Stats::Collection.new('summary-test-uuid') }
+  let(:uuid) { "#{SecureRandom.hex(3)}-test" }
+  let(:collection) { Jiggler::Stats::Collection.new(uuid, uuid) }
   let(:acknowledger) { Jiggler::AtMostOnce::Acknowledger.new(config) }
   let(:fetcher) { Jiggler::AtMostOnce::Fetcher.new(config, collection) }
   let(:summary) { described_class.new(config) }
@@ -36,7 +37,7 @@ RSpec.describe Jiggler::Summary do
       Sync do
         config.cleaner.prune_all
         launcher = Jiggler::Launcher.new(config)
-        uuid = launcher.send(:uuid)
+        uuid = launcher.send(:identity)
         MyJob.with_options(queue: 'queue1').enqueue
         
         first_summary = summary.all

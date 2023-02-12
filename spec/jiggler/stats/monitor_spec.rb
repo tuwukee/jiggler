@@ -8,7 +8,7 @@ RSpec.describe Jiggler::Stats::Monitor do
     )
   end
   let(:uuid) { 'monitor-test-uuid' }
-  let(:collection) { Jiggler::Stats::Collection.new(uuid) }
+  let(:collection) { Jiggler::Stats::Collection.new(uuid, uuid) }
   let(:monitor) { described_class.new(config, collection) }
 
   describe '#start' do

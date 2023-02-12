@@ -8,7 +8,8 @@ RSpec.describe Jiggler::Manager do
       server_mode: true
     )
   end
-  let(:collection) { Jiggler::Stats::Collection.new(config) }
+  let(:uuid) { "#{SecureRandom.hex(3)}-test" }
+  let(:collection) { Jiggler::Stats::Collection.new(uuid, uuid) }
   let(:manager) { described_class.new(config, collection) }
 
   it { expect(manager.instance_variable_get(:@workers).count).to be 4 }
