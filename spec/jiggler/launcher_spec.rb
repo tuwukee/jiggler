@@ -5,7 +5,9 @@ RSpec.describe Jiggler::Launcher do
     Jiggler::Config.new(
       concurrency: 1,
       timeout: 1,
-      server_mode: true
+      server_mode: true,
+      # TODO: test with :at_least_once
+      mode: :at_most_once
     )
     end
   let(:launcher) { described_class.new(config) }

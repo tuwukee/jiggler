@@ -33,13 +33,15 @@ module Jiggler
 
       def requeue_data
         grouped_queues = in_progress_queues.map do |queue|
-          [queue, *queue.split(AtLeastOnce::Fetcher::RESERVE_QUEUE_SUFFIX)]
+          [queue, *queue.split(":#{AtLeastOnce::Fetcher::RESERVE_QUEUE_SUFFIX}:")]
         end.group_by(&:last)
-        grouped_queues.except(*running_processes).values.flatten(1)
+        grouped_queues.except(*running_processes_uuid).values.flatten(1)
       end
 
-      def running_processes
-        scan_all(@config.process_scan_key)
+      def running_processes_uuid
+        scan_all(@config.process_scan_key).map do |process|
+          process.split(':')[2]
+        end
       end
 
       def in_progress_queues

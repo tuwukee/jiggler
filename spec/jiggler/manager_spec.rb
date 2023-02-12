@@ -5,7 +5,8 @@ RSpec.describe Jiggler::Manager do
     Jiggler::Config.new(
       concurrency: 4,
       timeout: 1,
-      server_mode: true
+      # TODO: test with :at_least_once
+      mode: :at_most_once
     )
   end
   let(:uuid) { "#{SecureRandom.hex(3)}-test" }
