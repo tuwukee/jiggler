@@ -8,62 +8,47 @@ module Jiggler
       def initialize(config)
         @config = config
         @done = false
-        @lua_zpopbyscore_sha = nil
         @tid = tid
       end
 
-      def enqueue_jobs
-        @config.with_async_redis do |conn|
-          sorted_sets.each do |sorted_set|
-            # Get next item in the queue with score (time to execute) <= now
-            job_args = zpopbyscore(conn, key: sorted_set, argv: Time.now.to_f.to_s)
-            while !@done && job_args
-              push_job(conn, job_args)
-              job_args = zpopbyscore(conn, key: sorted_set, argv: Time.now.to_f.to_s)
+      def handle_stale
+        requeue_data.each do |(rqueue, queue, _)|
+          @config.with_async_redis do |conn|
+            loop do
+              return if @done
+              # reprocessing is prioritised so we push at the right side
+              break if conn.call('LMOVE', rqueue, queue, 'RIGHT', 'RIGHT').nil?
             end
           end
-        rescue => err
-          log_error_short(err, context: '\'Enqueuing jobs error\'', tid: @tid)
         end
+      rescue => err
+        log_error_short(err, context: '\'Requeuing jobs error\'', tid: @tid)
       end
 
       def terminate
         @done = true
       end
 
-      def push_job(conn, job_args)
-        name = Oj.load(job_args, mode: :compat)['queue'] || @config.default_queue
-        list_name = "#{@config.queue_prefix}#{name}"
-        # logger.debug('Poller Enqueuer') { "Pushing #{job_args} to #{list_name}" }
-        conn.call('LPUSH', list_name, job_args)
-      rescue => err
-        log_error_short(
-          err, { 
-            context: '\'Pushing scheduled job error\'', 
-            tid: @tid,
-            job_args: job_args,
-            queue: list_name
-          }
-        )
-      end
-
       private
-      
-      def sorted_sets
-        @sorted_sets ||= [@config.retries_set, @config.scheduled_set].freeze
+
+      def reqeue_data
+        grouped_queues = in_progress_queues.map do |queue|
+          [queue, *queue.split(AtLeastOnce::Fetcher::RESERVE_QUEUE_SUFFIX)]
+        end.group(&:last)
+        grouped_queues.except(*running_processes).values.flatten(1)
       end
 
-      def zpopbyscore(conn, key: nil, argv: nil)
-        if @lua_zpopbyscore_sha.nil?
-          @lua_zpopbyscore_sha = conn.call('SCRIPT', 'LOAD', LUA_ZPOPBYSCORE)
-        end
-        conn.call('EVALSHA', @lua_zpopbyscore_sha, 1, key, argv)
-      rescue RedisClient::CommandError => e
-        raise unless e.message.start_with?('NOSCRIPT')
+      def running_processes
+        scan_all(@config.process_scan_key)
+      end
 
-        @lua_zpopbyscore_sha = nil
-        retry
-      end     
+      def in_progress_queues
+        scan_all(in_progress_wildcard)
+      end
+
+      def in_progress_wildcard
+        "*#{AtLeastOnce::Fetcher::RESERVE_QUEUE_SUFFIX}*"
+      end
     end
   end
 end
