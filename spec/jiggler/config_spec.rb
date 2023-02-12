@@ -80,7 +80,7 @@ RSpec.describe Jiggler::Config do
 
     it 'gets redis options for server' do
       expect(config.redis_options).to eq(
-        concurrency: 4,
+        concurrency: 8,
         async: true,
         redis_url: 'redis://localhost:6379'
       )
