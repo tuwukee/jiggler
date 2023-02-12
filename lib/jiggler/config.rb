@@ -32,7 +32,7 @@ module Jiggler
       client_redis_pool: nil,
       fetchers_concurrency: 1,
       client_async: false,
-      guaranteed_execution: true
+      mode: :at_least_once
     }
 
     def initialize(options = {})
@@ -81,6 +81,10 @@ module Jiggler
 
     def queue_scan_key
       @queue_scan_key ||= "#{queue_prefix}*"
+    end
+
+    def at_least_once?
+      @options[:mode] == :at_least_once
     end
 
     def queues_data
@@ -139,7 +143,7 @@ module Jiggler
           :redis_url
         )
 
-        if @options[:guaranteed_execution]
+        if at_least_once?
           # for acknowledgers
           opts[:concurrency] *= 2
           # for queue fetchers

@@ -62,7 +62,7 @@ module Jiggler
 
       def wait(interval = random_poll_interval)
         Async(transient: true) do
-          sleep(timeout)
+          sleep(interval)
           @condition.signal
         end
         @condition.wait

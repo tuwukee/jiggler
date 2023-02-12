@@ -6,7 +6,7 @@ module Jiggler
 
     CurrentJob = Struct.new(:queue, :args, keyword_init: true)
 
-    attr_reader :current_job, :config, :done, :collection, :acknowledger, :fetcher
+    attr_reader :current_job, :config, :collection, :acknowledger, :fetcher
 
     def initialize(config, collection, acknowledger, fetcher, &callback)
       @done = false
@@ -88,11 +88,9 @@ module Jiggler
       collection.incr_failures
       log_error_short(
         err,
-        {
-          error_class: err.class.name,
-          job: parsed_args,
-          tid: @tid
-        }
+        error_class: err.class.name,
+        job: parsed_args,
+        tid: @tid
       )
     rescue JSON::ParserError => err
       collection.incr_failures
@@ -100,13 +98,10 @@ module Jiggler
     rescue Exception => ex
       log_error(
         ex,
-        {
-          context: '\'Internal exception\'',
-          tid: @tid,
-          jid: parsed_args['jid']
-        }
+        context: '\'Internal exception\'',
+        tid: @tid,
+        jid: parsed_args['jid']
       )
-      # raise ex
     end
 
     def execute(parsed_job, queue)
@@ -135,10 +130,8 @@ module Jiggler
     def handle_fetch_error(ex)
       log_error_short(
         ex,
-        {
-          context: '\'Fetch error\'',
-          tid: @tid
-        }
+        context: '\'Fetch error\'',
+        tid: @tid
       )
       sleep(TIMEOUT + rand(5) * config[:concurrency]) # sleep for a while before retrying
     end

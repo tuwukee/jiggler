@@ -4,6 +4,7 @@
 require 'jiggler/support/helper'
 require 'jiggler/scheduled/enqueuer'
 require 'jiggler/scheduled/poller'
+require 'jiggler/scheduled/requeuer'
 require 'jiggler/stats/collection'
 require 'jiggler/stats/monitor'
 require 'jiggler/errors'
