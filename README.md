@@ -37,10 +37,10 @@ Conceptually Jiggler consists of two parts: the `client` and the `server`. \
 The `client` is responsible for pushing jobs to `Redis` and allows to read stats, while the `server` reads jobs from `Redis`, processes them, and writes stats.
 
 The `server` uses async `Redis` connections. \
-The `client` on default is `sync`. It's possible to configure the client to be async as well via setting `client_async` to `true`. More info below. \
+The `client` on default is `sync`. It's possible to configure the client to be async as well via setting `client_async` to `true`. \
 Client settings are:
 - `client_concurrency`
-- `async_client`
+- `client_async`
 - `redis_url` (this one is shared with the `server`)
 
 The rest of the settings are `server` specific. 
@@ -52,8 +52,8 @@ require "jiggler"
 
 Jiggler.configure do |config|
   config[:client_concurrency] = 12        # Should equal to the number of threads/fibers in the client app. Defaults to 10
-  config[:concurrency] = 12               # The number of running fibers on the server. Defaults to 10
-  config[:timeout]     = 12               # Seconds Jiggler wait for jobs to finish before shotdown. Defaults to 25
+  config[:concurrency] = 12               # The number of running workers on the server. Defaults to 10
+  config[:timeout]     = 12               # Seconds Jiggler wait for jobs to finish before shutdown. Defaults to 25
   config[:environment] = "myenv"          # On default fetches the value ENV["APP_ENV"] and fallbacks to "development"
   config[:require]     = "./jobs.rb"      # Path to file with jobs/app initializer
   config[:redis_url]   = ENV["REDIS_URL"] # On default fetches the value from ENV["REDIS_URL"]

@@ -16,8 +16,8 @@ def perform
 end
 ```
 
-AMO - at most once
-ALO - at least once
+`AMO` - at most once \
+`ALO` - at least once
 
 | Job Processor       | Concurrency | Jobs      | Time      | Start RSS  | Finish RSS    |
 |---------------------|-------------|-----------|-----------|------------|---------------|
