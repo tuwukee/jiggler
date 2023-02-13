@@ -15,39 +15,39 @@ require 'net/http'
 # require 'connection_pool'
 # require 'async/http/internet'
 
-require_relative '../lib/jiggler/support/helper'
-require_relative '../lib/jiggler/scheduled/enqueuer'
-require_relative '../lib/jiggler/scheduled/poller'
-require_relative '../lib/jiggler/scheduled/requeuer'
-require_relative '../lib/jiggler/stats/collection'
-require_relative '../lib/jiggler/stats/monitor'
+# require_relative '../lib/jiggler/support/helper'
+# require_relative '../lib/jiggler/scheduled/enqueuer'
+# require_relative '../lib/jiggler/scheduled/poller'
+# require_relative '../lib/jiggler/scheduled/requeuer'
+# require_relative '../lib/jiggler/stats/collection'
+# require_relative '../lib/jiggler/stats/monitor'
+# 
+# require_relative '../lib/jiggler/errors'
+# require_relative '../lib/jiggler/redis_store'
+# require_relative '../lib/jiggler/job'
+# require_relative '../lib/jiggler/config'
+# require_relative '../lib/jiggler/cleaner'
+# require_relative '../lib/jiggler/retrier'
+# require_relative '../lib/jiggler/launcher'
+# require_relative '../lib/jiggler/manager'
+# require_relative '../lib/jiggler/worker'
+# require_relative '../lib/jiggler/summary'
+# require_relative '../lib/jiggler/version'
+# require_relative '../lib/jiggler/base_acknowledger'
+# require_relative '../lib/jiggler/base_fetcher'
+# require_relative '../lib/jiggler/at_most_once/acknowledger'
+# require_relative '../lib/jiggler/at_most_once/fetcher'
+# require_relative '../lib/jiggler/at_least_once/acknowledger'
+# require_relative '../lib/jiggler/at_least_once/fetcher'
+# 
+# require_relative '../lib/jiggler/core'
+# require_relative '../lib/jiggler/cli'
 
-require_relative '../lib/jiggler/errors'
-require_relative '../lib/jiggler/redis_store'
-require_relative '../lib/jiggler/job'
-require_relative '../lib/jiggler/config'
-require_relative '../lib/jiggler/cleaner'
-require_relative '../lib/jiggler/retrier'
-require_relative '../lib/jiggler/launcher'
-require_relative '../lib/jiggler/manager'
-require_relative '../lib/jiggler/worker'
-require_relative '../lib/jiggler/summary'
-require_relative '../lib/jiggler/version'
-require_relative '../lib/jiggler/base_acknowledger'
-require_relative '../lib/jiggler/base_fetcher'
-require_relative '../lib/jiggler/at_most_once/acknowledger'
-require_relative '../lib/jiggler/at_most_once/fetcher'
-require_relative '../lib/jiggler/at_least_once/acknowledger'
-require_relative '../lib/jiggler/at_least_once/fetcher'
+require 'jiggler'
 
-require_relative '../lib/jiggler/core'
-require_relative '../lib/jiggler/cli'
-
-# require 'jiggler'
-
-CONCURRENCY = 5
-ITERATIONS = 5
-BATCH = 200
+CONCURRENCY = 10
+ITERATIONS = 1
+BATCH = 100_000
 
 # $internet = Async::HTTP::Internet.new
 # $pg_pool = ConnectionPool.new(size: CONCURRENCY) { PG.connect(dbname: 'test', password: 'test', user: 'test') }
@@ -101,8 +101,6 @@ class LoadJob
 
   def perform(id)
     net_http_get_request
-  rescue => er
-    puts er.message
   end
 end
 
@@ -133,7 +131,7 @@ Jiggler.logger.warn("--------->>> Main process before fork: #{get_rss_cpu(Proces
 
 real_start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 p2 = fork do
-  # require 'jiggler/server'
+  require 'jiggler/server'
 
   cli = Jiggler::CLI.instance
 

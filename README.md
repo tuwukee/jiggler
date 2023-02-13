@@ -33,7 +33,8 @@ Run `jiggler --help` to see the list of command line arguments.
 
 ### Performance
 
-[Jiggler 0.1.0rc4 performance results](/docs/perf_results_0.1.0rc4.md)
+[Jiggler 0.1.0rc4 performance results (at most once delivery) against sidekiq 7.0.3](/docs/perf_results_0.1.0rc4.md)
+[Jiggler 0.1.0 performance results (at least once delivery) against (at most once delivery)](/docs/perf_results_0.1.0.md)
 
 ### Getting Started
 
@@ -87,7 +88,24 @@ In the future it might bring a lot of performance boost into Ruby fibers world (
 
 #### Socketry stack
 
-The gem allows to use libs from `socketry` stack (https://github.com/socketry) within workers.
+The gem allows to use libs/calls from `socketry` stack (https://github.com/socketry) within workers. \
+Sample:
+
+```ruby
+def perform(ids)
+  resources = Resource.where(id: ids)
+  Async do
+    resources.each do |resource|
+      Async do
+        result = api_client.get(resource)
+        resource.update(data: result) if result
+      rescue => err
+        logger.error(err)
+      end
+    end
+  end
+end
+```
 
 #### Core concepts
 
