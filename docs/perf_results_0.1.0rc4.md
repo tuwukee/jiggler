@@ -1,4 +1,4 @@
-### Performance results Jiggler 0.1.0rc4
+### Performance results Jiggler 0.1.0rc4 (at most once delivery)
 
 The tests were run on local (Ubuntu 22.04, Intel(R) Core(TM) i7 6700HQ 2.60GHz). \
 On the other configurations the results may differ significantly, f.e. with Apple M1 Max chip it treats some IO operations as blocking and shows a poor performance ಠ_ಥ.
@@ -210,8 +210,6 @@ def perform
 end
 ```
 
-### Socketry calls
-
 | Job Processor    | Concurrency | Jobs  | Time      | Start RSS | Finish RSS | %CPU |
 |------------------|-------------|-------|-----------|-----------|------------|------|
 | Jiggler 0.1.0    | 5           | 1_000 | 43.31 sec | 30_548 kb | 38_512 kb  | 2.17 |
@@ -223,22 +221,6 @@ end
 | Jiggler 0.1.0    | 50          | 1_000 | 6.3 sec   | 30_608 kb | 40_900 kb  | 16.83 |
 | -                |             |       |           |           |            |      |
 | Jiggler 0.1.0    | 100         | 1_000 | 4.31 sec  | 30_828 kb | 43_296 kb  | 27.25 |
-
-Besides that, it's possible to spawn `async` tasks within workers as well:
-
-```ruby
-def perform(ids)
-  resources = Resource.where(id: ids)
-  resources.each do |resource|
-    Async do
-      result = api_client.get(resource)
-      resource.update(data: result) if result
-    rescue => err
-      logger.error(err)
-    end
-  end
-end
-```
 
 #### Idle
 

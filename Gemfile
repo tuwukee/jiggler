@@ -19,6 +19,8 @@ group :development do
   gem 'sidekiq' # for mem/speed comparison
   gem 'ruby-prof'
   gem 'heap-profiler'
+  gem 'falcon'
+  gem 'sinatra', '~> 2.0.0.beta2'
 end
 
 group :test do

@@ -32,7 +32,8 @@ module Jiggler
               list = data[:list]
               rlist = in_process_queue(list)
               loop do
-                if @consumers_queue.num_waiting.zero? && !@done
+                # @consumers_queue.num_waiting may return 1 even if there are no :(
+                if (@consumers_queue.num_waiting.zero? || @consumers_queue.size > @config[:concurrency]) && !@done
                   @condition.wait # supposed to block here until consumers notify
                 end
                 break if @done

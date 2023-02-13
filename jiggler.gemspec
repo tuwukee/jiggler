@@ -27,10 +27,11 @@ Gem::Specification.new do |s|
   s.add_dependency 'async', '~> 2.3'
   s.add_dependency 'async-io', '~> 1.34'
   s.add_dependency 'async-pool', '~> 0.3'
-  s.add_dependency 'redis-client', '~> 0.11'
-  s.add_dependency 'oj', '~> 3.13'
+  s.add_dependency 'redis-client', '~> 0.12'
+  s.add_dependency 'oj', '~> 3.14'
+  s.add_dependency 'priority_queue_cxx', '~> 0.3'
 
-  s.add_development_dependency 'bundler', '~> 2.3'
+  s.add_development_dependency 'bundler', '~> 2.4'
   s.add_development_dependency 'rake', '~> 13.0'
   s.add_development_dependency 'rspec', '~> 3.12'
 end
