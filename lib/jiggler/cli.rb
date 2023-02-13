@@ -56,7 +56,7 @@ module Jiggler
     def start
       return unless ping_redis
       @cond = Async::Condition.new
-      Async do |task|
+      Async do
         setup_signal_handlers
         patch_scheduler
         @launcher = Launcher.new(config)

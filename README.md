@@ -17,11 +17,6 @@ Install the gem:
 gem install jiggler
 ```
 
-Use `--pre` for release candidates:
-```
-gem install jiggler --pre
-```
-
 Start Jiggler server as a separate process with bin command:
 ```
 jiggler -r <FILE_PATH>
@@ -33,7 +28,7 @@ Run `jiggler --help` to see the list of command line arguments.
 
 ### Performance
 
-[Jiggler 0.1.0rc4 performance results (at most once delivery) against sidekiq 7.0.3](/docs/perf_results_0.1.0rc4.md)
+[Jiggler 0.1.0rc4 performance results (at most once delivery) against sidekiq 7.0.3](/docs/perf_results_0.1.0rc4.md) \
 [Jiggler 0.1.0 performance results (at least once delivery) against (at most once delivery)](/docs/perf_results_0.1.0.md)
 
 ### Getting Started
@@ -107,9 +102,9 @@ def perform(ids)
 end
 ```
 
-#### Core concepts
+#### Core components
 
-Internally Jiggler server consists of 3 parts: `Manager`, `Poller`, `Monitor`. \
+Internally Jiggler `server` among others includes the next entities: `Manager`, `Poller`, `Monitor`. \
 `Manager` is responsible for workers. \
 `Poller` fetches data for retries and scheduled jobs. \
 `Monitor` periodically loads stats data into redis. \
