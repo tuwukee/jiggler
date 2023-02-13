@@ -17,10 +17,6 @@ RSpec.describe Jiggler::Job do
     context 'on default' do
       let(:job) { MyJob.new }
 
-      before do
-        MyJob.job_options # reset to default
-      end
-
       it 'has correct attrs' do
         expect(job.class.queue).to eq 'default'
         expect(job.class.retries).to be 0
@@ -34,6 +30,10 @@ RSpec.describe Jiggler::Job do
 
       before do
         MyJob.job_options(queue: 'custom', retries: 3, retry_queue: 'custom_retry')
+      end
+
+      after do
+        MyJob.job_options # reset to default
       end
 
       it 'has correct attrs' do

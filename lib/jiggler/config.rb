@@ -25,7 +25,7 @@ module Jiggler
       stats_interval: 10,
       poller_enabled: true,
       poll_interval: 5,
-      in_process_interval: 25,
+      in_process_interval: 120,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
       # client settings
       client_concurrency: 10,

@@ -35,6 +35,7 @@ module Jiggler
         grouped_queues = in_progress_queues.map do |queue|
           [queue, *queue.split(":#{AtLeastOnce::Fetcher::RESERVE_QUEUE_SUFFIX}:")]
         end.group_by(&:last)
+        # returns [[queue_in_progress, queue, uuid]] for non-running processes
         grouped_queues.except(*running_processes_uuid).values.flatten(1)
       end
 

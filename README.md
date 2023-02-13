@@ -33,18 +33,7 @@ Run `jiggler --help` to see the list of command line arguments.
 
 ### Performance
 
-[Jiggler 0.1.0rc4](/docs/perf_results_0.1.0rc4.md)
-
-#### IO Event selector
-
-`IO_EVENT_SELECTOR` is an env variable which allows to specify the event selector used by the Ruby scheduler. \
-On default it uses `Epoll` (`IO_EVENT_SELECTOR=EPoll`). \
-Another available option is `URing` (`IO_EVENT_SELECTOR=URing`). Underneath it uses `io_uring` library. It is a Linux kernel library that provides a high-performance interface for asynchronous I/O operations. It was introduced in Linux kernel version 5.1 and aims to address some of the limitations and scalability issues of the existing AIO (Asynchronous I/O) interface.
-In the future it might bring a lot of performance boost into Ruby fibers world (once `async` project fully adopts it), but at the moment in the most cases its performance is similar to `EPoll`, yet it could give some boost with File IO.
-
-#### Socketry stack
-
-The gem allows to use libs from `socketry` stack (https://github.com/socketry) within workers.
+[Jiggler 0.1.0rc4 performance results](/docs/perf_results_0.1.0rc4.md)
 
 ### Getting Started
 
@@ -78,6 +67,8 @@ Jiggler.configure do |config|
 end
 ```
 
+`at_least_once` mode grants reliability for the regular enqueued jobs which are going to be executed by workers. The scheduled jobs (the ones planned to be executed at a specific time, or which failed and going to be retried) still support only `at_most_once` strategy. The support for them is going to be added in the upcoming versions.
+
 On default all queues have the same priority (equals to 0). Higher number means higher prio. \
 It's possible to specify custom priorities as follows:
 
@@ -86,6 +77,19 @@ Jiggler.configure do |config|
   config[:queues] = [["shippers", 0], ["shipments", 1], ["delivery", 2]]
 end
 ```
+
+#### IO Event selector
+
+`IO_EVENT_SELECTOR` is an env variable which allows to specify the event selector used by the Ruby scheduler. \
+On default it uses `Epoll` (`IO_EVENT_SELECTOR=EPoll`). \
+Another available option is `URing` (`IO_EVENT_SELECTOR=URing`). Underneath it uses `io_uring` library. It is a Linux kernel library that provides a high-performance interface for asynchronous I/O operations. It was introduced in Linux kernel version 5.1 and aims to address some of the limitations and scalability issues of the existing AIO (Asynchronous I/O) interface.
+In the future it might bring a lot of performance boost into Ruby fibers world (once `async` project fully adopts it), but at the moment in the most cases its performance is similar to `EPoll`, yet it could give some boost with File IO.
+
+#### Socketry stack
+
+The gem allows to use libs from `socketry` stack (https://github.com/socketry) within workers.
+
+#### Core concepts
 
 Internally Jiggler server consists of 3 parts: `Manager`, `Poller`, `Monitor`. \
 `Manager` is responsible for workers. \

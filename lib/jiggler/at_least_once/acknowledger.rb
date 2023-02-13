@@ -23,7 +23,9 @@ module Jiggler
                 log_error(err, context: '\'Could not acknowledge a job\'', job: job)
               end
             end
-            logger.warn("Acknowledger exits")
+            logger.debug('Acknowledger exits')
+          rescue Async::Stop
+            logger.debug('Acknowledger received stop signal')
           end
         end
       end
@@ -33,7 +35,7 @@ module Jiggler
       end
   
       def terminate
-        logger.warn("Suspending the acknowledger")
+        logger.debug('Suspending the acknowledger')
         @queue.close
       end
     end
