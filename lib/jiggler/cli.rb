@@ -9,20 +9,6 @@ require 'async/io/trap'
 require 'async/pool'
 require 'debug'
 
-# Async::Task.class_eval do
-#   def initialize(parent = Async::Task.current?, finished: nil, **options, &block)
-#     puts 'task initialized'
-#     super(parent, **options)
-    
-#     @status = :initialized
-#     @result = nil
-#     @finished = finished
-    
-#     @block = block
-#     @fiber = nil
-#   end
-# end
-
 module Jiggler
   class CLI
     include Singleton

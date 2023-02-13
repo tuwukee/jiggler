@@ -67,4 +67,3 @@ RSpec.describe Jiggler::AtLeastOnce::Fetcher do
     end
   end
 end
-  
