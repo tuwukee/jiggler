@@ -84,7 +84,14 @@ module Jiggler
     end
 
     def fetch_and_format_queues(conn)
-      lists = conn.call('SCAN', '0', 'MATCH', config.queue_scan_key).last
+      cursor = '0'
+      lists = []
+
+      loop do
+        cursor, current_lists = conn.call('SCAN', cursor, 'MATCH', config.queue_scan_key)
+        lists += current_lists.select { |list| !list.include?(':in_progress:') } # TODO: replace with constant
+        break if cursor == '0'
+      end
       lists_data = {}
 
       collected_data = conn.pipelined do |pipeline|
