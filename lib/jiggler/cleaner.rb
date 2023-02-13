@@ -111,18 +111,20 @@ module Jiggler
     
     # it deletes in_progress queues as well
     def prn_all_queues(conn)
-      cursor = ''
-      until cursor == '0'
+      cursor = '0'
+      loop do
         cursor, queues = conn.call('SCAN', cursor, 'MATCH', config.queue_scan_key)
         conn.call('DEL', *queues) unless queues.empty?
+        break if cursor == '0'
       end
     end
 
     def prn_all_processes(conn)
-      cursor = ''
-      until cursor == '0'
+      cursor = '0'
+      loop do
         cursor, processes = conn.call('SCAN', cursor, 'MATCH', config.process_scan_key)
         conn.call('DEL', *processes) unless processes.empty?
+        break if cursor == '0'
       end
     end
 
