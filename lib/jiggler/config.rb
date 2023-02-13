@@ -25,14 +25,15 @@ module Jiggler
       stats_interval: 10,
       poller_enabled: true,
       poll_interval: 5,
+      # used in scheduled/requeuer
       in_process_interval: 120,
       dead_timeout: 180 * 24 * 60 * 60, # 6 months in seconds
+      mode: :at_least_once,
       # client settings
       client_concurrency: 10,
       client_redis_pool: nil,
       fetchers_concurrency: 1,
-      client_async: false,
-      mode: :at_least_once
+      client_async: false
     }
 
     def initialize(options = {})

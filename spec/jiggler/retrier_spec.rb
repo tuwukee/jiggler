@@ -9,7 +9,8 @@ RSpec.describe Jiggler::Retrier do
     ) 
   end
   let(:uuid) { "#{SecureRandom.hex(3)}-test" }
-  let(:collection) { Jiggler::Stats::Collection.new(uuid, uuid) }
+  let(:identity) { "#{uuid}-identity" }
+  let(:collection) { Jiggler::Stats::Collection.new(uuid, identity) }
   let(:retrier) { Jiggler::Retrier.new(config, collection) }
 
   describe '#wrapped' do

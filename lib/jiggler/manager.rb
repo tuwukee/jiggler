@@ -8,9 +8,7 @@ module Jiggler
     include Support::Helper
 
     def initialize(config, collection)
-      # TODO: verify if a regular array is enough
       @workers = Set.new
-      @readers = []
 
       @done = false
       @config = config
