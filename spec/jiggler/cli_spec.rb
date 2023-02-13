@@ -1,9 +1,17 @@
 # frozen_string_literal: true
 
-require_relative '../../lib/jiggler/cli.rb'
-
 RSpec.describe Jiggler::CLI do
   let(:cli) { Jiggler::CLI.instance }
+  before do
+    # reset
+    Jiggler.instance_variable_set(:@config, nil) 
+    cli.instance_variable_set(:@config, nil)
+  end
+  after do
+    # reset
+    Jiggler.instance_variable_set(:@config, nil) 
+    cli.instance_variable_set(:@config, nil)
+  end
 
   describe '.parse_and_init' do
     context 'with no args' do
@@ -80,6 +88,35 @@ RSpec.describe Jiggler::CLI do
       it { expect { cli.parse_and_init(['-t', 'yo']) }.to raise_error(ArgumentError) }
       it { expect { cli.parse_and_init(['-r', 'test.rb']) }.to raise_error(SystemExit) }
       it { expect { cli.parse_and_init(['-q', 'in:va:lid']) }.to raise_error(ArgumentError) }
+    end
+
+    context 'config validation' do
+      context 'with mode' do
+        it 'raises an error when invalid mode' do
+          Jiggler.configure do |config|
+            config[:mode] = :invalid
+          end
+          expect { cli.parse_and_init }.to raise_error(ArgumentError)
+        end
+
+        it 'does not raise an error when valid mode' do
+          Jiggler.configure do |config|
+            config[:mode] = :at_most_once
+          end
+          expect { cli.parse_and_init }.not_to raise_error
+        end
+      end
+
+      context 'with numeric values' do
+        it 'raises an error when invalid value' do
+          Jiggler::CLI::NUMERIC_OPTIONS.each do |option|
+            Jiggler.configure do |config|
+              config[option] = [0, -1, 'a'].sample
+            end
+            expect { cli.parse_and_init }.to raise_error(ArgumentError)
+          end
+        end
+      end
     end
   end
 end

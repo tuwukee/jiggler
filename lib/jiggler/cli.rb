@@ -13,6 +13,16 @@ module Jiggler
   class CLI
     include Singleton
     CONTEXT_SWITCHER_THRESHOLD = 0.5
+    NUMERIC_OPTIONS = %i[
+      concurrency 
+      client_concurrency
+      timeout
+      in_process_interval
+      poll_interval
+      stats_interval
+      max_dead_jobs
+      dead_timeout
+    ].freeze
 
     attr_reader :logger, :config, :environment
 
@@ -135,8 +145,12 @@ module Jiggler
       if config[:queues].any? { |q| q.include?(':') }
         raise ArgumentError, 'Queue names cannot contain colons'
       end
+      
+      [:at_most_once, :at_least_once].include?(config[:mode]) || raise(
+        ArgumentError, "Invalid mode: #{config[:mode]}. Valid modes are :at_most_once and :at_least_once"
+      )
 
-      [:concurrency, :client_concurrency, :timeout].each do |opt|
+      NUMERIC_OPTIONS.each do |opt|
         raise ArgumentError, "#{opt}: #{config[opt]} is not a valid value" if config[opt].to_i <= 0
       end
     end
