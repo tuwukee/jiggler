@@ -16,7 +16,7 @@ RSpec.describe Jiggler::AtLeastOnce::Fetcher do
     let(:collection) { Jiggler::Stats::Collection.new(uuid, uuid) }
     let(:fetcher) { Jiggler::AtLeastOnce::Fetcher.new(config, collection) }
 
-    before { config.cleaner.prune_all }
+    after { config.cleaner.prune_all }
 
     it 'fetches current job' do
       MyJob.with_options(queue: 'fetcher_queue').enqueue

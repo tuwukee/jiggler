@@ -45,7 +45,7 @@ module Jiggler
           safe_async('Requeuer') do
             until @done
               handle_stale_in_process_queues
-              logger.warn('executing requeuer')
+              logger.debug('Executing requeuer')
               wait(@requeuer_condition, in_process_interval) unless @done
             end
           end if @config.at_least_once?
@@ -53,7 +53,6 @@ module Jiggler
       end
 
       def enqueue
-        # logger.warn('Poller runs')
         @enqueuer.enqueue_jobs
       end
 
@@ -72,8 +71,8 @@ module Jiggler
       end
 
       def in_process_interval
-        # 10 to 25 seconds by default
-        [@config[:in_process_interval] * rand, 10].max
+        # 60 to 120 seconds by default
+        [@config[:in_process_interval] * rand, 60].max
       end
 
       def random_poll_interval

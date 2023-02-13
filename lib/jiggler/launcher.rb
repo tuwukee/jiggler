@@ -22,7 +22,7 @@ module Jiggler
 
       @done = true
       manager.suspend
-      logger.warn('Manager suspended')
+      logger.debug('Manager suspended')
 
       poller.terminate if config[:poller_enabled]
       monitor.terminate
@@ -31,7 +31,7 @@ module Jiggler
     def stop
       suspend
       manager.terminate
-      logger.warn('Manager terminated')
+      logger.debug('Manager terminated')
     end
 
     private

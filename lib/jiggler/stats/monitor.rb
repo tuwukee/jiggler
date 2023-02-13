@@ -96,7 +96,7 @@ module Jiggler
       private
 
       def cleanup_with(conn)
-        conn.call('DEL', collection.uuid)
+        conn.call('DEL', collection.identity)
       end
     end
   end

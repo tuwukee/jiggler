@@ -64,7 +64,7 @@ module Jiggler
     def fetch_one
       job = fetcher.fetch
       if job == :done
-        logger.warn("Suspending the worker")
+        logger.debug('Suspending the worker')
         @done = true
         return
       end

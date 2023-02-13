@@ -49,7 +49,9 @@ module Jiggler
                 @tasks_queue.push(job(list, args, rlist), data[:priority]) 
                 @consumers_queue.push('') # to unblock any waiting consumer
               end
-              logger.warn("Fetcher for #{queue} stopped")
+              logger.debug("Fetcher for #{queue} stopped")
+            rescue Async::Stop
+              logger.debug("Fetcher for #{queue} received stop signal")
             end
           end
         end
@@ -63,7 +65,7 @@ module Jiggler
       end
 
       def suspend
-        logger.warn("Suspending the fetcher")
+        logger.debug("Suspending the fetcher")
         @done = true
         @condition.signal
         @consumers_queue.close # unblocks awaiting consumers
