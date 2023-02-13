@@ -16,6 +16,8 @@ RSpec.describe 'Core' do
         config[:queues] = %w[foo bar]
         config[:require] = 'foo'
         config[:environment] = 'bar'
+        config[:mode] = :at_most_once
+        config[:in_process_interval] = 100
       end
       expect(Jiggler.config[:concurrency]).to be 1
       expect(Jiggler.config[:client_concurrency]).to be 2
@@ -29,6 +31,8 @@ RSpec.describe 'Core' do
       expect(Jiggler.config[:queues]).to eq %w[foo bar]
       expect(Jiggler.config[:require]).to eq 'foo'
       expect(Jiggler.config[:environment]).to eq 'bar'
+      expect(Jiggler.config[:mode]).to eq :at_most_once
+      expect(Jiggler.config[:in_process_interval]).to be 100
       # reset config
       Jiggler.instance_variable_set(:@config, nil)
     end
